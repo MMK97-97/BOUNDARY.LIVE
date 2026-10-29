@@ -8,6 +8,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { ScoreService, scoreLines } from './lib/score.mjs';
 import { DESTINATIONS, destinationConfig, findFont, probeEncoder, ingestArgs, outputArgs } from './lib/encoder.mjs';
 import { constantTimeEquals, SessionStore } from './lib/security.mjs';
+import { automationOptions } from './lib/events.mjs';
+import { BroadcastProgram } from './lib/program.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -88,12 +90,28 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'Boundary relay', version: '1.0.0', encoder, busy: Boolean(active),
+        name: 'Boundary relay', version: '1.1.0', encoder, busy: Boolean(active),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinations[id].configured, error: destinations[id].error,
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
         pollSeconds: scores.pollMs / 1000
       });
       if (req.method === 'GET' && url.pathname === '/api/score') return json(res, 200, scores.snapshot());
+      if (req.method === 'GET' && url.pathname === '/api/automation') return json(res, 200, active?.sessionId === authenticated.id && active.program ? active.program.snapshot() : { bufferSeconds: 0, clips: [], cards: null, current: null });
+      if (req.method === 'POST' && url.pathname === '/api/clip/select') {
+        if (!active || active.sessionId !== authenticated.id || !active.program) return json(res, 409, { error: 'Start the broadcast with replay processing enabled first.' });
+        const value = await body(req), clip = active.program.selectClip(Number(value.behind ?? 0));
+        return json(res, 201, { id: clip.id, duration: clip.frames.length / 30 });
+      }
+      const clipRoute = url.pathname.match(/^\/api\/clips\/([a-f0-9]{16})\.mp4$/);
+      if (req.method === 'GET' && clipRoute) {
+        if (!active || active.sessionId !== authenticated.id || !active.program) return json(res, 409, { error: 'The clip buffer is not active.' });
+        if (active.exporting) return json(res, 429, { error: 'One clip is already being prepared. Try again shortly.' });
+        const owner = active, { child, feed } = owner.program.exportClip(clipRoute[1]); owner.exporting = true; owner.exportChild = child;
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store', 'Content-Disposition': 'inline; filename="boundary-replay.mp4"' });
+        const timer = setTimeout(() => child.kill('SIGKILL'), 30000);
+        child.on('error', () => res.destroy()); child.on('close', () => { clearTimeout(timer); owner.exporting = false; owner.exportChild = null; if (!res.writableEnded) res.end(); });
+        res.on('close', () => { if (child.exitCode === null) child.kill(); }); child.stdout.pipe(res); feed().catch(() => child.kill()); return;
+      }
       if (req.method === 'POST' && url.pathname === '/api/ticket') return json(res, 201, { ticket: sessions.ticket(authenticated.id, originOf(req)) });
       if (req.method === 'POST' && url.pathname === '/api/logout') {
         sessions.revoke(authenticated.id);
@@ -134,6 +152,7 @@ function writeText(dir, name, text) {
 }
 function updateOverlay() {
   if (!active || active.ending || !fs.existsSync(active.dir)) return false;
+  if (active.program) { active.program.setScore(scores.snapshot().score); return true; }
   const [main, detail] = scoreLines(scores.snapshot().score);
   try {
     writeText(active.dir, 'score-main.txt', main); writeText(active.dir, 'score-detail.txt', detail);
@@ -157,7 +176,8 @@ function run(ws, message, identity) {
   if (chosen.some(id => !DESTINATIONS.includes(id) || !destinations[id].configured)) throw new Error('A selected destination has no valid stream key on the relay.');
   if (!/^video\/(webm|mp4)(;|$)/i.test(message.mimeType || '')) throw new Error('Unsupported browser recording container.');
   const width = Number(message.width), height = Number(message.height);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1920 || height < 1080 || width > 4096 || height > 2160) throw new Error('Use a landscape camera providing at least 1920 × 1080. Rotate the phone and reopen the camera.');
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 854 || height < 480 || width < height || width > 4096 || height > 2160) throw new Error('Use a landscape camera providing the selected resolution (1920 × 1080 for 1080p). Rotate the phone and reopen the camera.');
+  if (!message.resolution && (width < 1920 || height < 1080)) throw new Error('Use a landscape camera providing at least 1920 × 1080.');
   if (message.overlay !== false && !scores.snapshot().score) throw new Error('Connect a valid score feed, or turn off the score overlay before streaming.');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-live-'));
   const session = { ws, dir, sessionId: identity.id, main: null, outputs: new Map(), ending: false, bytes: 0, windowBytes: 0, windowAt: Date.now(), lastInput: Date.now(), started: Date.now(), frames: 0, timer: null };
@@ -166,13 +186,23 @@ function run(ws, message, identity) {
     active = null; fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {});
     throw new Error('Could not prepare score overlay files. Check laptop temporary-folder access.');
   }
-  const bitrate = chosen.includes('facebook') ? 6000 : Math.min(14000, Number(process.env.LANDSCAPE_VIDEO_KBPS) || 10000);
+  const bitrate = chosen.includes('facebook') ? 6000 : Math.max(4000, Math.min(14000, Number(process.env.LANDSCAPE_VIDEO_KBPS) || 10000));
   const args = ingestArgs({ font, overlay: message.overlay !== false, bitrateKbps: bitrate, mimeType: message.mimeType });
   const preset = process.env.ENCODER_PRESET;
   if (['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium'].includes(preset)) args[args.indexOf('-preset') + 1] = preset;
   let mainError = '';
-  const main = spawn(binary, args, { cwd: dir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-  session.main = main;
+  const options = automationOptions(message.automation, process.env), outputHeight = height >= 1080 && width >= 1920 ? 1080 : height >= 720 && width >= 1280 ? 720 : 480;
+  let main;
+  if (options.replay || options.milestones || options.cards || outputHeight < 1080) {
+    session.program = new BroadcastProgram({ binary, font, dir, mimeType: message.mimeType, options,
+      bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000, width: outputHeight === 1080 ? 1920 : outputHeight === 720 ? 1280 : 854, height: outputHeight,
+      score: scores.snapshot().score, overlay: message.overlay !== false, preset });
+    main = session.program.encoder; session.main = session.program.camera;
+    session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
+    session.program.on('warning', message => send(ws, { type: 'warning', message }));
+    session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));
+    session.program.on('clips', automation => send(ws, { type: 'automation', automation }));
+  } else { main = spawn(binary, args, { cwd: dir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }); session.main = main; }
   main.stdin.on('error', () => {});
   const failOutput = (id, message) => {
     const out = session.outputs.get(id); if (!out || out.failed || session.ending) return;
@@ -220,27 +250,31 @@ function run(ws, message, identity) {
   session.timer = setInterval(() => {
     if (Date.now() - session.lastInput > 15000) { send(ws, { type: 'error', message: 'No camera data for 15 seconds. Keep the page in the foreground and the phone unlocked.' }); finish(session, false); return; }
     if (!sessions.sessions.has(session.sessionId) || Date.now() - session.started > 8 * 3600_000) { send(ws, { type: 'error', message: 'Session expired. Reconnect the relay.' }); finish(session, false); return; }
-    send(ws, { type: 'stats', bytes: session.bytes, frames: session.frames, elapsed: Math.floor((Date.now() - session.started) / 1000) });
+    send(ws, { type: 'stats', bytes: session.bytes, frames: session.frames, elapsed: Math.floor((Date.now() - session.started) / 1000), automation: session.program?.snapshot() });
   }, 2000);
-  send(ws, { type: 'ready', bitrateKbps: bitrate, message: 'Relay is ready for camera data.' });
+  send(ws, { type: 'ready', bitrateKbps: bitrate, program: Boolean(session.program), message: 'Relay is ready for camera data.' });
   return session;
 }
 function finish(session, graceful) {
   if (!session || session.ending) return;
   session.ending = true; clearInterval(session.timer);
-  if (graceful) session.main?.stdin.end();
-  else { session.main?.kill(); for (const out of session.outputs.values()) out.process.kill(); }
+  session.exportChild?.kill();
+  if (session.program) session.program.stop(graceful);
+  else if (graceful) session.main?.stdin.end();
+  else session.main?.kill();
+  if (!graceful) for (const out of session.outputs.values()) out.process.kill();
   let done = false;
   const clean = () => {
     if (done) return; done = true;
-    session.main?.kill(); for (const out of session.outputs.values()) out.process.kill();
+    if (session.program) session.program.stop(false); else session.main?.kill();
+    for (const out of session.outputs.values()) out.process.kill();
     if (active === session) active = null;
     fs.rm(session.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {});
     send(session.ws, { type: 'stopped' });
     if (session.ws.readyState === WebSocket.OPEN) session.ws.close(1000, 'Session stopped');
   };
   if (graceful) {
-    const children = [session.main, ...[...session.outputs.values()].map(o => o.process)];
+    const children = [session.main, ...(session.program ? [session.program.encoder] : []), ...[...session.outputs.values()].map(o => o.process)];
     let remaining = children.filter(p => p && p.exitCode === null && p.signalCode === null).length;
     for (const p of children) if (p && p.exitCode === null && p.signalCode === null) p.once('close', () => { if (--remaining <= 0) clean(); });
     if (!remaining) clean();
@@ -275,6 +309,15 @@ wss.on('connection', (ws, req) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'stop') finish(session, true);
         else if (message.type === 'ping') send(ws, { type: 'pong', at: message.at });
+        else if (session && !session.ending && session.program) {
+          try {
+            if (message.type === 'mark-ball') { session.program.markBall(); send(ws, { type: 'warning', message: 'Ball marked. The next detected scoring delivery will use this mark for replay alignment.' }); }
+            else if (message.type === 'card') session.program.cards(message.kind);
+            else if (message.type === 'replay') session.program.replay(String(message.clipId || ''));
+            else if (message.type === 'overlay' && typeof message.enabled === 'boolean') session.program.showOverlay = message.enabled;
+            else throw new Error('Unknown broadcast control.');
+          } catch (e) { send(ws, { type: 'warning', message: e.message.slice(0, 180) }); }
+        }
       }
     } catch (e) { send(ws, { type: 'error', message: e.message.slice(0, 200) }); ws.close(1008, 'Request rejected'); }
   });

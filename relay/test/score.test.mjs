@@ -41,6 +41,14 @@ test('canonical approved feed is supported', () => {
   const s = normalizeScore({ schema: 'boundary.score.v1', batting: 'TEAM C', bowling: 'TEAM D', runs: 0, wickets: 0, overs: '0.0', status: 'scheduled' }, ids);
   assert.equal(s.runs, '0'); assert.equal(s.source, 'Approved score feed');
 });
+test('approved feed bounds totals, validates match IDs and tolerates malformed optional arrays', () => {
+  const raw = { schema: 'boundary.score.v1', batting: 'A', bowling: 'B', runs: 50, wickets: 1, overs: '8.0' };
+  assert.throws(() => normalizeScore({ ...raw, runs: '9'.repeat(10000) }, ids));
+  assert.throws(() => normalizeScore({ ...raw, overs: '8.6' }, ids));
+  assert.throws(() => normalizeScore({ ...raw, matchId: '987' }, ids));
+  const s = normalizeScore({ ...raw, cards: { complete: true, batting: 'bad', bowling: null }, deliveries: [null] }, ids);
+  assert.deepEqual(s.cards.batting, []); assert.equal(s.cards.complete, false); assert.deepEqual(s.deliveries, []);
+});
 test('polls are deduplicated, cached and old score is marked stale on failure', async () => {
   let calls = 0, fail = false;
   const service = new ScoreService({ fetchFn: async () => { calls++; if (fail) throw new Error('offline'); return new Response(JSON.stringify(first)); } });

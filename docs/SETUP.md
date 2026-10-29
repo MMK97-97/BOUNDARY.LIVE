@@ -89,7 +89,7 @@ tailscale serve status
 3. The first run can offer a link to enable HTTPS certificates for your network. Complete that setup in your own account. Tailscale's valid HTTPS certificate avoids self-signed certificate warnings.
 4. Copy the **HTTPS origin** it prints, similar to `https://YOUR-LAPTOP.YOUR-NETWORK.ts.net`. Do not copy the example literally.
 5. On the phone, open that address with `/health` appended. It should show a small JSON response with `ok: true`. This endpoint shows no keys or match data.
-6. Return to the **GitHub Pages website** on your phone. In Connect relay, enter the HTTPS origin, without `/health`, and the `RELAY_TOKEN` from your laptop's `.env`. Press **Connect securely**.
+6. Return to the **GitHub Pages website** on your phone. Tap **Settings → Connect laptop relay**, enter the HTTPS origin without `/health`, and the `RELAY_TOKEN` from your laptop's `.env`. Press **Connect securely**.
 7. If the browser asks to access your local/private network, allow it for your own relay. The server returns the private-network preflight permission only to configured origins. If your browser still blocks cross-origin private networking, use the same-origin alternative below.
 
 Use **Serve**, which is private. You do not need Tailscale Funnel. Spectators use the public YouTube/Facebook/Instagram video and do not need Tailscale.
@@ -149,7 +149,7 @@ After editing any `.env` values, stop and restart `npm start`, then reconnect th
 
 ## 5. Load FWCWL match 986
 
-The site is preset to **Club ID 300**. In the score section enter **986** and press **Load**. Or paste:
+The site is preset to **Club ID 300**. Tap **Score**, enter **986** and press **Load**. Or paste:
 
 ```text
 https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300
@@ -157,26 +157,29 @@ https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300
 
 The relay reads CricClubs' JSON overlay data over HTTPS and converts only score fields into a safe internal format. It is a server-side data reader; it does not iframe a scorecard page. There is no public CORS-proxy dependency, no CricClubs password/token extraction, and no changing CricClubs' overlay control panel.
 
-For this completed match, the score should show ICAT 208/5, 30.5 overs, and the win over Royal Bulls CC. For a current match in the same league, change only the Match ID. Other leagues need their own Club ID or full scorecard URL. The relay polls every 10 seconds by default; it cannot update faster than the scorer provides data.
+For this completed match, the score should show ICAT 208/5, 30.5 overs, and the win over Royal Bulls CC. For a current match in the same league, change only the Match ID. Other leagues need their own Club ID or full scorecard URL. The relay polls every five seconds by default, with its two-second scheduler adding up to two seconds of polling jitter; it cannot update faster than the scorer provides data. No historic replays or milestone graphics play when loading 986.
 
 ## 6. Stream from your phone
 
 1. Put the phone on a stable tripod, in landscape, with a clear view of the whole pitch.
 2. Open the site in current Chrome on Android or Safari on iPhone. Browser/device support still needs testing on your actual model.
 3. Connect the relay. Load the score. Open the camera and allow camera + microphone permission.
-4. Check that the actual capture readout is 1920 × 1080. If it fails, rotate the phone and reopen, try a different rear lens, or use another supported device. The app does not upscale 720p and label it native 1080p.
+4. Leave the header quality pill on **1080p** and check that the actual capture readout is 1920 × 1080. If it fails, rotate the phone and reopen, try a different rear lens, or choose **Auto**, **720p** or **480p** before streaming. Auto tries the supported native sizes in that order. The app does not upscale 720p and label it native 1080p.
 5. Use native zoom presets or the slider if enabled. Prefer an exposed optical telephoto lens over aggressive digital zoom. Lens switching is locked during a stream to avoid invalidating the recorder.
-6. Choose **Balanced** (8 Mbps upload) for normal use or **More detail** (14 Mbps) with strong network/thermal headroom. Bitrate requests are hints to the browser; actual encoder output can differ.
-7. Select the destinations that are configured. Press **Start streaming**.
+6. In Settings choose **Balanced** (8 Mbps upload at 1080p) or **More detail** (14 Mbps) with strong network/thermal headroom. Bitrate requests are hints to the browser; actual encoder output can differ. Lower resolutions use proportionally lower requested bitrates.
+7. Keep the three broadcast automation switches enabled for replays, milestones and end-of-over cards. Set the scoring delay after a rehearsal; see [AUTOMATION.md](AUTOMATION.md). Select configured destinations, close the panel and press **START** in the bottom transport bar.
 8. Confirm video/audio and score in each platform's control room, then use its **Go Live** step. “Packets sent” means the relay sent output; it does not certify a public broadcast.
-9. Use **Hide preview** or **Battery screen** after framing. Lower screen brightness manually. Keep the website visible, Tailscale connected and the phone unlocked; mobile browsers may suspend background camera capture.
-10. To finish, end broadcasts in their platform control rooms, then press **Stop stream → Yes, stop streaming**. Close the camera when done.
+9. Use the bottom **Pause local monitor** button or **Settings → Battery screen** after framing. Both keep camera upload running. Lower screen brightness manually. Keep the website visible, Tailscale connected and the phone unlocked; mobile browsers may suspend background camera capture.
+10. In **Clips**, Preview checks a ball privately, **On air** switches the outgoing program to its replay, and Download exports an MP4. The bottom LIVE button returns only your local monitor to the camera. During an on-air replay the operator's raw camera monitor stays live; verify the program on the platform preview.
+11. To finish, end broadcasts in their platform control rooms, then press **Stop stream → Yes, stop streaming**. Close the camera when done.
 
-If you do not need the score, turn the overlay switch off before starting.
+The Score panel's overlay switch controls the scorebar. During a session using the new program processor it can be changed on air. With all automation off at 1080p, set it before starting. [CONTROLS.md](CONTROLS.md) explains every layout button.
 
 ## Quality, bandwidth and battery
 
-The phone captures once and uploads once. Laptop processing adds graphics, encodes a landscape feed once, copies it to YouTube/Facebook, and separately converts Instagram to portrait. Copying encoded video to the two landscape destinations avoids an extra encode for each one.
+The phone captures once and uploads once. With automation enabled, laptop processing decodes a high-quality JPEG/PCM replay buffer, composites locally generated PNG graphics, encodes one continuous landscape program, copies it to YouTube/Facebook, and separately converts Instagram to portrait. Replays use original source audio. This adds laptop CPU/RAM and an extra lossy image stage; benchmark the intended laptop. Copying the encoded program to the two landscape destinations avoids a separate landscape encode for each one.
+
+Default replay settings retain up to 30 seconds with a **192 MB JPEG memory cap**, plus bounded PCM audio and up to **64 MB of private clips**. High-detail frames can shorten the available buffer before 30 seconds. FFmpeg, graphics and process queues require additional memory. Settings are in `relay/.env`; the UI reports the available seconds, which matter more than the configured maximum. Disable all automation at native 1080p for the simpler encoder path if replay is unnecessary.
 
 At 8 Mbps, a three-hour phone upload is approximately **10.8 GB**, plus audio and protocol overhead. At 14 Mbps it is about **18.9 GB** plus overhead. Multi-platform forwarding uses the laptop's internet upload: YouTube + Facebook at 6 Mbps each and Instagram at 3.5 Mbps is roughly 15.5 Mbps plus audio/overhead. If all devices share a hotspot/router, test both directions together. Keep substantial bandwidth headroom.
 

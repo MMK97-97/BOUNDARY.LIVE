@@ -1,20 +1,23 @@
-import { PROFILES, parseMatch, relayOrigin, chooseMime, clampZoom, duration, is1080Landscape, preflight } from './core.mjs';
+import { PROFILES, SIZES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, is1080Landscape, preflight } from './core.mjs';
+import { installStudio } from './studio.mjs';
+let ui = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
   relay: '', info: null, score: null, pollTimer: null, polling: false, live: false, starting: false, stopping: false,
   cameraBusy: false, connecting: false, micMuted: false, previewOff: false, startedAt: 0, uploaded: 0, lastBytes: 0,
-  lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false };
+  lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false,
+  captureResolution: '1080', automation: { bufferSeconds: 0, clips: [], cards: null }, monitorClip: false };
 const saved = key => { try { return localStorage.getItem(`boundary.${key}`) || ''; } catch { return ''; } };
 const save = (key, value) => { try { localStorage.setItem(`boundary.${key}`, value); } catch {} };
 $('relayUrl').value = saved('relay'); $('clubInput').value = saved('club') || '300';
 if (saved('match')) $('matchInput').value = saved('match');
-function notice(message, type = 'info') { $('notice').textContent = message; $('notice').className = `notice ${type}`; $('notice').hidden = !message; }
+function notice(message, type = 'info') { $('notice').textContent = message; $('notice').className = `notice ${type}`; $('notice').hidden = !message; $('dismissNotice').hidden = !message; }
 function health(id, text, kind = '') { $(id + 'Health').textContent = text; $(id + 'Dot').className = 'health-dot ' + kind; }
 function currentDestinations() { return DESTS.filter(id => $('dest-' + id).checked && state.info?.destinations.find(d => d.id === id)?.configured); }
 function issue() {
   return preflight({ connected: Boolean(state.session), encoderReady: state.info?.encoder.ready,
-    camera: state.camera, destinations: currentDestinations(), overlay: $('overlayToggle').checked, score: state.score });
+    camera: state.camera, destinations: currentDestinations(), overlay: $('overlayToggle').checked, score: state.score, resolution: state.captureResolution });
 }
 function updateControls() {
   const locked = state.live || state.starting || state.stopping;
@@ -25,6 +28,8 @@ function updateControls() {
   $('stopLive').textContent = state.stopping ? 'Stopping…' : '■ Stop stream';
   for (const id of ['qualitySelect', 'overlayToggle', 'relayUrl', 'relayToken', 'connectRelay', 'disconnectRelay', 'matchInput', 'clubInput', 'loadMatch']) $(id).disabled = locked;
   $('connectRelay').disabled = locked || state.connecting;
+  $('overlayToggle').disabled = locked && (!state.live || !state.programEnabled);
+  for (const id of ['autoReplay', 'autoMilestones', 'autoCards', 'scorerDelay']) $(id).disabled = locked;
   $('loadMatch').disabled = locked || !state.session;
   $('cameraSelect').disabled = locked || !state.stream || state.cameraBusy;
   $('openCamera').disabled = state.cameraBusy || locked;
@@ -39,6 +44,7 @@ function updateControls() {
   const dot = document.createElement('i'); $('streamState').append(dot, document.createTextNode(state.live ? ' SENDING' : state.starting ? ' CONNECTING' : state.stopping ? ' STOPPING' : ' STANDBY'));
   $('streamState').classList.toggle('sending', state.live);
   $('broadcastLabel').textContent = state.live ? 'CAMERA UPLOAD ACTIVE' : 'READY WHEN YOU ARE';
+  ui?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
   if (!state.relay || !authToken) throw new Error('Connect the relay first.');
@@ -118,6 +124,7 @@ function renderScore(result) {
   $('matchStatus').textContent = result?.error || teams || `${s.source} · Match ${s.matchId} · ${s.status === 'complete' ? 'Completed' : 'Feed connected'}`;
   $('scoreFreshness').textContent = `${delayed ? 'Last successful fetch' : 'Fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()} · refresh every ${result.pollSeconds || 10}s${s.partialView ? ' · limited CricClubs view' : ''}`;
   $('dimScore').textContent = `${s.batting} ${s.runs}/${s.wickets} (${s.overs})${delayed ? ' · delayed' : ''}`;
+  ui?.score(s);
   health('score', delayed ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Score connected', delayed ? 'warning' : 'good');
   updateControls();
 }
@@ -150,7 +157,8 @@ $('matchForm').addEventListener('submit', async event => {
     notice(error.message, 'error');
   } finally { updateControls(); }
 });
-$('overlayToggle').addEventListener('change', () => { $('scoreOverlay').hidden = !state.score || !$('overlayToggle').checked; updateControls(); });
+$('overlayToggle').addEventListener('change', () => { $('scoreOverlay').hidden = !state.score || !$('overlayToggle').checked; if (state.live) sendControl({ type: 'overlay', enabled: $('overlayToggle').checked }); updateControls(); });
+function sendControl(message) { if (!state.live || state.socket?.readyState !== WebSocket.OPEN) { notice('Start streaming to use on-air controls.'); return false; } state.socket.send(JSON.stringify(message)); return true; }
 
 async function openCamera(deviceId = '') {
   if (state.cameraBusy || state.live || state.starting) return;
@@ -158,27 +166,32 @@ async function openCamera(deviceId = '') {
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs HTTPS. Open your GitHub Pages website in a current browser.');
     chooseMime(window.MediaRecorder);
-    const video = { width: { min: 1920, ideal: 1920, max: 1920 }, height: { min: 1080, ideal: 1080, max: 1080 },
-      frameRate: { ideal: 30, max: 30 }, aspectRatio: { ideal: 16 / 9 }, ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }) };
-    if (navigator.mediaDevices.getSupportedConstraints().resizeMode) video.resizeMode = 'none';
-    state.stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const candidates = state.captureResolution === 'auto' ? ['1080', '720', '480'] : [state.captureResolution];
+    let lastError;
+    for (const size of candidates) {
+      const s = SIZES[size], video = { width: { exact: s.width }, height: { exact: s.height }, frameRate: { ideal: 30, max: 30 }, aspectRatio: { ideal: 16 / 9 }, ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }) };
+      if (navigator.mediaDevices.getSupportedConstraints().resizeMode) video.resizeMode = 'none';
+      try { state.stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); break; }
+      catch (e) { lastError = e; if (e.name !== 'OverconstrainedError') throw e; }
+    }
+    if (!state.stream) throw lastError;
     state.camera = state.stream.getVideoTracks()[0].getSettings();
-    if (!is1080Landscape(state.camera)) throw new Error('This camera did not provide 1920 × 1080 landscape. Rotate your phone and reopen, or select another camera.');
+    if (!captureReady(state.camera, state.captureResolution)) throw new Error('This camera did not provide the selected landscape resolution. Rotate the phone and reopen, or select another camera.');
     const track = state.stream.getVideoTracks()[0];
     track.addEventListener('ended', () => { if (state.live || state.starting) abortStream('Camera was disconnected. Reopen it and start a new stream.'); closeCamera(); });
-    $('cameraVideo').srcObject = state.stream; $('cameraVideo').hidden = false; await $('cameraVideo').play();
+    ui?.resetMonitor(); $('cameraVideo').removeAttribute('src'); $('cameraVideo').srcObject = state.stream; $('cameraVideo').hidden = false; await $('cameraVideo').play();
     state.previewOff = false; $('previewHidden').hidden = true; $('previewToggle').setAttribute('aria-pressed', 'false');
     $('previewToggle').textContent = '◐ Hide preview'; $('cameraPlaceholder').hidden = true;
     for (const audio of state.stream.getAudioTracks()) audio.enabled = !state.micMuted;
     $('cameraSpec').textContent = `${state.camera.width} × ${state.camera.height} · ${Math.round(state.camera.frameRate || 30)} fps`;
-    health('video', '1080p camera ready', 'good'); setupZoom(track);
+    health('video', `${state.camera.height}p camera ready`, 'good'); setupZoom(track);
     await listCameras();
     notice('Camera ready. Use a tripod behind the bowler’s arm and keep the full pitch in frame.', 'success');
   } catch (error) {
     closeCamera(false);
     const messages = { NotAllowedError: 'Camera or microphone permission was denied. Allow both in your browser settings, then try again.',
       NotFoundError: 'No camera or microphone was found.', NotReadableError: 'Camera is in use by another app. Close that app and try again.',
-      OverconstrainedError: 'This camera cannot supply native 1920 × 1080 with these settings. Rotate your phone, try a different rear camera or another supported device.' };
+      OverconstrainedError: 'This camera cannot supply the selected native resolution. Rotate the phone, try another rear camera, or choose Auto before streaming.' };
     notice(messages[error.name] || error.message, 'error');
   } finally { state.cameraBusy = false; updateControls(); }
 }
@@ -186,8 +199,9 @@ function closeCamera(update = true) {
   if (state.live || state.starting) return;
   if (state.stream) for (const track of state.stream.getTracks()) track.stop();
   state.stream = null; state.camera = null; state.zoom = null;
+  ui?.resetMonitor();
   $('cameraVideo').srcObject = null; $('cameraVideo').hidden = true; $('cameraPlaceholder').hidden = false; $('previewHidden').hidden = true;
-  $('cameraSpec').textContent = '1080p target · 30 fps'; health('video', 'Camera off');
+  $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · 30 fps`; health('video', 'Camera off');
   setupZoom(null); if (update) updateControls();
 }
 async function listCameras() {
@@ -231,7 +245,7 @@ async function zoom(value) {
       const track = state.stream.getVideoTracks()[0];
       await track.applyConstraints({ advanced: [{ zoom: next }] });
       state.camera = track.getSettings(); displayZoom(state.camera.zoom ?? next);
-      if (!is1080Landscape(state.camera)) { if (state.live) abortStream('Camera resolution changed below 1080p. Restart with a supported camera.'); throw new Error('Zoom changed capture resolution below 1080p. Reopen the camera.'); }
+      if (!captureReady(state.camera, state.captureResolution)) { if (state.live) abortStream('Camera resolution changed below the selected quality. Restart with a supported camera.'); throw new Error('Zoom changed capture resolution. Reopen the camera.'); }
     }
   } catch (error) { pendingZoom = null; notice('Zoom could not be applied: ' + error.message, 'error'); }
   finally { zoomApplying = false; updateControls(); }
@@ -252,6 +266,7 @@ function togglePreview(off) {
   state.previewOff = off; $('previewHidden').hidden = !off; $('previewToggle').setAttribute('aria-pressed', String(off));
   $('previewToggle').textContent = off ? '◉ Show preview' : '◐ Hide preview';
   if (off) $('cameraVideo').pause(); else if (state.stream) $('cameraVideo').play().catch(() => notice('Tap Show preview again to resume the preview.'));
+  ui?.update();
 }
 $('previewToggle').addEventListener('click', () => togglePreview(!state.previewOff)); $('showPreview').addEventListener('click', () => togglePreview(false));
 for (const id of DESTS) $('dest-' + id).addEventListener('change', updateControls);
@@ -262,6 +277,7 @@ async function wakeLock() {
   catch { notice('Screen wake lock is unavailable. Keep the phone unlocked and this page visible.'); }
 }
 function cleanupStream() {
+  ui?.graphic(null); state.automation = { bufferSeconds: 0, clips: [], cards: null }; ui?.automation(state.automation);
   clearInterval(state.heartbeat); state.heartbeat = null;
   if (state.recorder && state.recorder.state !== 'inactive') { state.recorder.ondataavailable = null; try { state.recorder.stop(); } catch {} }
   state.recorder = null; state.live = false; state.starting = false; state.stopping = false;
@@ -280,7 +296,8 @@ async function startStream() {
     const mimeType = chooseMime(window.MediaRecorder);
     const profile = PROFILES[$('qualitySelect').value];
     // Construct before claiming a relay session; unsupported codec options fail early.
-    const recorder = new MediaRecorder(state.stream, { mimeType, videoBitsPerSecond: profile.bitrate, audioBitsPerSecond: 128_000 });
+    const qualityScale = state.camera.height >= 1080 ? 1 : state.camera.height >= 720 ? .56 : .25;
+    const recorder = new MediaRecorder(state.stream, { mimeType, videoBitsPerSecond: Math.round(profile.bitrate * qualityScale), audioBitsPerSecond: 128_000 });
     state.recorder = recorder;
     const { ticket } = await api('/api/ticket', { method: 'POST', body: '{}' });
     if (!state.starting) return;
@@ -291,7 +308,8 @@ async function startStream() {
     ws.onopen = () => {
       if (state.socket !== ws) return;
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
-        width: state.camera.width, height: state.camera.height, overlay: $('overlayToggle').checked }));
+        width: state.camera.width, height: state.camera.height, resolution: state.captureResolution, overlay: $('overlayToggle').checked,
+        automation: { replay: $('autoReplay').checked, milestones: $('autoMilestones').checked, cards: $('autoCards').checked, scorerDelay: Number($('scorerDelay').value) } }));
     };
     recorder.ondataavailable = event => {
       if (!event.data.size || state.socket !== ws) return;
@@ -309,10 +327,11 @@ async function startStream() {
       let message; try { message = JSON.parse(event.data); } catch { return abortStream('Relay sent an invalid control message.'); }
       state.lastServerMessage = Date.now();
       if (message.type === 'ready') {
+        state.programEnabled = message.program;
         if (ready) return; ready = true; clearTimeout(readyTimer);
         try { recorder.start(1000); } catch { return abortStream('This browser could not start live encoding. Try another camera or browser.'); }
         state.startedAt = Date.now(); state.uploaded = 0; state.lastBytes = 0; state.lastStat = Date.now(); state.live = true; state.starting = false;
-        wakeLock(); updateControls(); notice('Camera upload started. Check each platform’s preview and confirm Go Live there.', 'success');
+        wakeLock(); updateControls(); ui?.closeDrawer(); notice('Camera upload started. Confirm Go Live in your platform’s preview.', 'success');
         state.heartbeat = setInterval(() => {
           if (state.socket !== ws || ws.readyState !== WebSocket.OPEN) return;
           if (Date.now() - state.lastServerMessage > 16000) return abortStream('Relay stopped responding. Check your network and start a new session.');
@@ -321,12 +340,15 @@ async function startStream() {
         }, 4000);
       } else if (message.type === 'error') abortStream(message.message);
       else if (message.type === 'warning') notice(message.message);
+      else if (message.type === 'graphic') ui?.graphic(message.graphic);
+      else if (message.type === 'automation') { state.automation = message.automation; ui?.automation(state.automation); }
       else if (message.type === 'stopped') { cleanupStream(); notice('Stream ended. Check that the broadcast has ended on each platform.'); }
       else if (message.type === 'destination' && DESTS.includes(message.id)) {
         $(message.id + 'Status').textContent = message.message;
         $(message.id + 'Status').className = `destination-status ${message.state === 'failed' ? 'bad' : message.state === 'sending' ? 'good' : ''}`;
         if (message.state === 'failed') notice(`${message.id}: ${message.message}`, 'error');
       } else if (message.type === 'stats') {
+        if (message.automation) { state.automation = message.automation; ui?.automation(state.automation); }
         const now = Date.now(), elapsed = (now - state.lastStat) / 1000;
         const mbps = elapsed > 0 ? Math.max(0, (message.bytes - state.lastBytes) * 8 / elapsed / 1e6) : 0;
         state.lastBytes = message.bytes; state.lastStat = now;
@@ -362,6 +384,7 @@ function exitBattery() {
 }
 $('dimScreen').addEventListener('click', () => {
   if (!state.live) return;
+  ui?.closeDrawer();
   togglePreview(true); $('batteryScreen').hidden = false; document.querySelector('main').inert = true; document.querySelector('header').inert = true;
   $('exitBattery').focus(); wakeLock();
 });
@@ -381,4 +404,5 @@ window.addEventListener('beforeunload', event => { if (state.live || state.start
 window.addEventListener('pagehide', () => { if (state.live || state.starting) cleanupStream(); if (!state.live && !state.starting) closeCamera(); });
 function toggleGuide(show) { $('guide').hidden = !show; $('guideToggle').setAttribute('aria-expanded', String(show)); if (show) $('guide').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 $('guideToggle').addEventListener('click', () => toggleGuide($('guide').hidden)); $('closeGuide').addEventListener('click', () => toggleGuide(false));
+ui = installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview });
 renderRelay(); updateControls();

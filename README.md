@@ -6,23 +6,30 @@ A focused mobile website for one job: stream cricket with a CricClubs score over
 
 ## What is included
 
-- Native rear-camera capture at **1920 × 1080, up to 30 fps**. Lower-resolution cameras fail preflight instead of silently becoming “1080p.”
+- Landscape studio matching the supplied layout: full camera view, quality pill, left tool rail, native zoom, blue/white/orange scorebar and replay transport controls. See [every control](docs/CONTROLS.md).
+- Native rear-camera capture at **1920 × 1080, up to 30 fps** by default. Explicit 720p/480p and Auto choices use the actual supported resolution; they are never labelled native 1080p.
 - Camera-provided zoom presets and a precision slider, when the browser exposes zoom. Camera/lens selection before streaming.
 - Server-side CricClubs score retrieval. **FWCWL Club ID 300** is preset: enter just the Match ID, such as **986**, and press Load. Full CricClubs scorecard URLs also work.
-- Score burned into the outgoing video on your laptop. The phone sends the native camera stream without drawing 1080p graphics on a canvas.
+- Score, replay and celebration graphics burned into the outgoing video on your laptop. The phone sends one native camera stream without drawing 1080p graphics on a canvas.
+- Automatic eight-second replay for a confirmed batter four or six; private clip preview, on-air replay and MP4 download. A bounded laptop RAM buffer keeps video and its original audio together.
+- Team celebrations at 50/100/150/200/250/300/350 and player celebrations at 50/100/150/200. Each runs for **60 frames = two seconds** at 30 fps.
+- After an observed over completion: batting card for two seconds, immediately followed by bowling card for two seconds. Only available player data is shown; incomplete feeds are labelled. See [automation and timing](docs/AUTOMATION.md).
 - One upload from the phone, then independent YouTube, Facebook and Instagram outputs. A failed destination is isolated from the others.
-- YouTube/Facebook: 1080p landscape. Instagram: separate portrait canvas, default **720 × 1280 compatibility**, with the full field fitted inside. Optional 1080 × 1920 setting if your Instagram account accepts it.
+- YouTube/Facebook: selected landscape capture resolution, normally 1080p. Instagram: separate portrait canvas, default **720 × 1280 compatibility**, with the full field fitted inside. Optional 1080 × 1920 setting if your Instagram account accepts it.
 - Hide-preview and dark battery-screen controls, microphone mute, a framing guide, screen wake lock where supported, feed-delay labels and upload health.
 - A private-network setup, encrypted RTMPS, origin-bound sessions and one-use streaming tickets. See [SECURITY.md](SECURITY.md).
 - Automated tests, a real-match regression fixture, a GitHub Pages workflow and full source code.
+- Share/copy your public platform viewing link, with native Cast/AirPlay where the browser and source support it. Viewer counts are not invented from stream keys.
 
-## The three practical limits
+## Practical limits
 
 **GitHub Pages hosts the interface; it cannot run a video relay.** An existing laptop must stay powered and connected during the match. The documented free personal route uses GitHub Pages + your laptop + Tailscale Serve over your private network. No paid multistreaming subscription is required by this code. Internet/data, electricity, hardware and any account/provider charges still belong to you. Free service eligibility and limits can change.
 
 **1080p does not make digital zoom lossless.** This app applies no software zoom or upscaling. The camera's native zoom API may itself use digital processing. Optical detail depends on the phone, lens, lighting and distance. The browser cannot certify that every zoom position is optical. Use a telephoto lens/camera where your browser makes it available. Encoding and platform recompression are also lossy.
 
 **A working public feed is not a guaranteed permanent API.** The CricClubs read-only overlay-data endpoint returned match 986 successfully during validation on October 29, 2026. Availability, schema, licensing and league access can change. The adapter displays real errors and stale labels. It never fabricates a score or bypasses login/bot checks. An approved-feed adapter is available if needed.
+
+**Replay alignment depends on the source data.** The public snapshot feed does not supply precise delivery timestamps or guarantee full innings cards. Automatic boundary detection uses changes in batter runs and four/six counters, with a calibrated scoring delay. Mark ball and manual clip preview provide operator control. Several deliveries missed between polls cannot be recovered reliably from one total. An approved feed can supply delivery IDs/timestamps and complete cards. Loading completed match 986 establishes a baseline without replaying its historic events.
 
 ## Verified sample
 
@@ -67,14 +74,20 @@ Tests run without broadcasting to your platform accounts. FFmpeg-dependent tests
 | `relay/server.mjs` | Authenticated HTTP API, WebSocket upload and process lifecycle |
 | `relay/lib/score.mjs` | CricClubs normalization, caching and stale handling |
 | `relay/lib/encoder.mjs` | FFmpeg composition, landscape encoding and per-platform forwarding |
+| `relay/lib/program.mjs` | Continuous program output, private replay, source audio and clip export |
+| `relay/lib/events.mjs` | Boundary, milestone and over detection with baseline/deduplication |
+| `relay/lib/replay-ring.mjs` | Bounded JPEG/PCM replay memory |
+| `relay/lib/graphics.mjs` | Local SVG-to-PNG score and celebration rendering |
 | `relay/lib/security.mjs` | Session and one-use ticket lifecycle |
 | `relay/.env.example` | Configuration template, without real secrets |
 | `.github/workflows/pages.yml` | Publishes only `web/` |
 | `docs/SETUP.md` | Complete setup instructions |
 | `docs/CRICCLUBS.md` | Score feed behavior and approved JSON contract |
+| `docs/CONTROLS.md` | Button-by-button operation of the supplied layout |
+| `docs/AUTOMATION.md` | Replay calibration, exact graphic duration and feed limits |
 | `docs/TROUBLESHOOTING.md` | Camera, network, score and output remedies |
 
-No service worker caches tokens, score feeds or stream data. No third-party analytics or fonts are loaded. Video is not recorded to disk by the application.
+No service worker caches tokens, score feeds or stream data. No third-party analytics or fonts are loaded. Camera footage stays in bounded laptop memory until it expires or the session ends. Download explicitly exports a selected MP4 to your device; the relay does not create a video file on disk. Replay processing uses an additional high-quality JPEG intermediate and extra laptop CPU/RAM; it is not lossless. Turn all three automation switches off at 1080p for the simpler direct encoder path.
 
 ## Official references
 

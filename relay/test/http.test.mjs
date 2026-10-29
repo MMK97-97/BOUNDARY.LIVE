@@ -38,6 +38,15 @@ test('authenticated info has security headers and never exposes stream keys', as
 test('unknown origins are rejected even with a valid session', async () => {
   const r = await fetch(base + '/api/info', { headers: { ...headers(session), Origin: 'https://evil.example' } }); assert.equal(r.status, 403);
 });
+test('clip APIs require an authenticated active broadcast and reject arbitrary file paths', async () => {
+  for (const route of ['/api/automation', '/api/clips/0000000000000000.mp4']) {
+    assert.equal((await fetch(base + route, { headers: { Origin: origin } })).status, 401);
+  }
+  const status = await fetch(base + '/api/automation', { headers: headers(session) }); assert.deepEqual((await status.json()).clips, []);
+  assert.equal((await fetch(base + '/api/clip/select', { method: 'POST', headers: headers(session), body: '{"behind":0}' })).status, 409);
+  assert.equal((await fetch(base + '/api/clips/0000000000000000.mp4', { headers: headers(session) })).status, 409);
+  assert.equal((await fetch(base + '/api/clips/../../relay/.env', { headers: headers(session) })).status, 404);
+});
 test('preflight only allows the configured origin', async () => {
   const r = await fetch(base + '/api/ticket', { method: 'OPTIONS', headers: { Origin: origin } });
   assert.equal(r.status, 204); assert.equal(r.headers.get('access-control-allow-origin'), origin);

@@ -5,7 +5,7 @@ export const clean = (value, length = 80) => String(value ?? '')
   .replace(/\s+/g, ' ').trim().slice(0, length);
 const decimal = (value, label) => {
   const s = String(value ?? '').trim();
-  if (!/^\d+(?:\.\d+)?$/.test(s)) throw new Error(`Score feed is missing ${label}.`);
+  if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(s)) throw new Error(`Score feed is missing or has invalid ${label}.`);
   return s;
 };
 export function validateIds(clubId, matchId) {
@@ -17,6 +17,7 @@ export function validateIds(clubId, matchId) {
 export function normalizeScore(raw, ids, now = Date.now()) {
   let s;
   if (raw?.schema === 'boundary.score.v1') {
+    if (raw.matchId != null && String(raw.matchId) !== ids.matchId || raw.clubId != null && String(raw.clubId) !== ids.clubId) throw new Error('Score feed returned different match identifiers.');
     s = {
       batting: clean(raw.batting, 28), bowling: clean(raw.bowling, 28),
       runs: decimal(raw.runs, 'runs'), wickets: decimal(raw.wickets, 'wickets'),
@@ -24,8 +25,11 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       target: clean(raw.target, 8), result: clean(raw.result, 100),
       status: ['live', 'complete', 'break', 'scheduled'].includes(raw.status) ? raw.status : 'live',
       balls: Array.isArray(raw.balls) ? raw.balls.slice(-8).map(v => clean(v, 5)) : [],
-      detail: clean(raw.detail, 110), source: 'Approved score feed', batters: [], bowler: null,
-      series: clean(raw.series, 80), teams: []
+      detail: clean(raw.detail, 110), source: 'Approved score feed',
+      batters: (Array.isArray(raw.batters) ? raw.batters : []).slice(0, 2).map(normalPlayer), bowler: raw.bowler ? normalBowler(raw.bowler) : null,
+      series: clean(raw.series, 80), teams: [], innings: clean(raw.innings || raw.batting, 40),
+      cards: { batting: (Array.isArray(raw.cards?.batting) ? raw.cards.batting : []).slice(0, 15).map(normalPlayer), bowling: (Array.isArray(raw.cards?.bowling) ? raw.cards.bowling : []).slice(0, 15).map(normalBowler), complete: raw.cards?.complete === true && Array.isArray(raw.cards?.batting) && Array.isArray(raw.cards?.bowling) },
+      deliveries: (Array.isArray(raw.deliveries) ? raw.deliveries : []).slice(-12).filter(d => d && typeof d === 'object').map(d => ({ id: clean(d.id, 80), batRuns: Number(d.batRuns), occurredAt: Date.parse(d.occurredAt), batterName: clean(d.batterName, 32) })).filter(d => d.id && Number.isFinite(d.occurredAt))
     };
   } else {
     const v = raw?.values;
@@ -34,11 +38,12 @@ export function normalizeScore(raw, ids, now = Date.now()) {
     const superOver = truth(raw.isSuperOver);
     const second = superOver ? truth(raw.isSuperOverSecondInningsStarted) : truth(raw.isSecondInningsStarted ?? v.isSecondInningsStarted);
     const bat = second ? 't2' : 't1', bowl = second ? 't1' : 't2';
-    const batters = [1, 2].filter(n => v[`batsman${n}Name`]).map(n => ({
-      name: clean(v[`batsman${n}Name`], 32), runs: clean(v[`batsman${n}Runs`], 5), balls: clean(v[`batsman${n}Balls`], 5)
+    const batters = [1, 2].filter(n => v[`batsman${n}Name`]).map(n => normalPlayer({
+      id: v[`batsman${n}ID`], name: v[`batsman${n}Name`], runs: v[`batsman${n}Runs`], balls: v[`batsman${n}Balls`],
+      fours: v[`batsman${n}Fours`], sixes: v[`batsman${n}Sixers`], status: truth(v[`batsman${n}IsOut`]) ? 'out' : 'not out'
     }));
-    const bowler = v.bowlerName ? { name: clean(v.bowlerName, 24), overs: clean(v.bowlerOvers, 6),
-      runs: clean(v.bowlerRuns, 5), wickets: clean(v.bowlerWickets, 3) } : null;
+    const bowler = v.bowlerName ? normalBowler({ id: v.bowlerID, name: v.bowlerName, overs: v.bowlerOvers,
+      maidens: v.bowlerMaidens, runs: v.bowlerRuns, wickets: v.bowlerWickets }) : null;
     s = {
       batting: clean(v[`${bat}Code`] || v[`${bat}Name`], 28),
       bowling: clean(v[`${bowl}Code`] || v[`${bowl}Name`] || 'Opposition', 28),
@@ -49,7 +54,14 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       balls: Array.isArray(raw.balls) ? raw.balls.slice(-8).map(b => clean(b, 5)) : [],
       detail: clean(v.customTextValue || v.showMsgForScoreNeeded || v.seriesName, 110),
       source: 'CricClubs', superOver,
-      series: clean(v.seriesName, 80), batters, bowler,
+      series: clean(v.seriesName, 80), ground: clean(v.groundName, 60), batters, bowler,
+      innings: `${superOver ? 'SO' : ''}${second ? '2' : '1'}`, requiredRate: clean(v.RRR, 10),
+      totalOvers: clean(v.totalOvers, 6), deliveries: [],
+      cards: {
+        batting: (Array.isArray(v[`${bat}Batting`]) ? v[`${bat}Batting`] : []).slice(0, 15).map(p => normalPlayer({ ...p, id: p.playerID, name: `${p.firstName || ''} ${p.lastName || ''}`, runs: p.runsScored, balls: p.ballsFaced, sixes: p.sixers, status: p.outStringNoLink })),
+        bowling: (Array.isArray(v[`${bowl}Bowling`]) ? v[`${bowl}Bowling`] : []).slice(0, 15).map(p => normalBowler({ ...p, id: p.playerID, name: `${p.firstName || ''} ${p.lastName || ''}` })),
+        complete: Array.isArray(v[`${bat}Batting`]) && v[`${bat}Batting`].length > 0 && Array.isArray(v[`${bowl}Bowling`]) && v[`${bowl}Bowling`].length > 0
+      },
       teams: ['t1', 't2'].filter(t => v[`${t}Name`] && /^\d+$/.test(String(v[`${t}Total`]))).map(t => ({
         name: clean(v[`${t}Name`], 32), code: clean(v[`${t}Code`] || v[`${t}Name`], 12),
         runs: clean(v[`${t}Total`], 6), wickets: clean(v[`${t}Wickets`], 3), overs: clean(v[`${t}Overs`], 6)
@@ -58,9 +70,12 @@ export function normalizeScore(raw, ids, now = Date.now()) {
     };
   }
   if (!s.batting) throw new Error('Score feed has no batting team. Wait for live scoring or use an approved feed.');
+  if (!/^\d+$/.test(s.runs) || !/^\d{1,6}(?:\.[0-5])?$/.test(s.overs)) throw new Error('Unsupported runs or cricket over notation.');
   if (!/^\d{1,2}$/.test(s.wickets) || Number(s.wickets) > 20) throw new Error('Unsupported wicket value.');
   return { ...s, ...ids, fetchedAt: now, stale: false, error: null };
 }
+function normalPlayer(p) { p ||= {}; return { id: clean(p.id, 30), name: clean(p.name, 40), runs: clean(p.runs, 5), balls: clean(p.balls, 5), fours: clean(p.fours, 4), sixes: clean(p.sixes, 4), status: clean(p.status, 30) }; }
+function normalBowler(p) { p ||= {}; return { id: clean(p.id, 30), name: clean(p.name, 40), overs: clean(p.overs, 6), maidens: clean(p.maidens, 4), runs: clean(p.runs, 5), wickets: clean(p.wickets, 3) }; }
 export function scoreLines(score, now = Date.now()) {
   if (!score) return ['BOUNDARY LIVE  |  CRICKET', 'Waiting for score feed'];
   const delayed = score.stale || now - score.fetchedAt > 30000;
@@ -72,10 +87,10 @@ export function scoreLines(score, now = Date.now()) {
   return [clean(first, 95), clean(`${status}  |  ${detail ? `${detail}  |  ` : ''}${score.source}`, 120)];
 }
 export class ScoreService {
-  constructor({ template, headerName, headerValue, pollSeconds = 10, fetchFn = fetch }) {
+  constructor({ template, headerName, headerValue, pollSeconds = 5, fetchFn = fetch }) {
     this.template = template || 'https://cricclubs.com/liveScoreOverlayData.do?clubId={clubId}&matchId={matchId}';
     this.headerName = headerName; this.headerValue = headerValue;
-    this.pollMs = Math.max(5, Number(pollSeconds) || 10) * 1000;
+    this.pollMs = Math.max(5, Number(pollSeconds) || 5) * 1000;
     this.fetchFn = fetchFn; this.ids = null; this.score = null; this.inflight = null; this.error = null;
     this.lastAttempt = 0; this.generation = 0;
   }

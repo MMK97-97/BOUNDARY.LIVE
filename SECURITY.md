@@ -13,11 +13,13 @@ This is a small, self-hosted single-operator broadcaster. It has layered protect
 | Upload authorization | Each upload needs a random, origin-bound, one-use ticket with a 30-second lifetime. The first WebSocket message carries it; keys/tokens do not appear in URLs. Replays fail. |
 | CORS and CSRF boundary | Explicit allowed origins, no wildcard, no cookie authentication and no credentialed cross-origin fetches. Unknown origins are rejected at HTTP and WebSocket upgrade. |
 | Resource limits | One active broadcaster, eight connections/sessions, 24 pending tickets, authentication/HTTP rate limits, five-second WebSocket authentication deadline, 16 MB message ceiling, 4 KB JSON body ceiling, bounded upload buffers, ingestion-rate and inactivity limits. |
+| Replay limits | JPEG ring limited by duration and bytes (default 30 seconds / 192 MB); PCM ring separately bounded, frames capped, graphics cache capped at 16 entries, event queue capped at 12, pending boundary windows at two. Up to three clips with a shared 64 MB logical size limit. FFmpeg/process overhead is additional. |
+| Clip isolation | Clips use random identifiers, stay in laptop RAM and require the session owning the active broadcast. Authentication in headers, no public clip URLs, no-store responses, one export process at a time, 30-second export limit. Stop/logout terminates an active export. The relay has no video recording directory. |
 | Secret containment | Platform keys stay in the laptop's untracked `.env`. API responses return configuration flags, never platform URLs/keys. The relay does not emit raw FFmpeg stderr, which can contain credentials. |
 | Output restrictions | Only RTMPS endpoints on expected platform subdomains are accepted. File URLs, private IP destinations, credentialed server URLs and tee-injection separators are rejected. Destinations cannot be supplied by the phone. |
 | Media isolation | Uploads are treated as binary media, use explicit MOV or Matroska demuxers and permit only the `pipe` input protocol. Input media cannot ask FFmpeg to fetch arbitrary network/file URLs. Child processes use argument arrays without a shell. |
 | Score isolation | The phone supplies numeric IDs, never an arbitrary upstream URL. Custom score endpoints are trusted operator configuration, use HTTPS, time out, and have a 2 MB response ceiling. Returned data is whitelisted and length bounded. Raw player records/emails are not returned. |
-| Rendering protections | No third-party JS, fonts or analytics; local modules only. Text uses `textContent`, not HTML insertion. FFmpeg score text disables expansion. CSP, referrer suppression, anti-framing headers on the relay and no-store API responses are provided. |
+| Rendering protections | No third-party JS, fonts or analytics; local modules only. Text uses `textContent`, not HTML insertion. Local SVG templates XML-escape all feed values and accept no user SVG, scripts, styles or image URLs. A pinned native renderer generates PNGs locally. FFmpeg score text disables expansion. CSP, referrer suppression, anti-framing headers on the relay and no-store API responses are provided. |
 | Publishing boundary | GitHub Pages workflow publishes `web/` only. No environment file, node_modules, API or relay state is deployed. |
 
 ## Operator responsibilities and boundaries
@@ -26,11 +28,11 @@ This is a small, self-hosted single-operator broadcaster. It has layered protect
 - Use current FFmpeg/Node/Tailscale builds. FFmpeg parses complex media; this app does not provide an OS sandbox around it. Keeping the relay private and patched is part of the design.
 - Access to the long-term relay token grants broadcast control. There is one operator role, without multi-user RBAC, approval workflows or per-user audit history. This app is not a public SaaS service.
 - GitHub Pages cannot set all custom HTTP response headers. A CSP meta tag restricts the frontend, but `frame-ancestors`/HSTS/X-Frame-Options for that public origin depend on its host. The relay itself sends anti-framing/security headers. Use the private same-origin site or a host you control if you require custom headers everywhere.
-- GitHub projects can share an origin. Do not host untrusted scripts on your account's other Pages projects. No master/session/platform secrets are saved to localStorage; only the relay address, match ID and club ID are remembered.
+- GitHub projects can share an origin. Do not host untrusted scripts on your account's other Pages projects. No master/session/platform secrets are saved to localStorage; only the relay address, match ID, club ID and operator-provided public viewing link are remembered.
 - Private-network reachability and CORS are different controls. CORS is not a network firewall. Private Serve supplies that outer network boundary; the application still checks its own authentication.
 - The public score reader is not an authorization bypass. It does not solve CAPTCHAs, use hidden account credentials, change overlay views or keep scraping blocked HTML routes. If the feed is restricted, obtain the necessary access or configure an approved feed.
 - HTTPS protects transport; it does not prevent YouTube/Meta from processing or recompressing the video you send them.
-- No recording is made by the app. Selected platforms may record/archive streams under their own settings.
+- A short rolling replay buffer and selected clips reside in laptop RAM while broadcasting. The operator can explicitly export a clip to their device. OS swap/crash dumps and platforms' recording/archive settings are outside this application. Keep devices protected if footage is sensitive.
 
 ## If something leaks
 

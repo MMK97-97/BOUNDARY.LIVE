@@ -1,4 +1,6 @@
 export const PROFILES = Object.freeze({ balanced: { bitrate: 8_000_000, fps: 30 }, detail: { bitrate: 14_000_000, fps: 30 } });
+export const SIZES = { '1080': { width: 1920, height: 1080 }, '720': { width: 1280, height: 720 }, '480': { width: 854, height: 480 } };
+export const captureReady = (s, resolution = '1080') => { const wanted = SIZES[resolution] || SIZES['480']; return Number(s?.width) >= wanted.width && Number(s?.height) >= wanted.height && Number(s?.width) >= Number(s?.height); };
 export function parseMatch(input, savedClub) {
   let clubId = String(savedClub || '').trim(), matchId = String(input || '').trim();
   if (/^https?:/i.test(matchId)) {
@@ -36,11 +38,11 @@ export function duration(seconds) {
   const s = Math.max(0, Math.floor(seconds || 0));
   return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, '0')).join(':');
 }
-export function preflight({ connected, encoderReady, camera, destinations, overlay, score }) {
+export function preflight({ connected, encoderReady, camera, destinations, overlay, score, resolution = '1080' }) {
   if (!connected) return 'Connect your laptop relay first.';
   if (!encoderReady) return 'The relay needs FFmpeg and a font. Check its setup.';
   if (!camera) return 'Open the camera to continue.';
-  if (!is1080Landscape(camera)) return '1080p landscape is required. Rotate the phone and reopen the camera.';
+  if (!captureReady(camera, resolution)) return `${resolution === 'auto' ? 'Landscape capture' : resolution + 'p landscape'} is required. Rotate the phone and reopen the camera.`;
   if (!destinations.length) return 'Select at least one configured destination.';
   if (overlay && !score) return 'Load a scorecard, or turn off the score overlay.';
   return null;
