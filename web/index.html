@@ -131,39 +131,79 @@
       <p class="subtitle">Select a live score overlay for your stream.</p>
     </div>
     <div class="overlay-options">
-      <div class="overlay-card active" data-style="clean">
+      <!-- 1. Gold Championship (Reference Pic 2 - Master Broadcast) -->
+      <div class="overlay-card active" data-style="gold">
+        <div class="overlay-card-header">
+          <div class="overlay-thumb-frame">
+            <img src="./assets/overlay-gold-elite.png" alt="Gold Championship Overlay" class="overlay-thumb-img">
+            <div class="thumb-badge gold">GOLD MASTER · PIC 2</div>
+          </div>
+          <span class="radio-circle checked"></span>
+        </div>
+        <div class="overlay-card-meta">
+          <strong>Gold Championship (Master Broadcast)</strong>
+          <span class="overlay-tag">Black &amp; Gold metallic wings, center score pod &amp; live equation ribbon</span>
+        </div>
+      </div>
+
+      <!-- 2. Royal Shield (Reference Pic 3 - Blue & Crimson) -->
+      <div class="overlay-card" data-style="royal">
+        <div class="overlay-card-header">
+          <div class="overlay-thumb-frame">
+            <img src="./assets/overlay-royal-shield.png" alt="Royal Shield Overlay" class="overlay-thumb-img">
+            <div class="thumb-badge royal">ROYAL SHIELD · PIC 3</div>
+          </div>
+          <span class="radio-circle"></span>
+        </div>
+        <div class="overlay-card-meta">
+          <strong>Royal Shield (Blue &amp; Crimson)</strong>
+          <span class="overlay-tag">Dual heraldic team shields with live target &amp; ball tracker</span>
+        </div>
+      </div>
+
+      <!-- 3. Dual Innings Match Center (Reference Pic 4) -->
+      <div class="overlay-card" data-style="dual">
+        <div class="overlay-card-header">
+          <div class="overlay-thumb-frame">
+            <img src="./assets/overlay-dual-center.png" alt="Dual Innings Match Center" class="overlay-thumb-img">
+            <div class="thumb-badge dual">MATCH CENTER · PIC 4</div>
+          </div>
+          <span class="radio-circle"></span>
+        </div>
+        <div class="overlay-card-meta">
+          <strong>Dual Innings Match Center</strong>
+          <span class="overlay-tag">Both innings displayed simultaneously with dedicated player boxes</span>
+        </div>
+      </div>
+
+      <!-- 4. Cyber Neon (Reference Pic 5 - Electric Premier) -->
+      <div class="overlay-card" data-style="cyber">
+        <div class="overlay-card-header">
+          <div class="overlay-thumb-frame">
+            <img src="./assets/overlay-cyber-neon.png" alt="Cyber Neon Overlay" class="overlay-thumb-img">
+            <div class="thumb-badge cyber">CYBER NEON · PIC 5</div>
+          </div>
+          <span class="radio-circle"></span>
+        </div>
+        <div class="overlay-card-meta">
+          <strong>Cyber Neon (Premier League)</strong>
+          <span class="overlay-tag">Electric cyan &amp; royal blue curved aesthetic with glowing neon telemetry</span>
+        </div>
+      </div>
+
+      <!-- 5. Clean Broadcast (Pic 1 default) -->
+      <div class="overlay-card" data-style="clean">
         <div class="overlay-card-header">
           <div class="preview-mini-banner">
             <span class="p-bat">ICAT <b>125/3</b> <small>(15.2)</small></span>
             <span class="p-eq">CRR 8.15</span>
             <span class="p-bowl">THUNDERBOLTS</span>
           </div>
-          <span class="radio-circle checked"></span>
-        </div>
-        <span class="overlay-tag">Clean &amp; Professional</span>
-      </div>
-      <div class="overlay-card" data-style="modern">
-        <div class="overlay-card-header">
-          <div class="preview-mini-bar modern-bar"><strong>MODERN</strong><small>Dynamic Style</small></div>
           <span class="radio-circle"></span>
         </div>
-      </div>
-      <div class="overlay-card" data-style="minimal">
-        <div class="overlay-card-header">
-          <div class="preview-mini-bar minimal-bar"><strong>MINIMAL</strong><small>Simple &amp; Clean</small></div>
-          <span class="radio-circle"></span>
-        </div>
-      </div>
-      <div class="overlay-card" data-style="detailed">
-        <div class="overlay-card-header">
-          <div class="preview-mini-bar detailed-bar"><strong>DETAILED</strong><small>Full Match Stats</small></div>
-          <span class="radio-circle"></span>
-        </div>
-      </div>
-      <div class="overlay-card" data-style="custom">
-        <div class="overlay-card-header">
-          <div class="preview-mini-bar custom-bar"><strong>CUSTOM</strong><small>Your Branding</small></div>
-          <span class="radio-circle"></span>
+        <div class="overlay-card-meta">
+          <strong>Clean Broadcast</strong>
+          <span class="overlay-tag">Modern horizontal split bar with compact player statistics</span>
         </div>
       </div>
     </div>
@@ -387,19 +427,99 @@
  <nav class="side-actions chrome" aria-label="Match tools"><button data-panel="score"><span><svg><use href="#i-score"/></svg></span>Score</button><button data-panel="stats"><span><svg><use href="#i-stats"/></svg></span>Stats</button><button data-panel="clips"><span><svg><use href="#i-clips"/></svg></span>Clips</button><button data-panel="share"><span><svg><use href="#i-share"/></svg></span>Share</button></nav>
  <div class="zoom-tools chrome"><div class="zoom-rail"><button id="zoomPlus" aria-label="Zoom in">+</button><input id="zoomSlider" type="range" min="1" max="2" step="0.1" value="2" aria-label="Camera zoom" aria-orientation="vertical"><output id="zoomValue">2.0x</output><button id="zoomMinus" aria-label="Zoom out">−</button></div><button class="fit-button" id="fitButton" aria-pressed="false" aria-label="Fit to screen"><svg><use href="#i-fit"/></svg></button></div>
  <p id="captionLine" class="caption-line" aria-live="polite" hidden></p>
- <section class="score-overlay" id="scoreOverlay" aria-label="Live match score">
-  <div class="score-top">
-   <div class="batting-panel"><span class="team-logo"><img id="battingLogo" alt="ICAT" src="./assets/logo-icat.png"><b id="battingMono" hidden>ICAT</b></span><div class="team-score"><span id="overlayTeam">ICAT</span><div><strong id="overlayRuns">125/3</strong><span id="overlayOvers"> (15.2)</span></div></div></div>
-   <div class="equation-panel"><div><span id="overlayRate">CRR  8.15</span><span id="requiredRate">RRR  6.20</span></div><p id="overlayDetail">Need 62 runs in 28 balls</p></div>
-   <div class="opposition-panel"><strong id="oppositionTeam">TAMPA THUNDERBOLTS</strong><span class="team-logo"><img id="bowlingLogo" alt="TAMPA THUNDERBOLTS" src="./assets/logo-thunderbolts.png"><b id="bowlingMono" hidden>TT</b></span></div>
-  </div>
-  <div class="score-bottom">
-   <div class="batter-line" id="batter1Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter1Name">R. Sharma</span><b id="batter1Runs">42 (28)</b></div>
-   <div class="batter-line" id="batter2Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter2Name">K. Verma</span><b id="batter2Runs">18 (12)</b></div>
-   <div class="batter-line bowler-line"><svg class="strike-icon on"><use href="#i-ball"/></svg><span id="bowlerName">M. Khan</span><b id="bowlerFigures">1-18 (2.2)</b></div>
-   <div class="over-line"><span>This Over:</span><div id="overBalls"><span class="ball-pill four">4</span><span class="ball-pill">1</span><span class="ball-pill">1</span><span class="ball-pill six">6</span><span class="ball-pill">0</span></div></div>
-  </div>
- </section>
+ <section class="score-overlay style-gold" id="scoreOverlay" aria-label="Live match score">
+   <!-- Tournament Crest -->
+   <div class="overlay-mk-crest"><span class="crest-text">MK97</span></div>
+
+   <!-- Main Score Deck -->
+   <div class="overlay-main-deck">
+    <!-- Left Wing: Batting Side -->
+    <div class="deck-wing wing-left">
+     <div class="team-badge batting-side">
+      <div class="wing-crest-frame">
+       <img id="battingLogo" alt="Team 1" src="./assets/logo-icat.png">
+       <b id="battingMono" hidden>ICAT</b>
+      </div>
+      <div class="team-meta">
+       <span class="team-label" id="battingLabel">TEAM 1</span>
+       <strong class="team-code" id="overlayTeam">ICAT</strong>
+      </div>
+     </div>
+     <div class="batters-cluster">
+      <div class="batter-row on-strike" id="batter1Line">
+       <span class="strike-caret">▶</span>
+       <span class="p-name" id="batter1Name">ROHIT</span>
+       <strong class="p-runs" id="batter1Runs">45</strong>
+       <small class="p-balls" id="batter1Balls">28</small>
+      </div>
+      <div class="batter-row" id="batter2Line">
+       <span class="strike-caret non-strike"></span>
+       <span class="p-name" id="batter2Name">KOHLI</span>
+       <strong class="p-runs" id="batter2Runs">32</strong>
+       <small class="p-balls" id="batter2Balls">24</small>
+      </div>
+     </div>
+    </div>
+
+    <!-- Center Pod: Bold Score & Overs -->
+    <div class="deck-center-pod">
+     <div class="pod-score-row">
+      <strong id="overlayRuns" class="gold-score">123-2</strong>
+     </div>
+     <div class="pod-overs-row">
+      <span id="overlayOvers" class="pod-overs">14.3 OVERS</span>
+      <span class="pod-status-pill" id="overlayStatusPill">P POWERPLAY</span>
+     </div>
+    </div>
+
+    <!-- Right Wing: Bowling Side -->
+    <div class="deck-wing wing-right">
+     <div class="bowler-cluster">
+      <div class="bowler-row">
+       <span class="b-label">BOWLER</span>
+       <span class="b-name" id="bowlerName">RASHID</span>
+       <strong class="b-figs" id="bowlerFigures">0-24 2.3</strong>
+      </div>
+      <div class="balls-row">
+       <span class="balls-label">THIS OVER</span>
+       <div id="overBalls" class="over-balls-wrap">
+        <span class="ball-pill">1</span>
+        <span class="ball-pill">1</span>
+        <span class="ball-pill dot">0</span>
+        <span class="ball-pill four">4</span>
+        <span class="ball-pill dot">0</span>
+        <span class="ball-pill">1</span>
+       </div>
+      </div>
+     </div>
+     <div class="team-badge bowling-side">
+      <div class="team-meta">
+       <span class="team-label" id="bowlingLabel">TEAM 2</span>
+       <strong class="team-code" id="oppositionTeam">AFG</strong>
+      </div>
+      <div class="wing-crest-frame">
+       <img id="bowlingLogo" alt="Team 2" src="./assets/logo-royal-bulls.jpg">
+       <b id="bowlingMono" hidden>AFG</b>
+      </div>
+     </div>
+    </div>
+   </div>
+
+   <!-- Bottom Telemetry & Equation Ribbon -->
+   <div class="overlay-ticker-ribbon">
+    <div class="ribbon-metric metric-left">
+     <div class="metric-item"><label>CURRENT RR</label> <strong id="overlayRate">8.48</strong></div>
+     <div class="metric-sep">|</div>
+     <div class="metric-item"><label>PROJECTED</label> <strong id="projectedScore">169</strong></div>
+    </div>
+    <div class="ribbon-center-tab" id="overlayDetail">NEED 24 OFF 12</div>
+    <div class="ribbon-metric metric-right">
+     <div class="metric-item"><label>REQ RR</label> <strong id="requiredRate">12.00</strong></div>
+     <div class="metric-sep">|</div>
+     <div class="metric-item"><label>TARGET</label> <strong id="targetScore">147</strong></div>
+    </div>
+   </div>
+  </section>
  <footer class="player-controls chrome">
   <button id="previewToggle" class="icon-button plain" aria-label="Pause local monitor" aria-pressed="false"><svg><use href="#i-pause"/></svg></button>
   <button class="red-pill on" id="goLive">LIVE</button><button class="red-pill on" id="stopLive" hidden aria-label="Stop broadcast">LIVE</button>

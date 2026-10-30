@@ -713,64 +713,106 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   function renderScoreOverlay(s) {
     if (!s) return;
     const m = feed.model;
-    $('seriesTitle').textContent = m?.meta.series || s.series || 'FWCWL 2026-27 Season';
-    $('groundTitle').textContent = `${m?.meta.ground || s.ground || 'Rodney'} · Match ${s.matchId || '986'}`;
+    if ($('seriesTitle')) $('seriesTitle').textContent = m?.meta.series || s.series || 'FWCWL 2026-27 Season';
+    if ($('groundTitle')) $('groundTitle').textContent = `${m?.meta.ground || s.ground || 'Rodney'} · Match ${s.matchId || '986'}`;
 
     // Team 1 (Batting)
     const batTeam = m?.meta.teams[s.batKey] || { name: s.batting || 'ICAT', code: s.batting || 'ICAT' };
-    $('overlayTeam').textContent = batTeam.code || batTeam.name || 'ICAT';
-    $('overlayRuns').textContent = s.runs != null ? `${s.runs}/${s.wickets ?? 0}` : (s.status === 'scheduled' ? 'PRE-MATCH' : '208/5');
-    $('overlayOvers').textContent = s.overs ? ` (${s.overs})` : (s.status === 'scheduled' ? '' : ' (30.5)');
-    $('battingLogo').src = getTeamLogoUrl(batTeam);
-    $('battingLogo').hidden = false;
-    $('battingMono').hidden = true;
+    const batCode = batTeam.code || (batTeam.name ? batTeam.name.slice(0, 4).toUpperCase() : 'ICAT');
+    if ($('overlayTeam')) $('overlayTeam').textContent = batCode;
+    if ($('battingLabel')) $('battingLabel').textContent = 'TEAM 1';
+    if ($('battingLogo')) {
+      $('battingLogo').src = getTeamLogoUrl(batTeam);
+      $('battingLogo').hidden = false;
+    }
+    if ($('battingMono')) $('battingMono').hidden = true;
 
     // Team 2 (Opposition / Bowling)
     const bowlTeam = m?.meta.teams[s.bowlKey] || { name: s.bowling || 'ROYAL BULLS CC', code: s.bowling || 'RBCC' };
-    $('oppositionTeam').textContent = bowlTeam.name || bowlTeam.code || 'ROYAL BULLS CC';
-    $('bowlingLogo').src = getTeamLogoUrl(bowlTeam);
-    $('bowlingLogo').hidden = false;
-    $('bowlingMono').hidden = true;
+    const bowlCode = bowlTeam.code || (bowlTeam.name ? bowlTeam.name.slice(0, 4).toUpperCase() : 'RBCC');
+    if ($('oppositionTeam')) $('oppositionTeam').textContent = bowlCode;
+    if ($('bowlingLabel')) $('bowlingLabel').textContent = 'TEAM 2';
+    if ($('bowlingLogo')) {
+      $('bowlingLogo').src = getTeamLogoUrl(bowlTeam);
+      $('bowlingLogo').hidden = false;
+    }
+    if ($('bowlingMono')) $('bowlingMono').hidden = true;
 
-    // Equation & Rates
-    if (s.requiredRuns != null && s.remainingBalls != null && s.requiredRuns > 0) {
-      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  6.75';
-      $('requiredRate').textContent = s.requiredRate && s.requiredRate !== '0.00' ? `RRR  ${s.requiredRate}` : 'RRR  6.20';
-      $('overlayDetail').textContent = `Need ${s.requiredRuns} runs in ${s.remainingBalls} balls`;
-    } else if (s.result) {
-      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  6.75';
-      $('requiredRate').textContent = s.target ? `TARGET  ${s.target}` : 'CRR  6.75';
-      $('overlayDetail').textContent = s.result;
-    } else if (s.status === 'scheduled') {
-      $('overlayRate').textContent = s.totalOvers ? `${s.totalOvers} OVERS` : '35 OVERS';
-      $('requiredRate').textContent = 'LEAGUE';
-      $('overlayDetail').textContent = s.toss || 'Toss scheduled before match';
-    } else {
-      $('overlayRate').textContent = 'CRR  6.75';
-      $('requiredRate').textContent = 'TARGET  208';
-      $('overlayDetail').textContent = 'ICAT won by 5 Wickets';
+    // Score & Overs
+    const runsVal = s.runs != null ? s.runs : (s.status === 'scheduled' ? null : 123);
+    const wktVal = s.wickets != null ? s.wickets : (s.status === 'scheduled' ? null : 2);
+    const scoreStr = runsVal != null ? `${runsVal}-${wktVal}` : 'PRE-MATCH';
+    if ($('overlayRuns')) $('overlayRuns').textContent = scoreStr;
+    const oversStr = s.overs ? `${s.overs} OVERS` : (s.status === 'scheduled' ? '35 OVERS' : '14.3 OVERS');
+    if ($('overlayOvers')) $('overlayOvers').textContent = oversStr;
+
+    // Status pill (LIVE, POWERPLAY, COMPLETE, UPCOMING)
+    if ($('overlayStatusPill')) {
+      if (s.status === 'complete') {
+        $('overlayStatusPill').textContent = 'COMPLETED';
+        $('overlayStatusPill').className = 'pod-status-pill complete';
+      } else if (s.status === 'scheduled') {
+        $('overlayStatusPill').textContent = 'UPCOMING';
+        $('overlayStatusPill').className = 'pod-status-pill scheduled';
+      } else {
+        $('overlayStatusPill').textContent = s.overs && parseFloat(s.overs) <= 6.0 ? 'P POWERPLAY' : '● LIVE';
+        $('overlayStatusPill').className = 'pod-status-pill live';
+      }
     }
 
-    // Batters: format compact names so "This Over" is never cut off
+    // Batters: format compact names so layout matches reference graphics
     const b1 = s.batters?.[0];
     const b2 = s.batters?.[1];
-    $('batter1Name').textContent = b1 ? formatPlayerName(b1.name) : 'Devalapalli L. N. K.';
-    $('batter1Runs').textContent = b1 ? `${b1.runs} (${b1.balls})` : '60 (48)';
-    $('batter2Name').textContent = b2 ? formatPlayerName(b2.name) : 'Vinod K.';
-    $('batter2Runs').textContent = b2 ? `${b2.runs} (${b2.balls})` : '25 (35)';
+    if ($('batter1Name')) $('batter1Name').textContent = b1 ? formatPlayerName(b1.name) : 'ROHIT';
+    if ($('batter1Runs')) $('batter1Runs').textContent = b1 ? b1.runs : '45';
+    if ($('batter1Balls')) $('batter1Balls').textContent = b1 ? b1.balls : '28';
+
+    if ($('batter2Name')) $('batter2Name').textContent = b2 ? formatPlayerName(b2.name) : 'KOHLI';
+    if ($('batter2Runs')) $('batter2Runs').textContent = b2 ? b2.runs : '32';
+    if ($('batter2Balls')) $('batter2Balls').textContent = b2 ? b2.balls : '24';
 
     // Bowler
-    $('bowlerName').textContent = s.bowler ? formatPlayerName(s.bowler.name) : 'Kaushal T.';
-    $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} (${s.bowler.overs})` : '0-27 (2.5)';
+    if ($('bowlerName')) $('bowlerName').textContent = s.bowler ? formatPlayerName(s.bowler.name) : 'RASHID';
+    if ($('bowlerFigures')) $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} ${s.bowler.overs}` : '0-24 2.3';
 
     // This Over Balls: colored circles matching broadcast layout
     const overBalls = $('overBalls');
-    overBalls.replaceChildren();
-    const ballsList = (s.balls && s.balls.length > 0) ? s.balls.slice(-6) : ['1', '2', '.', '1', '1', '1wd'];
-    for (const b of ballsList) {
-      const p = parseBall(b);
-      const span = el('span', p.code === '.' ? '0' : p.code, `ball-pill ${p.kind}`);
-      overBalls.append(span);
+    if (overBalls) {
+      overBalls.replaceChildren();
+      const ballsList = (s.balls && s.balls.length > 0) ? s.balls.slice(-6) : ['1', '1', '0', '4', '0', '1'];
+      for (const b of ballsList) {
+        const p = parseBall(b);
+        const codeText = p.code === '.' ? '0' : p.code;
+        const span = el('span', codeText, `ball-pill ${p.kind}`);
+        overBalls.append(span);
+      }
+    }
+
+    // Telemetry & Rates
+    const crrText = s.runRate || '8.48';
+    if ($('overlayRate')) $('overlayRate').textContent = crrText;
+    const rrrText = (s.requiredRate && s.requiredRate !== '0.00') ? s.requiredRate : '12.00';
+    if ($('requiredRate')) $('requiredRate').textContent = rrrText;
+
+    const crrNum = parseFloat(crrText) || 8.0;
+    const totalOvers = s.totalOvers || 20;
+    const projScore = s.target ? s.target : Math.round(crrNum * totalOvers);
+    if ($('projectedScore')) $('projectedScore').textContent = projScore || 169;
+
+    const targetVal = s.target ? s.target : (s.requiredRuns ? ((s.runs || 0) + s.requiredRuns) : 147);
+    if ($('targetScore')) $('targetScore').textContent = targetVal;
+
+    // Center Ribbon Equation Tab
+    if ($('overlayDetail')) {
+      if (s.requiredRuns != null && s.remainingBalls != null && s.requiredRuns > 0) {
+        $('overlayDetail').textContent = `NEED ${s.requiredRuns} OFF ${s.remainingBalls}`;
+      } else if (s.result) {
+        $('overlayDetail').textContent = s.result.toUpperCase();
+      } else if (s.status === 'scheduled') {
+        $('overlayDetail').textContent = s.toss ? s.toss.toUpperCase() : 'TOSS SCHEDULED';
+      } else {
+        $('overlayDetail').textContent = `NEED 24 OFF 12`;
+      }
     }
 
     // Captions line
@@ -783,7 +825,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
         captionLine.textContent = describe(lastComment, $('prefLang')?.value || 'en');
         captionLine.hidden = false;
       }
-    } else {
+    } else if (captionLine) {
       captionLine.hidden = true;
     }
 

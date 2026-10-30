@@ -235,9 +235,12 @@ export function installWizard({ state, feed, notice }) {
     selectedOverlay = style;
     const overlay = $('scoreOverlay');
     if (overlay) {
-      overlay.classList.remove('style-clean', 'style-modern', 'style-minimal', 'style-detailed', 'style-custom');
+      overlay.classList.remove('style-clean', 'style-modern', 'style-minimal', 'style-detailed', 'style-custom', 'style-gold', 'style-royal', 'style-dual', 'style-cyber');
       overlay.classList.add(`style-${style}`);
     }
+    try {
+      localStorage.setItem('boundary.overlay_style', style);
+    } catch {}
   }
 
   for (const card of document.querySelectorAll('.overlay-card')) {
@@ -250,10 +253,27 @@ export function installWizard({ state, feed, notice }) {
       card.classList.add('active');
       const rc = card.querySelector('.radio-circle');
       if (rc) rc.classList.add('checked');
-      const style = card.dataset.style || 'clean';
+      const style = card.dataset.style || 'gold';
       applyOverlayStyle(style);
       notice(`Scoreboard style set to: ${style.toUpperCase()}`, 'info');
     });
+  }
+
+  // Restore saved or default to Gold Master Broadcast (Reference Pic 2)
+  const initialStyle = (function() {
+    try { return localStorage.getItem('boundary.overlay_style') || 'gold'; } catch { return 'gold'; }
+  })();
+  applyOverlayStyle(initialStyle);
+  const activeCard = document.querySelector(`.overlay-card[data-style="${initialStyle}"]`);
+  if (activeCard) {
+    document.querySelectorAll('.overlay-card').forEach(c => {
+      c.classList.remove('active');
+      const rc = c.querySelector('.radio-circle');
+      if (rc) rc.classList.remove('checked');
+    });
+    activeCard.classList.add('active');
+    const rc = activeCard.querySelector('.radio-circle');
+    if (rc) rc.classList.add('checked');
   }
 
   // --- Screen 5: Choose Streaming Platform ---
