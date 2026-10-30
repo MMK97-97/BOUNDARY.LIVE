@@ -1,6 +1,6 @@
 # Connect YouTube and create a live broadcast
 
-The website can sign in with Google, create a YouTube event and ingestion stream, bind them, and send the resulting RTMPS key directly to the laptop encoder. You do not copy a key into the phone. Preview, Go live and End are separate controls so camera upload does not accidentally publish a broadcast.
+The website can sign in with Google, create a YouTube event and ingestion stream, bind them, and send the resulting RTMPS key directly to the cloud encoder. You do not copy a key into the phone. Preview, Go live and End are separate controls so camera upload does not accidentally publish a broadcast.
 
 ## One-time Google configuration
 
@@ -13,7 +13,7 @@ https://YOUR_USERNAME.github.io/MK97/youtube-callback.html
 ```
 
 4. Use your actual repository path. Publish the new callback files with the rest of `web/`. The protocol, host, path and trailing slash must match the registered URI. This callback is on GitHub Pages; Google does not need access to your private relay.
-5. Put the client details only in the laptop's untracked `relay/.env`:
+5. Put the client details only in the cloud service's private environment (or `deploy/cloud/.env` on your own VM):
 
 ```ini
 GOOGLE_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
@@ -24,13 +24,13 @@ ALLOWED_ORIGINS=https://YOUR_USERNAME.github.io,http://localhost:8787,http://127
 
 Restart `npm start` and reconnect the relay. Never place the client secret, Google tokens or stream keys in `web/`, a public repository, a screenshot or a chat message. No real credentials are supplied in this ZIP.
 
-For laptop-only development, register `http://localhost:8787/youtube-callback.html` and open `http://localhost:8787`. A phone's localhost address points to the phone, so use the deployed HTTPS callback for phone operation. The callback origin must match the studio origin. If you open the private relay's own HTTPS site instead, configure and register that site's exact callback where Google permits it.
+For local development, register `http://localhost:8787/youtube-callback.html` and open `http://localhost:8787`. A phone's localhost address points to the phone, so use the deployed HTTPS callback for phone operation. The callback origin must match the studio origin. If you open the private relay's own HTTPS site instead, configure and register that site's exact callback where Google permits it.
 
 Google controls consent, verification, permitted users, API quota and channel live eligibility. If Google requires verification/review or blocks access, complete its requirements. The app cannot enable a restricted channel or bypass a Google security screen. Test-mode grants may expire; reconnect when prompted. The code does not require a paid multistreaming service, but it cannot promise third-party eligibility or unlimited free API use.
 
 ## Use the website
 
-1. Connect the laptop relay. Open **Settings → YouTube account & live setup**.
+1. Connect the cloud studio. Open **Settings → YouTube account & live setup**.
 2. Press **Connect YouTube**, allow this studio's popup, and sign in on Google's page. Select the Google/Brand Account for the intended channel and grant the requested YouTube permission. Keep the original studio tab open.
 3. The callback returns a one-use authorization code to that tab. A private same-origin channel is available if browser isolation removes the popup opener. The authenticated relay exchanges the code for tokens and reads the channel identity. Check the displayed channel name. **Cancel sign-in** abandons a pending flow.
 4. Enter title, description, visibility, scheduled local time and the explicit audience declaration. The browser shows its scheduling timezone. Unlisted is the initial visibility; choose the actual setting you want. A Public setup can create a visible upcoming event before you send video.
@@ -48,7 +48,7 @@ Repeated creation with the same request ID/details reuses progress. A definite f
 
 Stop camera upload before changing an account or event setup. **Disconnect account** clears that session's private data and asks Google to revoke the grant. If revocation cannot be confirmed, the website says so; remove the app using your Google account's connected-app controls if needed. Reconnect to select another channel. A pending sign-in blocks use of an older/manual YouTube destination until sign-in finishes or is cancelled.
 
-Google access/refresh tokens, stream keys and the selected event stay in laptop memory, scoped to the relay session. Restarting the relay, logging out or session expiry clears them. A browser refresh loses the relay session, so reconnect and authorize again; existing YouTube events can still remain in Studio. If the relay/network fails while an event is live, end it in YouTube Studio. Auto-start and auto-stop are intentionally disabled for explicit operator control.
+Google access/refresh tokens, stream keys and the selected event stay in server memory, scoped to the relay session. Restarting the relay, logging out or session expiry clears them. A browser refresh loses the relay session, so reconnect and authorize again; existing YouTube events can still remain in Studio. If the relay/network fails while an event is live, end it in YouTube Studio. Auto-start and auto-stop are intentionally disabled for explicit operator control.
 
 Facebook and Instagram retain the documented Live Producer key workflow in this version. This YouTube integration does not claim to sign in to those platforms.
 

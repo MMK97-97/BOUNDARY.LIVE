@@ -1,70 +1,36 @@
-# Streaming screen controls
+# MK97 1.6 controls
 
-The landscape layout follows your supplied reference. The camera view is the operator monitor. The outgoing program is composed on the laptop; check a platform preview to see its exact replay/video timing.
+Portrait: header, quality selector, viewfinder, four tools and bottom transport. Landscape: tools move to the left of the viewfinder. The raw camera is the local monitor; score and event graphics are composed in the hosted live encoder. Check platform playback for the final program and delay.
 
-| Control | Action |
+| Control | Function |
 | --- | --- |
-| Back arrow / Settings / Set up stream | Opens stream setup without leaving or stopping the broadcast. |
-| STANDBY / SENDING | Reports camera-upload state. SENDING does not certify that a platform has published the broadcast. |
-| Eye / viewer count | Opens Stats. Stream keys do not expose viewer analytics, so the count is shown as unavailable. |
-| Auto / 1080p / 720p / 480p | Chooses actual native capture size before streaming. Auto tries 1080p, then 720p, then 480p on an unsupported-size error. An open camera is reopened at the selected size. Locked during upload. |
-| Cast | Opens the browser's native Cast/AirPlay picker if supported. Otherwise opens instructions to cast the public platform player. Local camera streams cannot be cast on every browser. |
-| Fullscreen, top or bottom | Enters/exits fullscreen, requesting landscape where supported. Falls back to a browser-filling theater view if fullscreen is unavailable. It cannot override OS restrictions. |
-| Score | Loads the selected CricClubs match, toggles the on-air scorebar, offers Batting/Bowling/Commentary tabs and manual two-second cards. Missing commentary/fields are labelled. |
-| Stats | Shows health plus Overview/Partnership/Runs/Wickets tabs using source values. It does not estimate missing player statistics. |
-| Clips | Saves/marks a ball, filters All/4s/6s/Wickets, previews a private thumbnail/clip, puts it on air, or downloads an MP4. Wicket clips stay private until you choose On air. |
-| Share | Copies or shares the public YouTube/Facebook/Instagram viewing URL you provide. It never constructs a sharing URL containing relay credentials. |
-| Zoom + / − / vertical slider / two-finger pinch | Applies the camera's native zoom constraint when available. The buttons respect the device step; pinch works in the camera view. These are disabled when the browser exposes no zoom capability. |
-| Fit / Fill | Fits or fills the local camera monitor. This framing choice does not crop the outgoing capture. Use native zoom for the broadcast. |
-| Bottom pause/play | Pauses/resumes the local video monitor to save screen work. Camera capture, microphone and broadcast continue. |
-| START | Begins one camera upload to the authenticated relay after preflight passes. Select destinations in Settings first. |
-| Stop stream | Opens a stop confirmation. Yes, stop streaming finishes camera upload; Keep streaming cancels. End each platform broadcast in its control room too. |
-| Replay timeline | Selects buffered footage for a private clip preview on release. Oldest selections can be shorter than eight seconds. It does not interrupt the outgoing live camera. |
-| Bottom LIVE | Returns the local monitor from a clip to the camera. It does not cancel an on-air replay. |
-| Elapsed timer | Counts the current upload session. |
-| Speaker / volume slider | Toggles/adjusts audio during a private clip preview. The live camera monitor stays muted to prevent feedback; this never mutes outgoing microphone audio. |
-| Message × | Dismisses the current message. |
+| Back | Opens match-connection home when idle; active upload stays in the studio. |
+| Auto / 1080p / 720p / 480p | Chooses actual native landscape capture before streaming. Auto tries supported sizes. |
+| Open camera | Requests rear camera and microphone after a tap. Displays actual capture settings. |
+| Set up stream / Settings / Stream tool | Opens the phone setup checklist, cloud connection, destinations and camera controls. |
+| Cast / AirPlay | Uses supported native playback routing; opens sharing help when local camera routing is unavailable. |
+| More | Opens an accessible menu for monitor pause/resume, fullscreen, setup, YouTube and sharing. Arrow keys/Escape work. |
+| Score | Loads Match ID/Club ID or full CricClubs URL; controls on-air scorebar; shows source batting/bowling/commentary and innings selection. |
+| Stats / monitor info | Shows broadcast health, actual capture data and supplied match statistics. Viewer counts are not invented. |
+| Share | Copies/shares a validated public platform viewing URL; never includes access tokens. |
+| Native zoom + / − / slider / presets | Uses camera-exposed zoom constraints only. Disabled when unsupported; magnification may be digital inside the device. |
+| Fit / Fill | Changes local framing display only. Capture is not cropped or modified. |
+| START | Opens setup if incomplete; begins one authenticated camera upload when preflight passes. It does not itself publish a YouTube event. |
+| STOP | Requires confirmation, then ends the camera upload and all remaining outputs. Platform-event publication is checked separately. |
+| LIVE | Opens the camera or resumes the hidden local monitor; it does not publish a platform event. |
+| Speaker | Mutes/unmutes the outgoing microphone. The local camera player remains muted to prevent feedback. |
+| Timer | Time since camera upload started, not platform viewer time. |
+| Fullscreen | Enters supported browser fullscreen; uses an in-page theater fallback when needed. |
+| Cloud connection | Exchanges a private relay token for an origin-bound session. Hosted same-origin address is discovered automatically over HTTPS. |
+| Save securely | Validates a platform RTMPS URL/key and keeps it only in that session's server memory; clears the form key and selects the destination. |
+| Remove session key | Removes only that session's selected manual key. A configured server fallback remains available. |
+| YouTube account & live setup | Configured Google sign-in, event details, key setup, status, Preview, Go live and End. |
+| Microphone / lens / profile | Native lens selection and requested upload bitrate before streaming; microphone toggle remains available while streaming. |
+| Pitch guide | Toggles a local framing grid; it is not burned into the broadcast. |
+| Pause local monitor | Stops local preview rendering while camera upload continues. |
+| Battery screen | Opens a dark view during upload and pauses local monitoring; screen wake lock is used where supported. Keep the phone unlocked. |
+| Milestones / end-of-over cards | Optional source-driven graphics over the live camera, each for 60 graphics frames at 30 fps. |
+| Batting 2s / Bowling 2s | Queues the chosen supplied scorecard over the continuing live video. |
+| Phone-only hosting guide | Opens concise setup steps; the full walkthrough is docs/FREE_HOSTING.md. |
 
-## Settings panel
-
-| Control | Action |
-| --- | --- |
-| Connect securely | Exchanges the local relay token for an origin-bound in-memory session. The input is cleared afterward. |
-| Disconnect | Revokes that session when upload is inactive. |
-| Camera / optical lens | Reopens capture using the browser-exposed camera. Lens and quality changes are locked during a stream. |
-| Encoding profile | Chooses the requested phone upload bitrate. Balanced is 8 Mbps at 1080p; More detail is 14 Mbps. Lower native sizes reduce the request. |
-| Mic on / muted | Enables/disables the actual captured audio track, including on air. Silent audio remains in the container for stable processing. |
-| Pitch guide | Toggles a local framing grid. The grid is not burned into the video. |
-| Close camera | Stops camera/microphone tracks when not streaming. |
-| Zoom presets | Uses the native camera zoom value, within hardware limits. Disabled for unsupported values/devices. |
-| Battery screen / Return to camera | Shows a dark timer/score screen and pauses the local monitor while upload continues, then restores it. Keep the phone unlocked and page visible. |
-| Automation switches | Enable automatic boundary replays, milestone graphics and end-of-over cards for the next stream. |
-| Scoring delay | Seconds between a ball and its arriving score update, calibrated before starting. See AUTOMATION.md. |
-| Mark ball | Marks the relay's current capture position. The next observed delivery consumes the mark; if it is a confirmed boundary, it anchors the replay. Requires the program processor. |
-| Platform checkboxes | Select configured destinations; manual keys stay in local relay/.env and generated YouTube keys stay in relay memory. |
-| YouTube account & live setup | Opens Google sign-in and the title/description/privacy/schedule/audience form. See YOUTUBE.md for one-time configuration and every event control. |
-| Free setup guide / Close guide | Expands/collapses the short guide. Read SETUP.md for complete instructions. |
-| Panel back arrow / × / outside panel / Escape | Returns to the streaming screen and restores focus. Portrait panels fill the phone width. Keyboard focus stays within the panel; tab rows also support arrow/Home/End keys. |
-
-## Score and replay panels
-
-The Club 300 disclosure edits the club namespace for another league. Load accepts a numeric Match ID or a complete HTTPS CricClubs scorecard URL. Change matches before starting. The scorebar indicates delayed/complete status and displays the selected match's real values.
-
-Batting · 2s and Bowling · 2s queue a card on the outgoing program. Clips → Preview downloads a private MP4 into browser memory and plays it locally; returning to LIVE revokes the temporary media URL. Clips → On air switches source frames and original audio inside one continuous encoder. A REPLAY graphic identifies that footage. Download saves an explicit MP4 to your device. Up to three clips remain available; older ones expire under the memory limit or when the stream stops.
-
-Buttons are disabled until their camera, authenticated session, active program or replay-buffer dependency is available. Native camera zoom, receiver casting, sharing, wake lock and fullscreen are subject to browser/device support; no fake software capability is substituted.
-
-## MK97 home and source panels
-
-| Control | Behavior |
-| --- | --- |
-| Fetch match / FWCWL example | Validates Match ID and Club ID or a full CricClubs URL, fetches source values and starts one visible-page polling stream. Works before relay connection where direct feed access permits. |
-| Open broadcast studio | Opens camera controls without declaring a stream live. |
-| Connect laptop relay / relay settings | Opens authenticated relay setup. |
-| YouTube account setup | Opens real Google authorization and event controls after relay configuration. |
-| Home arrow | Returns to MK97 home while idle; remains in the camera studio during active upload. |
-| Innings selector | Separates source records for each supplied innings; missing cards stay marked not supplied. |
-| Commentary tab | Shows only source text; it does not translate scores into invented ball commentary. |
-| Clip filters | Filters actual private buffered clips by 4s, 6s or wickets. Empty filters stay empty. |
-
-The MK97 logo is the supplied image. The broadcast watermark is independent of the score graphic; the score overlay toggle controls score display.
+There is no Clips tool, seek bar, footage buffer, ball mark, automatic replay or video download in 1.6. Facebook and Instagram use their own eligible Live Producer key/publication workflows; their account login and publish controls are not implemented inside MK97.

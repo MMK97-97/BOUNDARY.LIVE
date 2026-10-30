@@ -1,6 +1,6 @@
 # CricClubs scorecard scraper
 
-MK97 1.4 adds a Node.js module for **server-rendered public scorecard HTML**. It runs on the laptop relay, not on the phone. A blocked page or an HTML shell whose tables load later through JavaScript does not become a complete scorecard. Match 986's full page previously returned a verification screen; this module has not retrieved that match's complete innings in this environment.
+MK97 1.4 adds a Node.js module for **server-rendered public scorecard HTML**. It runs on the hosted server, not on the phone. A blocked page or an HTML shell whose tables load later through JavaScript does not become a complete scorecard. Match 986's full page previously returned a verification screen; this module has not retrieved that match's complete innings in this environment.
 
 ## Run it
 

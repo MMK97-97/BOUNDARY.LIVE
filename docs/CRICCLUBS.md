@@ -23,9 +23,9 @@ https://cricclubs.com/liveScoreOverlayData.do?clubId=300&matchId=986
 
 4. Both paths use `web/score-data.mjs` to extract teams, totals, wickets, overs, rates, result, batter/bowler records, source commentary, partnership and supplied innings cards. Raw player emails/profile metadata are not forwarded. In 1.4, the relay also starts the [HTML scorecard reader](SCRAPER.md) in the background for its configured league. It attaches parsed innings only when identities and totals match the ticker; blocked or unsupported HTML leaves the ticker available with a source-note warning.
 5. It chooses the batting innings from explicit innings flags, including the separate super-over flags. Missing fields fail validation rather than becoming invented zeros.
-6. The laptop refreshes every five seconds by default (up to two seconds of scheduler jitter). The phone refreshes one source every five seconds while visible; idle hidden pages pause scheduled reads. The program renderer uses the relay's normalized score fields for graphics. Changing a match cancels the previous browser generation; older responses cannot replace the new selection. The relay also blocks match changes during camera upload.
+6. The server refreshes every five seconds by default, scheduled from each source deadline. In 1.5, each completed source read immediately updates the broadcast renderer and an authenticated live connection to the phone. Unchanged data sends a small freshness message. A broken/unavailable live connection falls back to authenticated five-second refreshes; direct browser mode also polls. Idle hidden pages pause their connection/reads and refresh when visible again. Changing a match cancels the previous browser generation; older revisions cannot replace newer data. The relay blocks match changes during camera upload. See [LIVE_SCORES.md](LIVE_SCORES.md) for latency, security and deployment details.
 
-The MK97 browser loaded match 986 directly during validation. Separate Node requests from this build environment timed out; local laptop/provider connectivity must still be verified. The full HTML scorecard route previously presented a verification page. The code does not bypass that verification, generate a provider access token, change a shared overlay view or mutate CricClubs settings.
+The MK97 browser loaded match 986 directly during validation. Separate Node requests from this build environment timed out; local server/provider connectivity must still be verified. The full HTML scorecard route previously presented a verification page. The code does not bypass that verification, generate a provider access token, change a shared overlay view or mutate CricClubs settings.
 
 ## Failure behavior
 
@@ -35,7 +35,7 @@ The MK97 browser loaded match 986 directly during validation. Separate Node requ
 - A newly selected match clears the previous match's score immediately on the relay. In-flight data for an earlier match cannot overwrite it.
 - Some CricClubs overlay views omit live fields. The app uses the available validated totals and labels a limited view; it never changes CricClubs' view to obtain other data.
 - Completed matches are labelled **MATCH COMPLETE**. No simulated data is substituted when a feed fails.
-- Initial data establishes the event baseline. Snapshot changes can trigger milestones and over cards, and confirmed changes in batter runs/four/six counters can trigger a replay. See [AUTOMATION.md](AUTOMATION.md) for calibration and missed-delivery limits.
+- Initial data establishes the event baseline. Snapshot changes can trigger the optional live milestones and over cards. Version 1.6 has no replay or footage history. See [AUTOMATION.md](AUTOMATION.md).
 - The public feed does not guarantee delivery timestamps or full innings cards. The source panels show supplied rows only, separated by innings. Even a returned array is not marked complete without explicit completeness metadata. On-air automation can show available players observed by the relay, with an incomplete-data label.
 
 ## Scorecard, commentary and statistics in this build
@@ -128,4 +128,4 @@ This is an illustrative schema extension, not match 986's batting figures. Suppl
 
 For exact provider delivery events, use a stable unique `id`, bat runs (4 or 6 for a boundary), and the actual delivery's ISO timestamp in `occurredAt`. Keep the latest deliveries available across at least two polls; the adapter retains at most 12 per response and deduplicates IDs. Repeated delivery IDs must not identify different balls. The first response's delivery history is marked as baseline. Feed and relay clocks should be synchronized; upload/decoder delay still affects video alignment. Timestamps are never invented for the public snapshot feed.
 
-IDs in the configured URL are substituted only after numeric validation. The phone cannot configure an arbitrary fetch host. Redirects are rejected; HTTPS is required. Polling never goes below five seconds. Provider credentials stay on the laptop. Do not include unnecessary private player data in your feed.
+IDs in the configured URL are substituted only after numeric validation. The phone cannot configure an arbitrary fetch host. Redirects are rejected; HTTPS is required. Polling never goes below five seconds. Provider credentials stay on the server. Do not include unnecessary private player data in your feed.

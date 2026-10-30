@@ -1,0 +1,5 @@
+{$PUBLIC_HOST} {
+    reverse_proxy mk97:8787 {
+        flush_interval -1
+    }
+}
