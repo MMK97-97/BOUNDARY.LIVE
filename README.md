@@ -1,8 +1,10 @@
 # MK97 — phone-first live cricket streaming
 
-**Version 1.6.1: live streaming only, with automatic multi-league score routing.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
+**Version 1.6.2: phone YouTube setup fixes, clearer league selection and live streaming only.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
 
-**New league support:** paste a full CricClubs scorecard URL; MK97 keeps its league path and extracts the IDs. Bare IDs use built-in mappings for FWCWL / Club 300, Tampa Cricket / Club 1507 and TCL / Club 157. Other full URLs work without changing host settings. Match IDs are never guessed across clubs. See [LEAGUES.md](docs/LEAGUES.md).
+**YouTube update:** Render callback detection, secure callback completion without a popup opener, Start now / scheduled setup, automatic destination selection, safer retry/transition handling and a visible callback to register. Follow [YOUTUBE.md](docs/YOUTUBE.md) for the required Google/Render configuration.
+
+**League support:** paste a full CricClubs scorecard URL; MK97 keeps its league path and extracts the IDs. Bare IDs use built-in mappings for FWCWL / Club 300, Tampa Cricket / Club 1507 and TCL / Club 157. Other full URLs work without changing host settings. Match IDs are never guessed across clubs. See [LEAGUES.md](docs/LEAGUES.md).
 
 Start with **[the complete free-hosting steps](docs/FREE_HOSTING.md)** and **[phone-only stream setup](docs/CLOUD_SETUP.md)**. No laptop needs to run at the ground. Host the container once; operate MK97 from your phone.
 

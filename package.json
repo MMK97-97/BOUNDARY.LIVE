@@ -1,6 +1,6 @@
 {
   "name": "mk97-live",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "description": "Phone-first cricket broadcast studio with cloud streaming and live scores",
   "type": "module",

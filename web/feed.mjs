@@ -93,10 +93,20 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
         if (relay?.session) connectStream(relay, selected, gen);
         return last;
       } catch (error) {
-        if (gen !== generation) return null;
+        if (gen !== generation || getRelay()?.session !== relay?.session) return null;
         const message = controller.signal.aborted ? 'Score request timed out. Keeping the last verified score.'
           : error.name === 'TypeError' ? 'CricClubs cannot be reached directly from this browser. Connect the cloud studio in Stream setup.' : error.message;
-        last = { ...last, ids: selected, score: last?.score ? { ...last.score, stale: true, error: message } : null, error: message, status: error.status, pollSeconds: 5 };
+        // A 502 can mean the match was selected successfully but its first
+        // upstream read failed. Keep the confirmed binding and subscribe so the
+        // shared cloud reader can recover without another form submission.
+        const payload = error.payload;
+        if (relay?.session && payload?.ids && String(payload.ids.clubId) === selected.clubId && String(payload.ids.matchId) === selected.matchId) {
+          binding = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}`;
+          last = { ...last, ...payload, ids: selected, score: last?.score ? { ...last.score, stale: true, error: message } : null,
+            error: message, status: error.status, transport: 'relay', delivery: 'poll' };
+          onUpdate?.(last); connectStream(relay, selected, gen); return last;
+        }
+        last = { ...last, ids: selected, score: last?.score ? { ...last.score, stale: true, error: message } : null, error: message, status: error.status, pollSeconds: 5, transport: relay?.session ? 'relay' : 'direct' };
         onUpdate?.(last); return last;
       } finally { clearTimeout(timeout); if (pending === operation) { pending = null; schedule(); } }
     })();

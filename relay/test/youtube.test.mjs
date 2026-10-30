@@ -84,3 +84,80 @@ test('logout/session expiry forgets private grants, and explicit disconnect revo
   assert.equal((await s.disconnect(owner)).revoked, true); assert.equal(s.status(owner).connected, false); assert.ok(log.some(x => x.url.endsWith('/revoke')));
   const m = await connected({ validSession: () => valid }); valid = false; m.service.prune(); assert.equal(m.service.status(owner).connected, false);
 });
+test('Render supplies the default callback, while an explicit Pages callback remains supported', () => {
+  const render = youtubeConfig({ ...testGoogleEnv, RENDER_EXTERNAL_URL: 'https://mk97-test.onrender.com', YOUTUBE_REDIRECT_URI: '' });
+  assert.equal(render.configured, true); assert.equal(render.redirectUri, 'https://mk97-test.onrender.com/youtube-callback.html'); assert.equal(render.callbackMode, 'server');
+  const missing = youtubeConfig({ RENDER_EXTERNAL_URL: 'https://mk97-test.onrender.com' });
+  assert.equal(missing.configured, false); assert.equal(missing.redirectUri, render.redirectUri); assert.match(missing.error, /client ID/);
+  assert.equal(youtubeConfig(testGoogleEnv).callbackMode, 'browser');
+  assert.equal(youtubeConfig({ ...testGoogleEnv, RENDER_EXTERNAL_URL: 'https://mk97-test.onrender.com' }).redirectUri, testGoogleEnv.YOUTUBE_REDIRECT_URI);
+  assert.equal(youtubeConfig({ ...testGoogleEnv, PUBLIC_URL: 'https://evil.test/path', YOUTUBE_REDIRECT_URI: '' }).configured, false);
+});
+test('server callback completes without a popup opener, preserving the session owner and single-use state', async () => {
+  const mock = youtubeProvider(), cloudOrigin = 'https://mk97-test.onrender.com';
+  const s = new YouTubeService({ env: { ...testGoogleEnv, RENDER_EXTERNAL_URL: cloudOrigin, YOUTUBE_REDIRECT_URI: '' }, fetchFn: mock.fetchFn });
+  const flow = s.start(owner, cloudOrigin); assert.equal(flow.callbackMode, 'server');
+  const result = await s.callback({ state: flow.state, code: 'synthetic-once' });
+  assert.equal(result.connected, true); assert.equal(result.authorization.state, flow.state); assert.equal(result.authorization.status, 'connected');
+  assert.equal(s.status('different-owner').connected, false); assert.equal(s.status('different-owner').authorization, null);
+  await assert.rejects(s.callback({ state: flow.state, code: 'synthetic-again' }), /expired/);
+  for (const secret of ['private-access-token', 'private-refresh-token', testGoogleEnv.GOOGLE_CLIENT_SECRET]) assert.equal(JSON.stringify(result).includes(secret), false);
+});
+test('denied, cancelled, expired and foreign-origin callbacks cannot connect a cloud session', async () => {
+  let valid = true, clock = now; const mock = youtubeProvider(), cloudOrigin = 'https://mk97-test.onrender.com';
+  const s = new YouTubeService({ env: { ...testGoogleEnv, RENDER_EXTERNAL_URL: cloudOrigin, YOUTUBE_REDIRECT_URI: '' }, fetchFn: mock.fetchFn, now: () => clock, validSession: () => valid });
+  assert.throws(() => s.start(owner, origin), /callback origin/);
+  const denied = s.start(owner, cloudOrigin); await assert.rejects(s.callback({ state: denied.state, error: 'untrusted-provider-secret' }), /cancelled/);
+  assert.equal(s.status(owner).authorization.status, 'failed'); assert.equal(JSON.stringify(s.status(owner)).includes('untrusted-provider-secret'), false);
+  const cancelled = s.start(owner, cloudOrigin); s.cancelAuth(owner); await assert.rejects(s.callback({ state: cancelled.state, code: 'late' }), /expired/);
+  const expired = s.start(owner, cloudOrigin); clock += 300001; await assert.rejects(s.callback({ state: expired.state, code: 'late' }), /expired/);
+  const revoked = s.start(owner, cloudOrigin); valid = false; await assert.rejects(s.callback({ state: revoked.state, code: 'late' }), /expired/);
+  assert.equal(s.status(owner).connected, false); assert.equal(mock.log.length, 0);
+});
+test('an incomplete stream creation response is repaired by reading the same stream, without another write', async () => {
+  const mock = youtubeProvider();
+  const { service: s } = await connected({ fetchFn: async (url, options) => {
+    const response = await mock.fetchFn(url, options);
+    return new URL(url).pathname.endsWith('/liveStreams') && options.method === 'POST' ? new Response(JSON.stringify({ id: 'stream_test' })) : response;
+  } });
+  const result = await s.prepare(owner, details); assert.equal(result.broadcast.keyReady, true);
+  assert.equal(mock.log.filter(r => new URL(r.url).pathname.endsWith('/liveStreams') && r.method === 'POST').length, 1);
+  assert.equal(mock.log.filter(r => new URL(r.url).pathname.endsWith('/liveStreams') && r.method === 'GET').length, 1);
+});
+test('missing encrypted endpoints can be retried using only reads until the same stream is ready', async () => {
+  const mock = youtubeProvider(); let omit = true;
+  const { service: s } = await connected({ fetchFn: async (url, options) => {
+    const response = await mock.fetchFn(url, options);
+    if (!omit || !new URL(url).pathname.endsWith('/liveStreams')) return response;
+    const stream = { id: 'stream_test', cdn: { ingestionInfo: { ingestionAddress: 'rtmp://a.rtmp.youtube.com/live2', streamName: 'fixture' } } };
+    return new Response(JSON.stringify(options.method === 'POST' ? stream : { items: [stream] }));
+  } });
+  await assert.rejects(s.prepare(owner, details), /RTMPS endpoint/); assert.equal(s.status(owner).setup.stage, 'endpoint'); assert.equal(s.status(owner).setup.uncertain, false);
+  omit = false; assert.equal((await s.prepare(owner, details)).broadcast.keyReady, true);
+  assert.equal(mock.log.filter(r => new URL(r.url).pathname.endsWith('/liveStreams') && r.method === 'POST').length, 1);
+});
+test('concurrent Go live calls reserve the operation before stream-health checks', async () => {
+  const mock = youtubeProvider(); let pause = false, release;
+  const wait = new Promise(resolve => { release = resolve; });
+  const { service: s } = await connected({ fetchFn: async (url, options) => {
+    if (pause && options.method === 'GET') await wait;
+    return mock.fetchFn(url, options);
+  } });
+  await s.prepare(owner, details); pause = true;
+  const first = s.transition(owner, 'live'); await assert.rejects(s.transition(owner, 'live'), /Finish creating/);
+  assert.throws(() => s.resetSetup(owner), /operation/); release();
+  assert.equal((await first).broadcast.state, 'live'); assert.equal(s.status(owner).busy, false);
+  assert.equal(mock.log.filter(r => new URL(r.url).pathname.endsWith('/transition')).length, 1);
+});
+test('intermediate YouTube transitions are not repeated and never leave the operation locked', async () => {
+  const { service: s, control, log } = await connected(); await s.prepare(owner, details);
+  control.broadcastState = 'liveStarting'; const result = await s.transition(owner, 'live');
+  assert.equal(result.broadcast.state, 'liveStarting'); assert.equal(result.busy, false); assert.equal(log.filter(r => new URL(r.url).pathname.endsWith('/transition')).length, 0);
+  await assert.rejects(s.transition(owner, 'testing'), /state change/); assert.equal(s.status(owner).busy, false);
+});
+test('a confirmed partial setup keeps its original details for a later retry', async () => {
+  let clock = now; const { service: s, control } = await connected({ now: () => clock });
+  control.failResource = 'liveBroadcasts'; await assert.rejects(s.prepare(owner, details), /Enable live/);
+  const operation = s.status(owner).setup; assert.equal(operation.details.title, details.title);
+  clock += 2 * 3600000; control.failResource = ''; assert.equal((await s.prepare(owner, details)).broadcast.keyReady, true);
+});

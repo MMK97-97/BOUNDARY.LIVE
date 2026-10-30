@@ -22,3 +22,8 @@
 @media(orientation:portrait){.camera-open .zoom-tools{top:16px;transform:none}.camera-open .zoom-rail{height:154px}.camera-open .zoom-rail input{height:56px}.camera-open .fit-button{top:calc(100% + 12px)}}
 
 @media(orientation:portrait){.transport-hint{display:none}}
+
+/* Feedback flows below the drawer heading so it cannot cover Back or Close. */
+.drawer-feedback{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}
+.drawer-feedback .notice{position:static;inset:auto;transform:none;width:100%;margin:0 0 14px;box-shadow:none;overflow-wrap:anywhere}
+.drawer-feedback .dismiss-notice{position:static;inset:auto;transform:none;grid-column:2;margin:0 0 14px;min-width:28px}

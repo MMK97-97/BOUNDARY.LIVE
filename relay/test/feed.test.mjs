@@ -113,3 +113,24 @@ test('club mismatches and external or credential-bearing logos are rejected', ()
   const input = raw(); input.values.clubId = '301'; assert.throws(() => normalizeScore(input, ids), /Club ID/);
   for (const url of ['https://evil.example/logo.png', 'https://cricclubs.com.evil.example/logo', 'http://cricclubs.com/logo', 'https://secret@cricclubs.com/logo']) assert.equal(sourceLogo(url), '');
 });
+
+test('an initially failed cloud read retains the selected league and recovers through its score subscription', async () => {
+  const selected = { clubId: '1507', matchId: '3866', league: 'TampaCricket' }, routes = []; let callbacks;
+  const error = Object.assign(new Error('Score source temporarily unavailable.'), { status: 502, payload: { ids: selected, league: selected.league, revision: 2, error: 'Score source temporarily unavailable.', score: null, pollSeconds: 5 } });
+  const data = { schema: 'mk97.score.v1', ...selected, batting: 'ROR', bowling: 'JGR', runs: '95', wickets: '5', overs: '16', status: 'complete' };
+  const verified = normalizeScore(data, selected);
+  const feed = createFeed({ auto: false, getRelay: () => ({ session: 'fixture', request: async route => {
+    routes.push(route); if (route === '/api/match') throw error;
+    return { ids: selected, score: verified, revision: 3 };
+  }, subscribe(ids, handler) { assert.deepEqual(ids, selected); callbacks = handler; return { close() {} }; } }) });
+  const first = await feed.select(selected); assert.equal(first.transport, 'relay'); assert.equal(first.score, null); assert.equal(first.error, error.message); assert.ok(callbacks);
+  callbacks.onSnapshot({ ids: selected, score: verified, revision: 3 }); assert.equal(feed.snapshot.score.runs, '95'); assert.equal(feed.snapshot.delivery, 'push');
+  await feed.refresh(); assert.deepEqual(routes, ['/api/match', '/api/score']); feed.stop();
+});
+test('a failed cloud binding for a different match cannot subscribe to or display that score', async () => {
+  let subscriptions = 0;
+  const feed = createFeed({ auto: false, getRelay: () => ({ session: 'fixture', request: async () => {
+    throw Object.assign(new Error('Match rejected.'), { status: 409, payload: { ids: { clubId: '157', matchId: '6098' }, score: null } });
+  }, subscribe() { subscriptions++; return { close() {} }; } }) });
+  const result = await feed.select({ clubId: '1507', matchId: '3866' }); assert.equal(result.score, null); assert.equal(subscriptions, 0); assert.equal(result.ids.clubId, '1507'); feed.stop();
+});

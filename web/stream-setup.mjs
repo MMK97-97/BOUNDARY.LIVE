@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const defaults = { youtube: 'rtmps://a.rtmps.youtube.com/live2', facebook: 'rtmps://live-api-s.facebook.com:443/rtmp/', instagram: '' };
 export function installStreamSetup({ state, api, ui, updateControls, refreshInfo, openCamera }) {
   let identity = state.session, operation = 0;
-  const locked = () => Boolean(state.live || state.starting || state.stopping || state.destinationBusy);
+  const locked = () => Boolean(state.live || state.starting || state.stopping || state.destinationBusy || state.youtubeBusy);
   function fieldDefaults() {
     $('destinationServer').value = defaults[$('destinationPlatform').value] || '';
     $('destinationServer').placeholder = defaults[$('destinationPlatform').value] || 'Paste your Instagram Live Producer RTMPS URL';

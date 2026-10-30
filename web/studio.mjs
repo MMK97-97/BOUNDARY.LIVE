@@ -27,11 +27,12 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) { e.preventDefault(); const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length; buttons[next]?.focus(); }
   });
   $('monitorInfo').addEventListener('click', () => { panel('stats'); });
-  function closeDrawer() { $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; lastFocus?.focus(); }
+  function closeDrawer() { document.body.append($('notice'), $('dismissNotice')); $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; lastFocus?.focus(); }
   function panel(name) {
     const focus = document.activeElement;
     if (!$('drawer').contains(focus)) lastFocus = $('studioMenu').contains(focus) ? $('moreButton') : focus;
     closeMenu();
+    $('drawerFeedback').append($('notice'), $('dismissNotice'));
     for (const p of document.querySelectorAll('[data-drawer]')) p.hidden = p.dataset.drawer !== name;
     $('drawerTitle').textContent = label[name]; $('drawer').hidden = false; $('drawerScrim').hidden = false; $('studio').inert = true;
     $('closeDrawer').focus(); $('drawer').scrollTop = 0;

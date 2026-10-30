@@ -20,3 +20,9 @@ test('OAuth callback rejects malformed state and sends no credentials or raw pro
   const result = run('?state=' + 's'.repeat(43) + '&error=untrusted-provider-message');
   assert.equal(result.sent[0].message.error, 'denied'); assert.equal(JSON.stringify(result.sent).includes('untrusted-provider-message'), false);
 });
+test('cloud return pages show only a generic result and do not publish authorization codes', () => {
+  const result = run('?result=connected'); assert.match(result.status.textContent, /YouTube connected securely/); assert.equal(result.sent.length, 0);
+  const failed = run('?result=failed'); assert.match(failed.status.textContent, /original MK97 tab/); assert.equal(failed.sent.length, 0);
+  assert.equal(run('?state=' + 's'.repeat(43) + '&state=' + 's'.repeat(43) + '&code=code').sent.length, 0);
+  assert.equal(run('?state=' + 's'.repeat(43) + '&error=denied&code=code').sent.length, 0);
+});

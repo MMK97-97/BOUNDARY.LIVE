@@ -6,10 +6,12 @@ import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
 import { knownLeague } from './cricclubs-reference.mjs';
+import { installMatchSelection } from './match-setup.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
 let setupUI = null;
+let matchUI = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
@@ -33,7 +35,7 @@ function issue() {
 }
 function updateControls() {
   const locked = state.live || state.starting || state.stopping;
-  $('goLive').disabled = locked || state.cameraBusy || state.scoreLoading || state.connecting || Boolean(state.destinationBusy);
+  $('goLive').disabled = locked || state.cameraBusy || state.scoreLoading || state.connecting || Boolean(state.destinationBusy) || Boolean(state.youtubeBusy);
   $('goLive').setAttribute('aria-label', issue() ? 'Set up stream before starting' : 'Start camera upload');
   $('goLive').hidden = state.live || state.stopping;
   $('stopLive').hidden = !(state.live || state.stopping);
@@ -61,6 +63,7 @@ function updateControls() {
   youtubeUI?.update();
   homeUI?.update();
   setupUI?.update();
+  matchUI?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
   if (!state.relay || !authToken) throw new Error('Connect the relay first.');
@@ -80,6 +83,8 @@ async function api(path, options = {}, authToken = state.session) {
 function renderRelay() {
   youtubeUI?.accept(state.info?.youtube || null);
   const connected = Boolean(state.session);
+  const cloudVersion = state.info?.version;
+  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.6.2${cloudVersion !== '1.6.2' ? ' · Deploy v1.6.2 to Render to use the matching update.' : ''}` : '';
   $('relayForm').hidden = connected; $('relayConnected').hidden = !connected;
   $('connectionBadge').replaceChildren(); const i = document.createElement('i');
   $('connectionBadge').append(i, document.createTextNode(connected ? ' Secure relay connected' : ' Relay disconnected'));
@@ -121,7 +126,7 @@ async function disconnect() {
 }
 $('disconnectRelay').addEventListener('click', disconnect);
 function renderScore(result) {
-  const s = result?.score || null; state.score = s; state.scoreTransport = result?.transport || state.scoreTransport || '';
+  const s = result?.score || null; state.score = s; state.scoreError = result?.error || ''; state.scoreTransport = result?.transport || state.scoreTransport || '';
   $('scoreOverlay').hidden = !s || !$('overlayToggle').checked;
   if (!s) {
     ui?.score(null);
@@ -159,10 +164,8 @@ async function loadSelectedMatch(input, club) {
   if (state.live || state.starting || state.stopping || state.scoreLoading) throw new Error('Stop the current upload before changing matches.');
   const ids = parseMatch(input, club, saved('league.' + club));
   state.scoreLoading = true; state.graphics.cards = null;
-  $('matchInput').value = ids.matchId; $('clubInput').value = ids.clubId;
+  matchUI?.accept(ids);
   const league = ids.league || knownLeague(ids.clubId)?.league;
-  $('leagueDetails').querySelector('summary').textContent = `${knownLeague(ids.clubId)?.label || league || 'CricClubs'} · Club ${ids.clubId}`;
-  $('clubHelp').textContent = 'Match IDs belong to a club. FWCWL: 300 · Tampa Cricket: 1507 · TCL: 157. Full URLs supply the league path automatically.';
   if (league) save('league.' + ids.clubId, league);
   save('club', ids.clubId); save('match', ids.matchId); updateControls();
   try {
@@ -312,7 +315,7 @@ function abortStream(message) { cleanupStream(); notice(message, 'error'); }
 async function startStream() {
   if (state.stream) state.camera = state.stream.getVideoTracks()[0]?.getSettings();
   const problem = issue(); if (problem) { ui?.panel('settings'); $('startHint').textContent = problem; return; }
-  if (state.starting || state.live || state.stopping || state.destinationBusy) return;
+  if (state.starting || state.live || state.stopping || state.destinationBusy || state.youtubeBusy) return;
   state.starting = true; state.closedByUser = false; updateControls();
   let ws;
   try {
@@ -430,8 +433,13 @@ window.addEventListener('pageshow', event => { if (event.persisted && feed.ids) 
 function toggleGuide(show) { $('guide').hidden = !show; $('guideToggle').setAttribute('aria-expanded', String(show)); if (show) $('guide').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 $('guideToggle').addEventListener('click', () => toggleGuide($('guide').hidden)); $('closeGuide').addEventListener('click', () => toggleGuide(false));
 ui = installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview });
-youtubeUI = installYouTube({ state, api, notice, refreshInfo: async () => { state.info = await api('/api/info'); renderRelay(); } });
+async function refreshInfo() {
+  const owner = state.session, next = await api('/api/info');
+  if (owner === state.session) { state.info = next; renderRelay(); }
+}
+youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, closePanel: () => ui.closeDrawer() });
 homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera });
-setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo: async () => { state.info = await api('/api/info'); renderRelay(); } });
+setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo });
+matchUI = installMatchSelection({ state });
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';

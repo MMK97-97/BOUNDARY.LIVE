@@ -16,6 +16,9 @@ export function validateLeague(value) {
 export function matchReference(input, savedClub, savedLeague) {
   let clubId = String(savedClub || '').trim(), matchId = String(input || '').trim(), league;
   if (/^https?:/i.test(matchId)) {
+    // Links copied from formatted messages can contain escaped ampersands.
+    // Normalize only the separators; all host/path/query checks still apply.
+    matchId = matchId.replace(/\\&/g, '&').replace(/&amp;/gi, '&');
     const url = new URL(matchId);
     if (url.protocol !== 'https:' || url.hostname !== 'cricclubs.com' || url.port || url.username || url.password || url.hash) throw new Error('Use an HTTPS scorecard URL from cricclubs.com without credentials or fragments.');
     const path = url.pathname.match(/^\/([A-Za-z0-9_-]{1,80})\/viewScorecard\.do$/);

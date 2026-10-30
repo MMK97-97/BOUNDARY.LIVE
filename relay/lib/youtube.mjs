@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { destinationConfig } from './encoder.mjs';
+import { cloudConfig } from './cloud.mjs';
 
 export const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.force-ssl';
 const API = 'https://www.googleapis.com/youtube/v3/';
@@ -20,17 +21,30 @@ const reasons = {
   liveBroadcastNotFound: 'The broadcast is no longer available in this channel.',
   liveStreamNotFound: 'The YouTube ingestion stream is no longer available.',
   invalidScheduledStartTime: 'YouTube rejected the scheduled time. Choose a current or future start time.',
-  invalidTitle: 'YouTube rejected the title. Use 1–100 characters without angle brackets.'
+  invalidTitle: 'YouTube rejected the title. Use 1–100 characters without angle brackets.',
+  accessNotConfigured: 'Enable YouTube Data API v3 in the Google Cloud project that owns this OAuth client, then reconnect YouTube.',
+  youtubeSignupRequired: 'Create a YouTube channel for this Google account first, then connect that channel.',
+  authError: 'Google authorization expired or was revoked. Stop the upload and reconnect YouTube.',
+  forbidden: 'YouTube denied this operation. Check channel permissions, live eligibility and the Google project’s API access.'
 };
 export function youtubeConfig(env = {}) {
-  const clientId = env.GOOGLE_CLIENT_ID?.trim(), clientSecret = env.GOOGLE_CLIENT_SECRET?.trim(), redirect = env.YOUTUBE_REDIRECT_URI?.trim();
-  if (!clientId && !clientSecret && !redirect) return { configured: false, error: 'One-time setup: add Google OAuth credentials and YOUTUBE_REDIRECT_URI to the laptop relay. See docs/YOUTUBE.md.' };
+  const clientId = typeof env.GOOGLE_CLIENT_ID === 'string' ? env.GOOGLE_CLIENT_ID.trim() : '',
+    clientSecret = typeof env.GOOGLE_CLIENT_SECRET === 'string' ? env.GOOGLE_CLIENT_SECRET.trim() : '';
   try {
+    const publicOrigin = cloudConfig(env).publicOrigin;
+    const redirect = (typeof env.YOUTUBE_REDIRECT_URI === 'string' ? env.YOUTUBE_REDIRECT_URI.trim() : '') ||
+      (publicOrigin ? publicOrigin + '/youtube-callback.html' : '');
+    if (!redirect) return { configured: false, error: 'Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and the exact YOUTUBE_REDIRECT_URI to your cloud service. See docs/YOUTUBE.md.' };
     const u = new URL(redirect);
-    if (!/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId || '') || !clientSecret || clientSecret.length > 512 ||
-      u.username || u.password || u.search || u.hash || !u.pathname.endsWith('/youtube-callback.html') ||
+    if (u.username || u.password || u.search || u.hash || !u.pathname.endsWith('/youtube-callback.html') ||
       !(u.protocol === 'https:' || u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname))) throw new Error();
-    return { configured: true, clientId, clientSecret, redirectUri: u.href, origin: u.origin };
+    const callbackMode = u.pathname === '/youtube-callback.html' &&
+      (u.origin === publicOrigin || u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname)) ? 'server' : 'browser';
+    const callback = { redirectUri: u.href, origin: u.origin, callbackMode };
+    if (!/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId) || !clientSecret || clientSecret.length > 512 || /[\x00-\x1f\x7f]/.test(clientSecret)) {
+      return { ...callback, configured: false, error: 'Add a valid Google Web application client ID and client secret to your cloud service, enable YouTube Data API v3, and register the callback shown below in Google Cloud.' };
+    }
+    return { ...callback, configured: true, clientId, clientSecret };
   } catch { return { configured: false, error: 'Google OAuth configuration is incomplete or invalid. Use a Web application client and the exact HTTPS website /youtube-callback.html URI. See docs/YOUTUBE.md.' }; }
 }
 export function broadcastDetails(value, now = Date.now()) {
@@ -48,35 +62,44 @@ export function broadcastDetails(value, now = Date.now()) {
 export class YouTubeService {
   constructor({ env = {}, fetchFn = fetch, now = Date.now, validSession = () => true } = {}) {
     this.config = youtubeConfig(env); this.fetch = fetchFn; this.now = now; this.validSession = validSession;
-    this.flows = new Map(); this.connections = new Map(); this.completing = new Map();
+    this.flows = new Map(); this.connections = new Map(); this.completing = new Map(); this.authorizations = new Map();
   }
   prune() {
     for (const [key, flow] of this.flows) if (flow.expires <= this.now() || !this.validSession(flow.owner, flow.origin)) this.flows.delete(key);
     for (const [owner, c] of this.connections) if (!this.validSession(owner, c.origin)) this.forget(owner);
+    for (const [owner, result] of this.authorizations) if (result.expires <= this.now() || !this.validSession(owner, result.origin)) this.authorizations.delete(owner);
   }
   authorizing(owner) { return this.completing.has(owner) || [...this.flows.values()].some(f => f.owner === owner); }
   cancelAuth(owner) {
     if (this.completing.has(owner)) this.completing.get(owner).cancelled = true;
     this.completing.delete(owner);
     for (const [key, flow] of this.flows) if (flow.owner === owner) this.flows.delete(key);
+    this.authorizations.delete(owner);
     return this.status(owner);
   }
   start(owner, origin) {
     this.prune();
     if (this.connections.get(owner)?.busy) throw error('Wait for the current YouTube operation to finish.', 409);
     if (!this.config.configured) throw error(this.config.error, 409);
-    if (origin !== this.config.origin) throw error('Open the website whose origin matches YOUTUBE_REDIRECT_URI. Its callback must be on the same origin as this studio.', 409);
+    if (origin !== this.config.origin) throw error('The YouTube callback origin does not match this studio. In Render set YOUTUBE_REDIRECT_URI to this studio’s exact /youtube-callback.html URL and register the same URL in Google Cloud.', 409);
     if (!this.validSession(owner, origin)) throw error('Reconnect the relay before signing in.', 401);
     for (const [key, f] of this.flows) if (f.owner === owner) this.flows.delete(key);
     if (this.completing.has(owner)) this.completing.get(owner).cancelled = true;
     if (this.flows.size >= 24) throw error('Too many pending Google sign-ins. Try again later.', 429);
     const state = randomBytes(32).toString('base64url'), verifier = randomBytes(48).toString('base64url');
     this.flows.set(state, { owner, origin, verifier, expires: this.now() + 5 * 60000 });
+    this.authorizations.set(owner, { state, origin, status: 'pending', expires: this.now() + 5 * 60000 });
     const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     u.search = new URLSearchParams({ client_id: this.config.clientId, redirect_uri: this.config.redirectUri, response_type: 'code',
       scope: YOUTUBE_SCOPE, access_type: 'offline', prompt: 'consent select_account', state,
       code_challenge: hash(verifier), code_challenge_method: 'S256' }).toString();
-    return { authorizationUrl: u.href, state, expiresIn: 300 };
+    return { authorizationUrl: u.href, state, expiresIn: 300, callbackMode: this.config.callbackMode };
+  }
+  async callback(value) {
+    this.prune();
+    const flow = this.flows.get(value?.state);
+    if (this.config.callbackMode !== 'server' || !flow) throw error('Google sign-in state expired. Return to MK97 and connect again.', 401);
+    return this.complete(flow.owner, flow.origin, value);
   }
   async bounded(url, options, mutation = false) {
     let r;
@@ -94,7 +117,9 @@ export class YouTubeService {
     const { response, data } = await this.bounded('https://oauth2.googleapis.com/token', { method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: this.config.clientId,
         client_secret: this.config.clientSecret, ...fields }).toString() });
-    if (!response.ok || typeof data.access_token !== 'string' || data.access_token.length > 8192) throw error('Google authorization expired or was rejected. Check the OAuth client configuration and connect YouTube again.', 401);
+    if (!response.ok || typeof data.access_token !== 'string' || !data.access_token || data.access_token.length > 8192) throw error(data.error === 'invalid_client' ?
+      'Google rejected the OAuth client ID or secret. Check both values in Render’s private Environment settings and redeploy.' :
+      'Google authorization expired or was rejected. Check the OAuth client configuration and connect YouTube again.', 401);
     return data;
   }
   async complete(owner, origin, value) {
@@ -102,6 +127,8 @@ export class YouTubeService {
     if (!flow || flow.owner !== owner || flow.origin !== origin || flow.expires <= this.now() || !this.validSession(owner, origin)) throw error('Google sign-in state expired or does not belong to this session. Start sign-in again.', 401);
     this.flows.delete(value.state); // one use, including rejected/failed exchanges
     this.completing.set(owner, flow);
+    const authorization = this.authorizations.get(owner);
+    if (authorization?.state === value.state) authorization.status = 'exchanging';
     try {
     if (value.error) throw error('Google sign-in was cancelled or the requested YouTube permission was not granted.');
     if (typeof value.code !== 'string' || !value.code || value.code.length > 4096) throw error('Google did not return a valid authorization code.');
@@ -116,7 +143,12 @@ export class YouTubeService {
     if (!this.validSession(owner, origin)) throw error('Relay session ended during Google sign-in. Reconnect.', 401);
     // A newer authorization request or disconnect invalidates this in-flight callback.
     if (flow.cancelled) throw error('Google sign-in was cancelled.', 401);
-    this.connections.set(owner, c); if (this.completing.get(owner) === flow) this.completing.delete(owner); return this.status(owner);
+    this.connections.set(owner, c);
+    if (this.authorizations.get(owner) === authorization) { authorization.status = 'connected'; authorization.error = null; }
+    if (this.completing.get(owner) === flow) this.completing.delete(owner); return this.status(owner);
+    } catch (e) {
+      if (this.authorizations.get(owner) === authorization && !flow.cancelled && this.validSession(owner, origin)) { authorization.status = 'failed'; authorization.error = e.message; }
+      throw e;
     } finally { if (this.completing.get(owner) === flow) this.completing.delete(owner); }
   }
   async access(c) {
@@ -141,10 +173,12 @@ export class YouTubeService {
   connection(owner) { if (this.authorizing(owner)) throw error('Finish or cancel Google sign-in before changing the YouTube event.', 409); const c = this.connections.get(owner); if (!c) throw error('Connect your YouTube account first.', 409); return c; }
   checkCurrent(owner, c) { if (this.connections.get(owner) !== c || !this.validSession(owner, c.origin)) throw error('YouTube connection changed or the session ended.', 401); }
   status(owner) {
-    const c = this.connections.get(owner), op = c?.operation, b = c?.broadcast;
+    const c = this.connections.get(owner), op = c?.operation, b = c?.broadcast, authorization = this.authorizations.get(owner);
     return { configured: this.config.configured, configurationError: this.config.error || null, connected: Boolean(c), channel: c?.channel || null,
-      busy: Boolean(c?.busy), authorizing: this.authorizing(owner), error: c?.error || null,
-      setup: op ? { requestId: op.requestId, stage: op.stage, uncertain: Boolean(op.uncertain) } : null,
+      redirectUri: this.config.redirectUri || null, callbackMode: this.config.callbackMode || null,
+      authorization: authorization ? { state: authorization.state, status: authorization.status, error: authorization.error || null } : null,
+      busy: Boolean(c?.busy), authorizing: this.authorizing(owner), error: authorization?.error || c?.error || null,
+      setup: op ? { requestId: op.requestId, stage: op.stage, uncertain: Boolean(op.uncertain), details: op.details } : null,
       broadcast: b ? { id: b.id, title: b.title, privacy: b.privacy, scheduledStartTime: b.scheduledStartTime, state: b.state,
         streamStatus: b.streamStatus || 'ready', health: b.health || 'noData', issues: b.issues || [], keyReady: Boolean(c.ready && !c.authError && !['complete', 'revoked'].includes(b.state)),
         watchUrl: `https://www.youtube.com/watch?v=${b.id}`, studioUrl: `https://studio.youtube.com/video/${b.id}/livestreaming` } : null };
@@ -157,23 +191,32 @@ export class YouTubeService {
   async prepare(owner, value) {
     const c = this.connection(owner); if (c.busy) throw error('A YouTube operation is already running.', 409);
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(value.requestId || '')) throw error('A setup request ID is required.');
-    const details = broadcastDetails(value, this.now()), fingerprint = hash(JSON.stringify(details));
+    const details = broadcastDetails(value, c.operation?.createdAt ?? this.now()), fingerprint = hash(JSON.stringify(details));
     if (c.operation && (c.operation.requestId !== value.requestId || c.operation.fingerprint !== fingerprint)) throw error('A setup already exists. Use New setup before changing these details.', 409);
     if (c.operation?.uncertain) throw error('A previous Google write could not be confirmed. Review YouTube Studio before choosing New setup.', 409);
     if (c.ready) return this.status(owner);
-    const op = c.operation ||= { requestId: value.requestId, fingerprint, details, stage: 'stream' }; c.busy = true; c.error = null;
+    const op = c.operation ||= { requestId: value.requestId, fingerprint, details, createdAt: this.now(), stage: 'stream' }; c.busy = true; c.error = null;
     try {
       if (!op.stream) {
         op.stage = 'stream'; const stream = await this.request(c, 'liveStreams', { part: 'id,snippet,cdn,contentDetails,status' }, 'POST', {
           snippet: { title: details.title }, cdn: { ingestionType: 'rtmp', resolution: 'variable', frameRate: 'variable' }, contentDetails: { isReusable: false } });
         this.checkCurrent(owner, c); if (!id(stream.id)) throw error('YouTube returned an invalid stream ID.', 502, true);
         op.stream = stream;
-        const ingestion = stream.cdn?.ingestionInfo;
-        const d = destinationConfig({ YOUTUBE_SERVER: ingestion?.rtmpsIngestionAddress, YOUTUBE_KEY: ingestion?.streamName }).youtube;
-        if (!d.configured) throw error('YouTube did not provide a valid encrypted ingestion endpoint. The relay will not use unencrypted RTMP.', 502);
+      }
+      if (!op.destination) {
+        op.stage = 'endpoint';
+        const destination = stream => destinationConfig({ YOUTUBE_SERVER: stream.cdn?.ingestionInfo?.rtmpsIngestionAddress,
+          YOUTUBE_KEY: stream.cdn?.ingestionInfo?.streamName }).youtube;
+        let d = destination(op.stream);
+        if (!d.configured) {
+          const streams = await this.request(c, 'liveStreams', { part: 'id,cdn,status', id: op.stream.id });
+          this.checkCurrent(owner, c);
+          const stream = streams.items?.find(s => s.id === op.stream.id);
+          if (stream) { op.stream = stream; d = destination(stream); }
+        }
+        if (!d.configured) throw error('YouTube has not supplied a valid RTMPS endpoint. Retry setup to read this stream again, or inspect it in YouTube Studio. No unencrypted connection will be used.', 409);
         op.destination = d;
       }
-      if (!op.destination) throw error('The saved stream has no valid RTMPS endpoint. Review Studio and choose New setup.', 409);
       if (!op.broadcast) {
         op.stage = 'broadcast'; const b = await this.request(c, 'liveBroadcasts', { part: 'id,snippet,status,contentDetails' }, 'POST', {
           snippet: { title: details.title, description: details.description, scheduledStartTime: details.scheduledStartTime },
@@ -185,7 +228,7 @@ export class YouTubeService {
       op.stage = 'binding'; const b = await this.request(c, 'liveBroadcasts/bind', { part: 'id,snippet,status,contentDetails', id: op.broadcast.id, streamId: op.stream.id }, 'POST');
       this.checkCurrent(owner, c);
       if (b.id !== op.broadcast.id || b.contentDetails?.boundStreamId !== op.stream.id) throw error('YouTube did not confirm the event-to-stream binding. Review Studio before retrying.', 502, true);
-      c.destination = op.destination; c.ready = true; c.broadcast = this.publicBroadcast(b, op.stream, details); op.stage = 'ready'; c.lastRefresh = this.now();
+      c.destination = op.destination; c.ready = true; c.authError = false; c.broadcast = this.publicBroadcast(b, op.stream, details); op.stage = 'ready'; c.lastRefresh = this.now();
       c.busy = false;
       return this.status(owner);
     } catch (e) { op.uncertain = Boolean(e.uncertain); c.error = e.message; throw e; }
@@ -197,16 +240,18 @@ export class YouTubeService {
       streamStatus: text(stream.status?.streamStatus || 'ready', 32), health: text(stream.status?.healthStatus?.status || 'noData', 32),
       issues: (stream.status?.healthStatus?.configurationIssues || []).slice(0, 10).map(i => text(i.type, 80)).filter(v => /^[A-Za-z0-9]+$/.test(v)) };
   }
-  async refresh(owner, force = false) {
-    const c = this.connections.get(owner); if (!c?.ready || c.busy || !force && this.now() - c.lastRefresh < 15000) return this.status(owner);
+  async refresh(owner, force = false, ownsOperation = false) {
+    const c = this.connections.get(owner); if (!c?.ready || c.busy && !ownsOperation || !force && this.now() - c.lastRefresh < 15000) return this.status(owner);
+    const op = c.operation;
     if (!c.refreshing) c.refreshing = (async () => {
       try {
         const [broadcasts, streams] = await Promise.all([
-          this.request(c, 'liveBroadcasts', { part: 'id,snippet,status,contentDetails', id: c.operation.broadcast.id }),
-          this.request(c, 'liveStreams', { part: 'id,status', id: c.operation.stream.id })]);
+          this.request(c, 'liveBroadcasts', { part: 'id,snippet,status,contentDetails', id: op.broadcast.id }),
+          this.request(c, 'liveStreams', { part: 'id,status', id: op.stream.id })]);
         this.checkCurrent(owner, c); const b = broadcasts.items?.[0], s = streams.items?.[0];
-        if (b?.id !== c.operation.broadcast.id || s?.id !== c.operation.stream.id || b.contentDetails?.boundStreamId !== s.id) { c.ready = false; throw error('The YouTube event or its binding changed. Review Studio and create a new setup.', 409); }
-        c.broadcast = this.publicBroadcast(b, s, c.operation.details); c.error = null; c.authError = false;
+        if (c.operation !== op) return this.status(owner);
+        if (b?.id !== op.broadcast.id || s?.id !== op.stream.id || b.contentDetails?.boundStreamId !== s.id) { c.ready = false; throw error('The YouTube event or its binding changed. Review Studio and create a new setup.', 409); }
+        c.broadcast = this.publicBroadcast(b, s, op.details); c.error = null; c.authError = false;
       } catch (e) { c.error = e.message; if (e.status === 401) c.authError = true; throw e; }
       finally { c.lastRefresh = this.now(); c.refreshing = null; }
       return this.status(owner);
@@ -216,19 +261,22 @@ export class YouTubeService {
   async transition(owner, target) {
     if (!['testing', 'live', 'complete'].includes(target)) throw error('Unsupported YouTube broadcast state.');
     const c = this.connection(owner); if (!c.ready || c.busy) throw error('Finish creating the YouTube setup first.', 409);
-    await this.refresh(owner, true); this.checkCurrent(owner, c);
-    if (c.broadcast.state === target || c.broadcast.state === 'complete' && target === 'complete') return this.status(owner);
-    if (target !== 'complete' && c.broadcast.streamStatus !== 'active') throw error(reasons.errorStreamInactive, 409);
-    if (target === 'complete' && !['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast.state)) throw error('This YouTube event is not testing or live. Review it in Studio.', 409);
     c.busy = true;
     try {
+      await this.refresh(owner, true, true); this.checkCurrent(owner, c);
+      if (!c.ready) throw error('The YouTube event is no longer ready. Review it in Studio.', 409);
+      if (c.broadcast.state === target || target === 'testing' && c.broadcast.state === 'testStarting' || target === 'live' && c.broadcast.state === 'liveStarting') { c.busy = false; return this.status(owner); }
+      if (target !== 'complete' && c.broadcast.streamStatus !== 'active') throw error(reasons.errorStreamInactive, 409);
+      if (target === 'testing' && !['created', 'ready'].includes(c.broadcast.state) || target === 'live' && !['ready', 'testing'].includes(c.broadcast.state)) throw error('Wait for the current YouTube state change to finish, then refresh the event.', 409);
+      if (target === 'complete' && !['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast.state)) throw error('This YouTube event is not testing or live. Review it in Studio.', 409);
       const b = await this.request(c, 'liveBroadcasts/transition', { part: 'id,snippet,status,contentDetails', id: c.broadcast.id, broadcastStatus: target }, 'POST');
       this.checkCurrent(owner, c); if (b.id !== c.broadcast.id) throw error('YouTube did not confirm the status change. Refresh the event.', 502);
       c.broadcast.state = text(b.status?.lifeCycleStatus || target, 32); c.lastRefresh = 0; c.error = null; c.busy = false; return this.status(owner);
     } catch (e) { c.error = e.message; throw e; } finally { c.busy = false; }
   }
   resetSetup(owner) {
-    const c = this.connection(owner); if (c.busy || ['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast?.state)) throw error('End the current YouTube broadcast before starting another setup.', 409);
+    const c = this.connection(owner); if (c.busy || c.refreshing) throw error('Wait for the current YouTube operation to finish.', 409);
+    if (['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast?.state)) throw error('End the current YouTube broadcast before starting another setup.', 409);
     c.operation = null; c.broadcast = null; c.destination = null; c.ready = false; c.error = null; return this.status(owner);
   }
   forget(owner) {

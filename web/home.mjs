@@ -5,7 +5,7 @@ export function installHome({ state, ui, loadMatch, notice }) {
     $('openCamera').focus(); if (panel) ui.panel(panel);
   }
   function home() {
-    if (state.live || state.starting || state.stopping) { notice('Keep the camera studio open during upload. Use the side tools for score, stats and replay.'); return; }
+    if (state.live || state.starting || state.stopping) { notice('Keep the camera studio open during upload. Use the side tools for score, stats and stream controls.'); return; }
     ui.closeDrawer(); $('home').hidden = false; $('studio').hidden = true; document.body.classList.add('at-home'); $('homeMatchInput').focus();
   }
   $('enterStudio').addEventListener('click', () => openStudio());
@@ -23,12 +23,12 @@ export function installHome({ state, ui, loadMatch, notice }) {
   $('homeMatchInput').value = $('matchInput').value; $('homeClubInput').value = $('clubInput').value || '300';
   function update() {
     const s = state.score, busy = state.scoreLoading || state.live || state.starting || state.stopping;
-    for (const id of ['homeMatchInput', 'homeClubInput', 'homeLoad', 'homeExample']) $(id).disabled = Boolean(busy);
+    for (const id of ['homeMatchInput', 'homeClubInput', 'homeLeaguePreset', 'homeLoad', 'homeExample']) $(id).disabled = Boolean(busy);
     $('homeLoad').textContent = state.scoreLoading ? 'Fetching source…' : 'Fetch match';
-    $('homeMatchState').textContent = state.scoreLoading ? 'Fetching CricClubs' : s ? s.stale ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Source connected' : 'No match loaded';
+    $('homeMatchState').textContent = state.scoreLoading ? 'Fetching CricClubs' : s ? s.stale ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Source connected' : state.scoreError ? 'Fetch failed' : 'No match loaded';
     $('homeMatchState').className = 'home-status' + (s && !s.stale ? ' ready' : '');
     $('homeMatchTitle').textContent = s ? `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} overs` : 'Bring your match into the picture.';
-    $('homeMatchDetail').textContent = s ? s.teams?.map(t => `${t.name} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ') || `v ${s.bowling}` : 'Enter a CricClubs Match ID and Club ID, or paste the full scorecard URL.';
+    $('homeMatchDetail').textContent = s ? s.teams?.map(t => `${t.name} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ') || `v ${s.bowling}` : state.scoreError || 'Choose your league and enter its Match ID, or paste the full scorecard URL.';
     $('homeMatchResult').textContent = s ? s.result || s.series || '' : '';
     $('homeSource').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${state.scoreTransport === 'relay' ? 'relay feed' : 'direct feed'} · ${s.stale ? 'last verified' : 'fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()}` : 'Scorecard, commentary and stats from your selected match appear here.';
     $('homeRelayState').textContent = state.session ? state.info?.encoder.ready ? 'Relay connected' : 'Encoder needs attention' : 'Connect your cloud studio';

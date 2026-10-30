@@ -92,9 +92,26 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch { return json(res, 400, { error: 'Invalid URL.' }); }
+  // Google redirects here without a relay bearer token. The one-use state, PKCE
+  // verifier and live owner session are checked by YouTubeService. The popup
+  // receives only a fixed result; the original tab reads its private status.
+  if (req.method === 'GET' && url.pathname === '/youtube-callback.html' && youtube.config.callbackMode === 'server' &&
+    (url.searchParams.has('state') || url.searchParams.has('code') || url.searchParams.has('error'))) {
+    let result = 'failed';
+    try {
+      if (rateLimited(req)) throw new Error('Callback rate limited.');
+      const state = url.searchParams.get('state'), code = url.searchParams.get('code'), denied = url.searchParams.get('error');
+      if (url.searchParams.getAll('state').length !== 1 || !/^[A-Za-z0-9_-]{43}$/.test(state || '') ||
+        url.searchParams.getAll('code').length > 1 || url.searchParams.getAll('error').length > 1 ||
+        Boolean(code) === Boolean(denied) || code && code.length > 4096) throw new Error('Invalid callback.');
+      await youtube.callback({ state, ...(denied ? { error: 'denied' } : { code }) }); result = 'connected';
+    } catch { /* No provider errors, credentials or codes are rendered or redirected. */ }
+    res.writeHead(303, { Location: '/youtube-callback.html?result=' + result, 'Cache-Control': 'no-store' });
+    return res.end();
+  }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
-    product: 'mk97', version: '1.6.1', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
+    product: 'mk97', version: '1.6.2', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
   });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
@@ -112,11 +129,11 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.6.1', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
+        name: 'MK97 relay', version: '1.6.2', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
           mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : manualDestinations.get(authenticated.id)[id] ? 'session' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
-        pollSeconds: scores.pollMs / 1000
+        pollSeconds: scores.pollMs / 1000, scoreSource: process.env.SCORE_URL_TEMPLATE ? 'configured-feed' : 'cricclubs'
       });
       if (req.method === 'POST' && ['/api/destination', '/api/destination/clear'].includes(url.pathname)) {
         if (active?.sessionId === authenticated.id) return json(res, 409, { error: 'Stop this camera upload before changing destinations.' });
@@ -129,7 +146,7 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname.startsWith('/api/youtube/')) {
         const owner = authenticated.id;
         const stopEditing = () => { if (active?.sessionId === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
-        if (req.method === 'GET' && url.pathname === '/api/youtube/status') return json(res, 200, await youtube.refresh(owner));
+        if (req.method === 'GET' && url.pathname === '/api/youtube/status') return json(res, 200, await youtube.refresh(owner, url.searchParams.get('refresh') === '1'));
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/start') { stopEditing(); return json(res, 201, youtube.start(owner, originOf(req))); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/cancel') { stopEditing(); return json(res, 200, youtube.cancelAuth(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/complete') { stopEditing(); return json(res, 200, await youtube.complete(owner, originOf(req), await body(req, 8192))); }
@@ -180,7 +197,7 @@ const server = http.createServer(async (req, res) => {
     const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(root + path.sep) || !fs.statSync(file).isFile()) return json(res, 404, { error: 'Not found.' });
     res.writeHead(200, { 'Content-Type': `${contentTypes[path.extname(file)] || 'application/octet-stream'}; charset=utf-8`,
-      'Cache-Control': 'no-cache' });
+      'Cache-Control': url.pathname === '/youtube-callback.html' ? 'no-store' : 'no-cache' });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
   } catch { json(res, 404, { error: 'Not found.' }); }
