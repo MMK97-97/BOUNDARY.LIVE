@@ -2,17 +2,20 @@ import { PROFILES, SIZES, captureReady, parseMatch, relayOrigin, chooseMime, cla
 import { installStudio } from './studio.mjs';
 import { installYouTube } from './youtube.mjs';
 import { createFeed } from './feed.mjs';
+import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
+import { installStreamSetup } from './stream-setup.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
+let setupUI = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
   relay: '', info: null, score: null, pollTimer: null, polling: false, live: false, starting: false, stopping: false,
   cameraBusy: false, connecting: false, micMuted: false, previewOff: false, startedAt: 0, uploaded: 0, lastBytes: 0,
   lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false,
-  captureResolution: '1080', automation: { bufferSeconds: 0, clips: [], cards: null }, monitorClip: false };
+  captureResolution: '1080', graphics: { cards: null, current: null } };
 // Remove the obsolete build's browser-stored platform key; new credentials stay in relay memory.
 try { localStorage.removeItem('boundary.ytKey'); } catch {}
 const saved = key => { try { return localStorage.getItem(`mk97.${key}`) || ''; } catch { return ''; } };
@@ -29,15 +32,16 @@ function issue() {
 }
 function updateControls() {
   const locked = state.live || state.starting || state.stopping;
-  $('goLive').disabled = Boolean(issue()) || locked || state.cameraBusy || state.scoreLoading || state.connecting;
+  $('goLive').disabled = locked || state.cameraBusy || state.scoreLoading || state.connecting || Boolean(state.destinationBusy);
+  $('goLive').setAttribute('aria-label', issue() ? 'Set up stream before starting' : 'Start camera upload');
   $('goLive').hidden = state.live || state.stopping;
   $('stopLive').hidden = !(state.live || state.stopping);
   $('stopLive').disabled = state.stopping;
   $('stopLive').textContent = state.stopping ? 'Stopping…' : '■ Stop stream';
-  for (const id of ['qualitySelect', 'overlayToggle', 'relayUrl', 'relayToken', 'connectRelay', 'disconnectRelay', 'matchInput', 'clubInput', 'loadMatch']) $(id).disabled = locked;
-  $('connectRelay').disabled = locked || state.connecting;
+  for (const id of ['qualitySelect', 'overlayToggle', 'relayUrl', 'relayToken', 'connectRelay', 'disconnectRelay', 'matchInput', 'clubInput', 'loadMatch']) $(id).disabled = locked || Boolean(state.destinationBusy);
+  $('connectRelay').disabled = locked || state.connecting || Boolean(state.destinationBusy);
   $('overlayToggle').disabled = locked && (!state.live || !state.programEnabled);
-  for (const id of ['autoReplay', 'autoMilestones', 'autoCards', 'scorerDelay']) $(id).disabled = locked;
+  for (const id of ['autoMilestones', 'autoCards']) $(id).disabled = locked;
   $('loadMatch').disabled = locked || Boolean(state.scoreLoading);
   $('cameraSelect').disabled = locked || !state.stream || state.cameraBusy;
   $('openCamera').disabled = state.cameraBusy || locked;
@@ -55,6 +59,7 @@ function updateControls() {
   ui?.update();
   youtubeUI?.update();
   homeUI?.update();
+  setupUI?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
   if (!state.relay || !authToken) throw new Error('Connect the relay first.');
@@ -81,7 +86,7 @@ function renderRelay() {
   $('relayState').textContent = connected ? 'Connected' : 'Offline'; $('relayState').classList.toggle('good', connected);
   for (const id of DESTS) {
     const d = state.info?.destinations.find(x => x.id === id);
-    if (!state.live) $(id + 'Status').textContent = d?.configured ? d.mode === 'account' ? 'YouTube account setup ready' : 'Key configured · ready to connect' : d?.error || 'Configure a stream key on the relay';
+    if (!state.live) $(id + 'Status').textContent = d?.configured ? d.mode === 'account' ? 'YouTube account setup ready' : d.mode === 'session' ? 'Session key saved · ready' : 'Server key configured · ready' : d?.error || 'Add a stream key or connect an account';
     $(id + 'Status').className = 'destination-status' + (d?.configured ? ' good' : '');
     $(id + 'Resolution').textContent = id === 'instagram' ? (d?.resolution?.startsWith('1080') ? '1080p · portrait (check acceptance)' : '720p · portrait compatibility') : '1080p · landscape';
     if (!d?.configured) $('dest-' + id).checked = false;
@@ -136,7 +141,7 @@ function renderScore(result) {
   $('matchTitle').textContent = `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} ov`;
   const teams = s.teams?.map(t => `${t.code} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ');
   $('matchStatus').textContent = result?.error || teams || `${s.source} · Match ${s.matchId} · ${s.status === 'complete' ? 'Completed' : 'Feed connected'}`;
-  $('scoreFreshness').textContent = `${delayed ? 'Last successful fetch' : 'Fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()} · refresh every ${result.pollSeconds || 10}s${s.partialView ? ' · limited CricClubs view' : ''}`;
+  $('scoreFreshness').textContent = `${delayed ? 'Last successful fetch' : 'Fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()} · ${result.delivery === 'push' ? 'live relay link · source checks' : 'refresh'} every ${result.pollSeconds || 5}s${s.partialView ? ' · limited CricClubs view' : ''}`;
   $('dimScore').textContent = `${s.batting} ${s.runs}/${s.wickets} (${s.overs})${delayed ? ' · delayed' : ''}`;
   ui?.score(s);
   health('score', delayed ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Score connected', delayed ? 'warning' : 'good');
@@ -144,14 +149,15 @@ function renderScore(result) {
 }
 const feed = createFeed({
   onUpdate: result => { renderScore(result); if (result?.status === 401) notice('Relay session expired. Disconnect and reconnect in Settings.', 'error'); },
-  getRelay: () => state.session ? { session: state.session, request: api } : null,
+  getRelay: () => state.session ? { session: state.session, request: api,
+    subscribe: (ids, callbacks) => subscribeRelayScores({ relay: state.relay, session: state.session, origin: location.origin, ids, ...callbacks }) } : null,
   visible: () => document.visibilityState === 'visible' || state.live
 });
 async function pollScore() { return feed.refresh(); }
 async function loadSelectedMatch(input, club) {
   if (state.live || state.starting || state.stopping || state.scoreLoading) throw new Error('Stop the current upload before changing matches.');
   const ids = parseMatch(input, club);
-  state.scoreLoading = true; state.automation.cards = null;
+  state.scoreLoading = true; state.graphics.cards = null;
   $('matchInput').value = ids.matchId; $('clubInput').value = ids.clubId;
   $('leagueDetails').querySelector('summary').textContent = ids.clubId === '300' ? 'FWCWL · Club 300' : `CricClubs · Club ${ids.clubId}`;
   $('clubHelp').textContent = 'Match IDs belong to a club. Change the Club ID for another league, or paste its full scorecard URL.';
@@ -174,7 +180,7 @@ async function openCamera(deviceId = '') {
   if (state.cameraBusy || state.live || state.starting) return;
   state.cameraBusy = true; updateControls(); closeCamera(false);
   try {
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs HTTPS. Open your GitHub Pages website in a current browser.');
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs HTTPS. Open your hosted MK97 app in a current browser.');
     chooseMime(window.MediaRecorder);
     const candidates = state.captureResolution === 'auto' ? ['1080', '720', '480'] : [state.captureResolution];
     let lastError;
@@ -291,7 +297,7 @@ async function wakeLock() {
   catch { notice('Screen wake lock is unavailable. Keep the phone unlocked and this page visible.'); }
 }
 function cleanupStream() {
-  ui?.graphic(null); state.automation = { bufferSeconds: 0, clips: [], cards: null }; ui?.automation(state.automation);
+  ui?.graphic(null); state.graphics = { cards: null, current: null }; ui?.graphics(state.graphics);
   clearInterval(state.heartbeat); state.heartbeat = null;
   if (state.recorder && state.recorder.state !== 'inactive') { state.recorder.ondataavailable = null; try { state.recorder.stop(); } catch {} }
   state.recorder = null; state.live = false; state.starting = false; state.stopping = false;
@@ -302,8 +308,8 @@ function cleanupStream() {
 function abortStream(message) { cleanupStream(); notice(message, 'error'); }
 async function startStream() {
   if (state.stream) state.camera = state.stream.getVideoTracks()[0]?.getSettings();
-  const problem = issue(); if (problem) return notice(problem, 'error');
-  if (state.starting || state.live || state.stopping) return;
+  const problem = issue(); if (problem) { ui?.panel('settings'); $('startHint').textContent = problem; return; }
+  if (state.starting || state.live || state.stopping || state.destinationBusy) return;
   state.starting = true; state.closedByUser = false; updateControls();
   let ws;
   try {
@@ -324,7 +330,7 @@ async function startStream() {
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
         width: state.camera.width, height: state.camera.height, resolution: state.captureResolution, overlay: $('overlayToggle').checked,
         match: state.score ? { clubId: state.score.clubId, matchId: state.score.matchId } : null,
-        automation: { replay: $('autoReplay').checked, milestones: $('autoMilestones').checked, cards: $('autoCards').checked, scorerDelay: Number($('scorerDelay').value) } }));
+        automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked } }));
     };
     recorder.ondataavailable = event => {
       if (!event.data.size || state.socket !== ws) return;
@@ -356,14 +362,13 @@ async function startStream() {
       } else if (message.type === 'error') abortStream(message.message);
       else if (message.type === 'warning') notice(message.message);
       else if (message.type === 'graphic') ui?.graphic(message.graphic);
-      else if (message.type === 'automation') { state.automation = message.automation; ui?.automation(state.automation); }
       else if (message.type === 'stopped') { cleanupStream(); notice('Stream ended. Check that the broadcast has ended on each platform.'); }
       else if (message.type === 'destination' && DESTS.includes(message.id)) {
         $(message.id + 'Status').textContent = message.message;
         $(message.id + 'Status').className = `destination-status ${message.state === 'failed' ? 'bad' : message.state === 'sending' ? 'good' : ''}`;
         if (message.state === 'failed') notice(`${message.id}: ${message.message}`, 'error');
       } else if (message.type === 'stats') {
-        if (message.automation) { state.automation = message.automation; ui?.automation(state.automation); }
+        if (message.graphics) { state.graphics = message.graphics; ui?.graphics(state.graphics); }
         const now = Date.now(), elapsed = (now - state.lastStat) / 1000;
         const mbps = elapsed > 0 ? Math.max(0, (message.bytes - state.lastBytes) * 8 / elapsed / 1e6) : 0;
         state.lastBytes = message.bytes; state.lastStat = now;
@@ -411,16 +416,19 @@ setInterval(() => {
   if (state.score && !state.score.stale && Date.now() - state.score.fetchedAt > 30000) renderScore({ score: { ...state.score, stale: true }, error: 'Score feed delayed.' });
 }, 1000);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { if (state.live) wakeLock(); if (feed.ids) pollScore(); }
+  feed.visibilityChanged();
+  if (document.visibilityState === 'visible') { if (state.live) wakeLock(); }
   else if (state.live) notice('Keep this page visible. Mobile browsers can pause the camera when you switch apps or lock the phone.');
 });
 window.addEventListener('offline', () => { if (state.live || state.starting) abortStream('Internet connection lost. Reconnect and start a new stream.'); });
 window.addEventListener('beforeunload', event => { if (state.live || state.starting || state.stopping) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('pagehide', () => { feed.stop(); if (state.live || state.starting) cleanupStream(); if (!state.live && !state.starting) closeCamera(); });
+window.addEventListener('pagehide', event => { if (event.persisted) feed.pause(); else feed.stop(); if (state.live || state.starting) cleanupStream(); if (!state.live && !state.starting) closeCamera(); });
+window.addEventListener('pageshow', event => { if (event.persisted && feed.ids) feed.visibilityChanged(); });
 function toggleGuide(show) { $('guide').hidden = !show; $('guideToggle').setAttribute('aria-expanded', String(show)); if (show) $('guide').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 $('guideToggle').addEventListener('click', () => toggleGuide($('guide').hidden)); $('closeGuide').addEventListener('click', () => toggleGuide(false));
 ui = installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview });
 youtubeUI = installYouTube({ state, api, notice, refreshInfo: async () => { state.info = await api('/api/info'); renderRelay(); } });
 homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera });
+setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo: async () => { state.info = await api('/api/info'); renderRelay(); } });
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';

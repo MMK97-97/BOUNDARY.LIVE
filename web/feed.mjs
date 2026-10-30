@@ -28,11 +28,48 @@ export async function fetchPublicScore(ids, { fetchFn = fetch, signal } = {}) {
 // normalized snapshot used by the encoder; it stops polling CricClubs directly.
 export function createFeed({ onUpdate, getRelay = () => null, visible = () => true, fetchFn = fetch, auto = true }) {
   let ids = null, generation = 0, pending = null, timer = null, binding = '', last = null;
+  let stream = null, streamReady = false, streamRetryAt = 0;
   function schedule() {
     clearTimeout(timer);
-    if (auto && ids) timer = setTimeout(() => { poll().catch(() => {}); }, 5000);
+    if (auto && ids && visible() && !streamReady) timer = setTimeout(() => { poll().catch(() => {}); }, 5000);
   }
-  function cancel() { generation++; pending?.controller.abort(); pending = null; clearTimeout(timer); }
+  function closeStream() { const old = stream; stream = null; streamReady = false; old?.close(); }
+  function cancel() { generation++; pending?.controller.abort(); pending = null; clearTimeout(timer); closeStream(); streamRetryAt = 0; }
+  function accept(result, selected) {
+    if (result.ids && (String(result.ids.clubId) !== selected.clubId || String(result.ids.matchId) !== selected.matchId) ||
+      result.score && (String(result.score.clubId) !== selected.clubId || String(result.score.matchId) !== selected.matchId)) throw new Error('The feed returned a different match. Reload your selected Match ID.');
+    if (Number.isSafeInteger(last?.revision) && Number.isSafeInteger(result.revision) && result.revision < last.revision) return last;
+    last = result; onUpdate?.(result); return result;
+  }
+  function connectStream(relay, selected, gen) {
+    if (!relay?.subscribe || stream || Date.now() < streamRetryAt || !visible()) return;
+    const owner = { close() {} }; stream = owner;
+    const current = () => gen === generation && stream === owner && getRelay()?.session === relay.session;
+    const callbacks = {
+      onSnapshot: value => {
+        if (!current()) return;
+        if (!visible()) { closeStream(); return; }
+        accept({ ...value, transport: 'relay', delivery: 'push' }, selected);
+        streamReady = true; clearTimeout(timer);
+      },
+      onFreshness: value => {
+        if (!current() || !last?.score) return;
+        if (!visible()) { closeStream(); return; }
+        accept({ ...last, ids: value.ids, revision: value.revision, pollSeconds: value.pollSeconds, score: { ...last.score, fetchedAt: value.fetchedAt }, delivery: 'push' }, selected);
+        streamReady = true; clearTimeout(timer);
+      },
+      onEnd: error => {
+        if (!current()) return;
+        stream = null; streamReady = false; streamRetryAt = Date.now() + 30000;
+        if (error.status === 401) {
+          last = { ...last, status: 401, error: error.message, score: last?.score ? { ...last.score, stale: true } : null }; onUpdate?.(last);
+        }
+        schedule();
+      }
+    };
+    try { const connection = relay.subscribe(selected, callbacks); owner.close = () => connection.close(); }
+    catch (error) { callbacks.onEnd(error); }
+  }
   async function poll(force = false) {
     if (!ids) return null;
     if (pending) return pending.promise;
@@ -48,11 +85,12 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
           result = binding === key ? await relay.request('/api/score')
             : await relay.request('/api/match', { method: 'POST', body: JSON.stringify(selected) });
           if (gen === generation) binding = key;
-          result = { ...result, transport: 'relay' };
+          result = { ...result, transport: 'relay', delivery: 'poll' };
         } else result = await fetchPublicScore(selected, { fetchFn, signal: controller.signal });
         if (gen !== generation || getRelay()?.session !== relay?.session) return null;
-        if (result.score && (String(result.score.clubId) !== selected.clubId || String(result.score.matchId) !== selected.matchId)) throw new Error('The feed returned a different match. Reload your selected Match ID.');
-        last = result; onUpdate?.(result); return result;
+        accept(result, selected);
+        if (relay?.session) connectStream(relay, selected, gen);
+        return last;
       } catch (error) {
         if (gen !== generation) return null;
         const message = controller.signal.aborted ? 'Score request timed out. Keeping the last verified score.'
@@ -66,8 +104,10 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
   return {
     get ids() { return ids; }, get snapshot() { return last; },
     select(value) { const next = validateIds(value.clubId, value.matchId); cancel(); ids = next; binding = ''; last = null; onUpdate?.({ ids, score: null, error: null }); return poll(true); },
-    changeSource() { cancel(); binding = ''; if (last?.score) last = { ...last, score: { ...last.score, stale: true } }; return poll(true); },
+    changeSource() { cancel(); binding = ''; if (last?.score) last = { ...last, revision: undefined, score: { ...last.score, stale: true } }; return poll(true); },
     refresh() { return poll(true); },
+    visibilityChanged() { if (!visible()) { cancel(); return Promise.resolve(last); } return poll(true); },
+    pause() { cancel(); },
     stop() { cancel(); ids = null; last = null; binding = ''; }
   };
 }

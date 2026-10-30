@@ -29,9 +29,10 @@ export function destinationConfig(env) {
         const allowed = id === 'youtube' ? host.endsWith('.youtube.com')
           : id === 'facebook' ? host.endsWith('.facebook.com')
             : ['.instagram.com', '.facebook.com', '.fbcdn.net'].some(suffix => host.endsWith(suffix));
-        if (!allowed || u.protocol !== 'rtmps:' || u.username || u.password || u.search || u.hash || /[\r\n|\[\]]/.test(server + key)) throw new Error();
+        if (!allowed || u.protocol !== 'rtmps:' || u.username || u.password || u.search || u.hash ||
+          (u.port && u.port !== '443') || server.length > 1024 || key.length > 2048 || /[\s\x00-\x1f\x7f|\[\]\\#]/.test(server + key)) throw new Error();
         url = server.replace(/\/$/, '') + '/' + key;
-      } catch { error = 'Invalid server URL or stream key in relay/.env.'; }
+      } catch { error = 'Use the platform’s RTMPS server on port 443 and a valid stream key.'; }
     }
     return [id, { id, url, configured: Boolean(url), error }];
   }));

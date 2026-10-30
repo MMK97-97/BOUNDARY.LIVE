@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+<defs>
+ <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#021019"/><stop offset=".6" stop-color="#053035"/><stop offset="1" stop-color="#032424"/></linearGradient>
+ <radialGradient id="field"><stop stop-color="#1b654b"/><stop offset="1" stop-color="#042324"/></radialGradient>
+ <linearGradient id="stands" x2="0" y2="1"><stop stop-color="#002232"/><stop offset=".6" stop-color="#0b3140"/><stop offset="1" stop-color="#001722"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#a4dfff" stop-opacity=".32"/><stop offset="1" stop-color="#0d80db" stop-opacity="0"/></radialGradient>
+ <pattern id="seats" width="24" height="14" patternUnits="userSpaceOnUse"><rect width="7" height="3" rx="1" fill="#a8c8d1" opacity=".19"/></pattern>
+ <pattern id="grass" width="300" height="90" patternUnits="userSpaceOnUse"><path d="M0 0h300v45H0z" fill="#6eab72" opacity=".035"/></pattern>
+ <pattern id="lamps" width="23" height="23" patternUnits="userSpaceOnUse"><rect x="3" y="3" width="11" height="15" rx="5" fill="#e8f3ee" opacity=".6"/></pattern>
+</defs>
+<path fill="url(#sky)" d="M0 0h1920v1080H0z"/>
+<path d="M0 330Q960 720 1920 330v430H0Z" fill="url(#stands)"/>
+<path d="M0 350Q960 730 1920 350v270Q960 900 0 620Z" fill="url(#seats)"/>
+<g fill="none" stroke="#719ba5" opacity=".16"><path d="M0 390Q960 750 1920 390"/><path d="M0 465Q960 790 1920 465"/><path d="M0 550Q960 850 1920 550"/><path d="M0 625Q960 900 1920 625"/></g>
+<path d="M0 810Q960 510 1920 810v270H0Z" fill="url(#field)"/>
+<path d="M0 810Q960 510 1920 810v270H0Z" fill="url(#grass)"/>
+<ellipse cx="960" cy="920" rx="880" ry="246" fill="none" stroke="#68b091" opacity=".13" stroke-width="2"/>
+<path d="M912 755h96l59 325H855Z" fill="#c2b88a" opacity=".1"/><path d="M906 813h108m-121 90h136m-147 70h158" stroke="#e5e5c5" opacity=".16" stroke-width="2"/>
+<g stroke="#9bbed1" opacity=".23" stroke-width="7"><path d="m135 160-14 512m15-335-18 83m1688-260 10 512m-11-335 18 83"/></g>
+<ellipse cx="135" cy="192" rx="270" ry="290" fill="url(#glow)"/><ellipse cx="1795" cy="192" rx="270" ry="290" fill="url(#glow)"/>
+<path d="m78 91 151 54-22 109-150-54Z" fill="url(#lamps)"/><path d="m1842 91-151 54 22 109 150-54Z" fill="url(#lamps)"/>
+<path fill="#001019" opacity=".35" d="M0 0h1920v1080H0z"/>
+</svg>

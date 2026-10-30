@@ -5,13 +5,16 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { WebSocketServer, WebSocket } from 'ws';
-import { ScoreService, scoreLines, validateIds } from './lib/score.mjs';
+import { ScoreService, scoreLines, validateIds, startScorePolling } from './lib/score.mjs';
+import { ScoreStream } from './lib/score-stream.mjs';
 import { CricClubsScraper } from './lib/cricclubs.mjs';
-import { DESTINATIONS, destinationConfig, findFont, probeEncoder, ingestArgs, outputArgs } from './lib/encoder.mjs';
+import { DESTINATIONS, destinationConfig, findFont, probeEncoder, outputArgs } from './lib/encoder.mjs';
 import { constantTimeEquals, SessionStore } from './lib/security.mjs';
 import { automationOptions } from './lib/events.mjs';
-import { BroadcastProgram } from './lib/program.mjs';
+import { LiveProgram } from './lib/program.mjs';
 import { YouTubeService } from './lib/youtube.mjs';
+import { cloudConfig } from './lib/cloud.mjs';
+import { SessionDestinations } from './lib/destinations.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -21,8 +24,7 @@ if (token.length < 32 || token.includes('REPLACE_WITH')) {
   console.error('Run npm run setup first, or set a random RELAY_TOKEN of at least 32 characters in relay/.env.');
   process.exit(1);
 }
-const origins = new Set((process.env.ALLOWED_ORIGINS || `http://localhost:${port},http://127.0.0.1:${port}`)
-  .split(',').map(s => s.trim()).filter(Boolean));
+const { origins, publicOrigin } = cloudConfig(process.env);
 const auth = value => constantTimeEquals(value, token);
 const sessions = new SessionStore();
 // Same-origin browser GETs can omit Origin. The explicit client-origin header
@@ -34,7 +36,11 @@ const allowedOrigin = req => (!req.headers.origin || origins.has(req.headers.ori
   (!req.headers.origin || !req.headers['x-mk97-origin'] || req.headers.origin === req.headers['x-mk97-origin']);
 const destinations = destinationConfig(process.env);
 const youtube = new YouTubeService({ env: process.env, validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
-const destinationFor = owner => ({ ...destinations, youtube: youtube.destination(owner) || destinations.youtube });
+const manualDestinations = new SessionDestinations({ validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
+const destinationFor = owner => {
+  const configured = { ...destinations, ...manualDestinations.get(owner) };
+  return { ...configured, youtube: youtube.destination(owner) || configured.youtube };
+};
 const font = findFont(process.env.FONT_FILE), binary = process.env.FFMPEG_PATH || 'ffmpeg';
 const encoder = probeEncoder(binary, font);
 const scores = new ScoreService({ template: process.env.SCORE_URL_TEMPLATE, headerName: process.env.SCORE_HEADER_NAME,
@@ -42,6 +48,8 @@ const scores = new ScoreService({ template: process.env.SCORE_URL_TEMPLATE, head
   scorecardScraper: process.env.CRICCLUBS_SCORECARD_ENABLED === 'false' ? null : new CricClubsScraper(),
   scorecardClubId: process.env.CRICCLUBS_CLUB_ID || '300', scorecardLeague: process.env.CRICCLUBS_LEAGUE || 'FWCWL' });
 let active = null;
+const scoreStream = new ScoreStream({ snapshot: () => scores.snapshot(), validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
+scores.subscribe(snapshot => { scoreStream.publish(snapshot); updateOverlay(); });
 const attempts = new Map();
 const failures = new Map();
 function failedAuth(req) {
@@ -59,7 +67,7 @@ function rateLimited(req) {
   return bucket.count > 180;
 }
 const contentTypes = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
-  '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.md': 'text/plain' };
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.md': 'text/plain' };
 async function body(req, limit = 4096) {
   let size = 0; const chunks = [];
   for await (const c of req) { size += c.length; if (size > limit) throw new Error('Request too large.'); chunks.push(c); }
@@ -76,7 +84,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: wss: http://localhost:8787 http://127.0.0.1:8787 ws://localhost:8787 ws://127.0.0.1:8787; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
-  if (!allowedOrigin(req)) return json(res, 403, { error: 'Origin not allowed. Add your GitHub Pages origin to ALLOWED_ORIGINS.' });
+  if (!allowedOrigin(req)) return json(res, 403, { error: 'Origin not allowed. Add this website’s exact origin to ALLOWED_ORIGINS or configure PUBLIC_URL.' });
   if (req.headers.origin) { res.setHeader('Access-Control-Allow-Origin', req.headers.origin); res.setHeader('Vary', 'Origin'); }
   if (req.headers.origin && req.headers['access-control-request-private-network'] === 'true') res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-MK97-Origin');
@@ -85,6 +93,9 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch { return json(res, 400, { error: 'Invalid URL.' }); }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
+  if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
+    product: 'mk97', version: '1.6.0', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
+  });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
     const bearer = req.headers.authorization?.replace(/^Bearer /, '');
@@ -101,12 +112,20 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.4.1', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
+        name: 'MK97 relay', version: '1.6.0', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
-          mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : 'manual',
+          mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : manualDestinations.get(authenticated.id)[id] ? 'session' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
         pollSeconds: scores.pollMs / 1000
       });
+      if (req.method === 'POST' && ['/api/destination', '/api/destination/clear'].includes(url.pathname)) {
+        if (active?.sessionId === authenticated.id) return json(res, 409, { error: 'Stop this camera upload before changing destinations.' });
+        const value = await body(req, 8192);
+        if (value?.id === 'youtube' && youtube.destination(authenticated.id)) return json(res, 409, { error: 'Disconnect the YouTube account or cancel sign-in before changing a manual YouTube key.' });
+        const result = url.pathname.endsWith('/clear') ? manualDestinations.clear(authenticated.id, value?.id)
+          : manualDestinations.set(authenticated.id, originOf(req), value);
+        return json(res, 200, result);
+      }
       if (url.pathname.startsWith('/api/youtube/')) {
         const owner = authenticated.id;
         const stopEditing = () => { if (active?.sessionId === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
@@ -129,30 +148,18 @@ const server = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'Unknown YouTube endpoint.' });
       }
       if (req.method === 'GET' && url.pathname === '/api/score') return json(res, 200, scores.snapshot());
-      if (req.method === 'GET' && url.pathname === '/api/automation') return json(res, 200, active?.sessionId === authenticated.id && active.program ? active.program.snapshot() : { bufferSeconds: 0, clips: [], cards: null, current: null });
-      if (req.method === 'POST' && url.pathname === '/api/clip/select') {
-        if (!active || active.sessionId !== authenticated.id || !active.program) return json(res, 409, { error: 'Start the broadcast with replay processing enabled first.' });
-        const value = await body(req), clip = active.program.selectClip(Number(value.behind ?? 0));
-        return json(res, 201, { id: clip.id, duration: clip.frames.length / 30 });
+      if (req.method === 'GET' && url.pathname === '/api/score/stream') {
+        if (url.searchParams.getAll('clubId').length !== 1 || url.searchParams.getAll('matchId').length !== 1) throw new Error('Provide one Club ID and Match ID.');
+        scoreStream.open(req, res, authenticated.id, originOf(req), { clubId: url.searchParams.get('clubId'), matchId: url.searchParams.get('matchId') });
+        return;
       }
-      const clipRoute = url.pathname.match(/^\/api\/clips\/([a-f0-9]{16})\.(mp4|jpg)$/);
-      if (req.method === 'GET' && clipRoute) {
-        if (!active || active.sessionId !== authenticated.id || !active.program) return json(res, 409, { error: 'The clip buffer is not active.' });
-        if (clipRoute[2] === 'jpg') {
-          const clip = active.program.clips.get(clipRoute[1]); if (!clip?.frames?.length) return json(res, 404, { error: 'Clip expired.' });
-          res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }); return res.end(clip.frames[Math.floor(clip.frames.length / 2)].jpeg);
-        }
-        if (active.exporting) return json(res, 429, { error: 'One clip is already being prepared. Try again shortly.' });
-        const owner = active, { child, feed } = owner.program.exportClip(clipRoute[1]); owner.exporting = true; owner.exportChild = child;
-        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store', 'Content-Disposition': 'inline; filename="boundary-replay.mp4"' });
-        const timer = setTimeout(() => child.kill('SIGKILL'), 30000);
-        child.on('error', () => res.destroy()); child.on('close', () => { clearTimeout(timer); owner.exporting = false; owner.exportChild = null; if (!res.writableEnded) res.end(); });
-        res.on('close', () => { if (child.exitCode === null) child.kill(); }); child.stdout.pipe(res); feed().catch(() => child.kill()); return;
-      }
+      if (req.method === 'GET' && url.pathname === '/api/graphics') return json(res, 200, active?.sessionId === authenticated.id && active.program ? active.program.snapshot() : { cards: null, current: null });
       if (req.method === 'POST' && url.pathname === '/api/ticket') return json(res, 201, { ticket: sessions.ticket(authenticated.id, originOf(req)) });
       if (req.method === 'POST' && url.pathname === '/api/logout') {
         youtube.forget(authenticated.id);
+        manualDestinations.forget(authenticated.id);
         sessions.revoke(authenticated.id);
+        scoreStream.closeSession(authenticated.id);
         if (active?.sessionId === authenticated.id) finish(active, false);
         return json(res, 200, { ok: true });
       }
@@ -200,13 +207,13 @@ function updateOverlay() {
     if (active.overlayWarning) send(active.ws, { type: 'warning', message: 'Score overlay updates recovered.' });
     active.overlayWarning = false; return true;
   } catch {
-    if (!active.overlayWarning) send(active.ws, { type: 'warning', message: 'Score overlay text could not be updated on the laptop. Last video overlay may be delayed; check disk access.' });
+    if (!active.overlayWarning) send(active.ws, { type: 'warning', message: 'Score overlay text could not be updated on the server. Last video overlay may be delayed; check server storage.' });
     active.overlayWarning = true; return false;
   }
 }
 function friendlyFailure(stderr) {
   if (/401|403|Unauthorized|Server error|Authentication/i.test(stderr)) return 'Platform rejected the connection. Check the current server URL, key and live eligibility.';
-  if (/Connection refused|Connection timed out|Network|resolve|timed out/i.test(stderr)) return 'Could not reach the platform. Check the laptop internet connection and server URL.';
+  if (/Connection refused|Connection timed out|Network|resolve|timed out/i.test(stderr)) return 'Could not reach the platform. Check server connectivity and the platform address.';
   return 'Output stopped. Check the platform preview, current stream key and relay setup.';
 }
 function run(ws, message, identity) {
@@ -219,7 +226,8 @@ function run(ws, message, identity) {
   if (!/^video\/(webm|mp4)(;|$)/i.test(message.mimeType || '')) throw new Error('Unsupported browser recording container.');
   const width = Number(message.width), height = Number(message.height);
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 854 || height < 480 || width < height || width > 4096 || height > 2160) throw new Error('Use a landscape camera providing the selected resolution (1920 × 1080 for 1080p). Rotate the phone and reopen the camera.');
-  if (!message.resolution && (width < 1920 || height < 1080)) throw new Error('Use a landscape camera providing at least 1920 × 1080.');
+  const required = { '1080': [1920, 1080], '720': [1280, 720], '480': [854, 480], auto: [854, 480] }[message.resolution || '1080'];
+  if (!required || width < required[0] || height < required[1]) throw new Error(`The selected capture profile requires a landscape camera providing at least ${required?.join(' × ') || 'a supported resolution'}.`);
   const selected = message.match ? validateIds(message.match.clubId, message.match.matchId) : null;
   if (selected) {
     if (selected.clubId !== scores.ids?.clubId || selected.matchId !== scores.ids?.matchId) throw new Error('The selected Match ID changed on the relay. Reload your match before streaming.');
@@ -231,25 +239,20 @@ function run(ws, message, identity) {
   active = session;
   if (!updateOverlay()) {
     active = null; fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {});
-    throw new Error('Could not prepare score overlay files. Check laptop temporary-folder access.');
+    throw new Error('Could not prepare score overlay files. Check server temporary-folder access.');
   }
   const bitrate = chosen.includes('facebook') ? 6000 : Math.max(4000, Math.min(14000, Number(process.env.LANDSCAPE_VIDEO_KBPS) || 10000));
-  const args = ingestArgs({ font, overlay: message.overlay !== false, bitrateKbps: bitrate, mimeType: message.mimeType });
   const preset = process.env.ENCODER_PRESET;
-  if (['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium'].includes(preset)) args[args.indexOf('-preset') + 1] = preset;
   let mainError = '';
   const options = automationOptions(message.automation, process.env), outputHeight = height >= 1080 && width >= 1920 ? 1080 : height >= 720 && width >= 1280 ? 720 : 480;
   let main;
-  if (options.replay || options.milestones || options.cards || outputHeight < 1080) {
-    session.program = new BroadcastProgram({ binary, font, dir, mimeType: message.mimeType, options,
-      bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000, width: outputHeight === 1080 ? 1920 : outputHeight === 720 ? 1280 : 854, height: outputHeight,
-      score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset });
-    main = session.program.encoder; session.main = session.program.camera;
-    session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
-    session.program.on('warning', message => send(ws, { type: 'warning', message }));
-    session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));
-    session.program.on('clips', automation => send(ws, { type: 'automation', automation }));
-  } else { main = spawn(binary, args, { cwd: dir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }); session.main = main; }
+  session.program = new LiveProgram({ binary, font, dir, mimeType: message.mimeType, options,
+    bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000,
+    width: outputHeight === 1080 ? 1920 : outputHeight === 720 ? 1280 : 854, height: outputHeight,
+    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset });
+  main = session.program.encoder; session.main = main;
+  session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
+  session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));
   main.stdin.on('error', () => {});
   const failOutput = (id, message) => {
     const out = session.outputs.get(id); if (!out || out.failed || session.ending) return;
@@ -275,7 +278,7 @@ function run(ws, message, identity) {
     proc.on('close', () => { if (!session.ending) failOutput(id, friendlyFailure(out.error)); });
     send(ws, { type: 'destination', id, state: 'connecting', message: 'Connecting to platform…' });
   }
-  // Decode/composite/encode landscape once. Independent writers isolate output failures.
+  // Encode the live landscape camera once. Independent writers isolate output failures.
   main.stdout.on('data', data => {
     for (const [id, out] of session.outputs) {
       if (out.failed || out.process.stdin.destroyed) continue;
@@ -299,7 +302,7 @@ function run(ws, message, identity) {
   session.timer = setInterval(() => {
     if (Date.now() - session.lastInput > 15000) { send(ws, { type: 'error', message: 'No camera data for 15 seconds. Keep the page in the foreground and the phone unlocked.' }); finish(session, false); return; }
     if (!sessions.sessions.has(session.sessionId) || Date.now() - session.started > 8 * 3600_000) { send(ws, { type: 'error', message: 'Session expired. Reconnect the relay.' }); finish(session, false); return; }
-    send(ws, { type: 'stats', bytes: session.bytes, frames: session.frames, elapsed: Math.floor((Date.now() - session.started) / 1000), automation: session.program?.snapshot() });
+    send(ws, { type: 'stats', bytes: session.bytes, frames: session.frames, elapsed: Math.floor((Date.now() - session.started) / 1000), graphics: session.program?.snapshot() });
   }, 2000);
   send(ws, { type: 'ready', bitrateKbps: bitrate, program: Boolean(session.program), message: 'Relay is ready for camera data.' });
   return session;
@@ -307,7 +310,6 @@ function run(ws, message, identity) {
 function finish(session, graceful) {
   if (!session || session.ending) return;
   session.ending = true; clearInterval(session.timer);
-  session.exportChild?.kill();
   if (session.program) session.program.stop(graceful);
   else if (graceful) session.main?.stdin.end();
   else session.main?.kill();
@@ -323,7 +325,7 @@ function finish(session, graceful) {
     if (session.ws.readyState === WebSocket.OPEN) session.ws.close(1000, 'Session stopped');
   };
   if (graceful) {
-    const children = [session.main, ...(session.program ? [session.program.encoder] : []), ...[...session.outputs.values()].map(o => o.process)];
+    const children = [session.main, ...[...session.outputs.values()].map(o => o.process)];
     let remaining = children.filter(p => p && p.exitCode === null && p.signalCode === null).length;
     for (const p of children) if (p && p.exitCode === null && p.signalCode === null) p.once('close', () => { if (--remaining <= 0) clean(); });
     if (!remaining) clean();
@@ -350,6 +352,7 @@ wss.on('connection', (ws, req) => {
         session.windowBytes += data.length;
         if (session.windowBytes > 48 * 1024 * 1024) throw new Error('Camera upload exceeded the allowed data rate.');
         session.lastInput = Date.now(); session.bytes += data.length;
+        session.program?.startFrames();
         if (!session.main.stdin.destroyed && !session.main.stdin.write(data)) {
           ws.pause(); session.main.stdin.once('drain', () => { if (ws.readyState === WebSocket.OPEN) ws.resume(); });
         }
@@ -360,9 +363,7 @@ wss.on('connection', (ws, req) => {
         else if (message.type === 'ping') send(ws, { type: 'pong', at: message.at });
         else if (session && !session.ending && session.program) {
           try {
-            if (message.type === 'mark-ball') { session.program.markBall(); send(ws, { type: 'warning', message: 'Ball marked. The next detected scoring delivery will use this mark for replay alignment.' }); }
-            else if (message.type === 'card') session.program.cards(message.kind);
-            else if (message.type === 'replay') session.program.replay(String(message.clipId || ''));
+            if (message.type === 'card') session.program.cards(message.kind);
             else if (message.type === 'overlay' && typeof message.enabled === 'boolean') session.program.showOverlay = message.enabled;
             else throw new Error('Unknown broadcast control.');
           } catch (e) { send(ws, { type: 'warning', message: e.message.slice(0, 180) }); }
@@ -375,12 +376,15 @@ wss.on('connection', (ws, req) => {
 const scoreTimer = setInterval(async () => {
   sessions.prune();
   youtube.prune();
+  manualDestinations.prune();
   if (!active && !sessions.sessions.size) return;
   if (!scores.ids) return;
-  await scores.refresh(); updateOverlay();
+  updateOverlay();
 }, 2000);
 scoreTimer.unref();
+const stopScorePolling = startScorePolling(scores, { enabled: () => Boolean(active || sessions.sessions.size) });
 const heartbeat = setInterval(() => {
+  scoreStream.heartbeat();
   for (const ws of wss.clients) {
     if (ws.alive === false) { ws.terminate(); continue; }
     ws.alive = false; ws.ping();
@@ -395,6 +399,8 @@ server.listen(port, host, () => {
 });
 function shutdown() {
   clearInterval(scoreTimer); clearInterval(heartbeat);
+  stopScorePolling(); scoreStream.closeAll();
+  manualDestinations.owners.clear();
   if (active) finish(active, false);
   for (const ws of wss.clients) ws.close(1001, 'Relay shutting down');
   server.close(); setTimeout(() => process.exit(0), 1000).unref();

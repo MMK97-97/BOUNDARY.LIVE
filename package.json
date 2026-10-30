@@ -1,8 +1,8 @@
 {
   "name": "mk97-live",
-  "version": "1.4.1",
+  "version": "1.6.0",
   "private": true,
-  "description": "Mobile cricket broadcast studio with a self-hosted streaming relay",
+  "description": "Phone-first cricket broadcast studio with cloud streaming and live scores",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

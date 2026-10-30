@@ -5,7 +5,7 @@ const brandLogo = 'data:image/png;base64,' + readFileSync(new URL('../../web/ass
 export const xml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 const text = (value, x, y, size = 32, color = '#fff', extra = '') => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${extra}>${xml(value)}</text>`;
 const short = (v, n = 28) => String(v || '').length > n ? String(v).slice(0, n - 1) + '…' : String(v || '');
-export function graphicSvg(score, event = null, replay = false, showScore = true) {
+export function graphicSvg(score, event = null, showScore = true) {
   let g = `<image href="${brandLogo}" x="1760" y="35" width="110" height="104" preserveAspectRatio="xMidYMid meet" opacity="0.94"/>`;
   if (showScore && score) {
     const [, detail] = scoreLines(score);
@@ -22,7 +22,7 @@ export function graphicSvg(score, event = null, replay = false, showScore = true
     if (b) g += text(`${short(b.name, 23)}  ${b.runs} (${b.balls})`, 640, 1019, 28);
     if (bowler) g += text(`${short(bowler.name, 20)}  ${bowler.wickets}-${bowler.runs} (${bowler.overs})`, 1200, 1019, 28);
   }
-  if (replay) g += '<rect x="70" y="55" width="260" height="62" rx="12" fill="#ec3346"/>' + text('↺  REPLAY', 95, 98, 32, '#fff', 'font-weight="700"');
+
   if (event && ['team', 'player'].includes(event.type)) {
     g += '<rect x="480" y="210" width="960" height="560" rx="30" fill="#07192e" stroke="#edb84c" stroke-width="5"/>';
     for (let i = 0; i < 18; i++) { const x = 540 + (i * 131) % 850, y = 240 + (i * 71) % 450; g += `<circle cx="${x}" cy="${y}" r="${3 + i % 5}" fill="${i % 2 ? '#167df0' : '#f5bf50'}" opacity="0.4"/>`; }
@@ -52,12 +52,12 @@ export function graphicSvg(score, event = null, replay = false, showScore = true
 }
 export class GraphicRenderer {
   constructor(font) { this.font = font; this.cache = new Map(); }
-  frame(score, event, replay, showScore) {
+  frame(score, event, showScore) {
     const compact = score ? { ...score, fetchedAt: 0, error: null } : null;
     const drawing = event ? { type: event.type, title: event.title, milestone: event.milestone, over: event.over, cards: event.cards } : null;
-    const key = JSON.stringify([compact, drawing, replay, showScore]);
+    const key = JSON.stringify([compact, drawing, showScore]);
     if (this.cache.has(key)) return this.cache.get(key);
-    const png = new Resvg(graphicSvg(score, event, replay, showScore), { font: { fontFiles: [this.font], loadSystemFonts: false, defaultFontFamily: this.font.includes('DejaVu') ? 'DejaVu Sans' : 'Arial' } }).render().asPng();
+    const png = new Resvg(graphicSvg(score, event, showScore), { font: { fontFiles: [this.font], loadSystemFonts: false, defaultFontFamily: this.font.includes('DejaVu') ? 'DejaVu Sans' : 'Arial' } }).render().asPng();
     if (this.cache.size >= 16) this.cache.delete(this.cache.keys().next().value);
     this.cache.set(key, png); return png;
   }

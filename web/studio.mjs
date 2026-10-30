@@ -1,12 +1,11 @@
 const $ = id => document.getElementById(id);
-const label = { settings: 'Stream settings', score: 'Score & commentary', stats: 'Match statistics', clips: 'Instant replay', share: 'Share broadcast', youtube: 'YouTube live setup' };
+const label = { settings: 'Stream settings', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
 const el = (tag, content, className) => { const n = document.createElement(tag); if (content != null) n.textContent = String(content); if (className) n.className = className; return n; };
 const icon = id => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', '#i-' + id); svg.append(use); return svg; };
 const safeWatch = value => { const u = new URL(value); if (u.protocol !== 'https:' || u.username || u.password || !['youtube.com', 'youtu.be', 'facebook.com', 'fb.watch', 'instagram.com'].some(h => u.hostname === h || u.hostname.endsWith('.' + h))) throw new Error('Enter your public YouTube, Facebook or Instagram watch URL.'); return u.href; };
 export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview }) {
-  let lastFocus = null, objectUrl = null, request = 0, statsKey = '', dragging = false, lastGraphic = null;
-  let scoreTab = 'batting', statsTab = 'overview', clipFilter = 'all';
-  const thumbnails = new Map();
+  let lastFocus = null, lastGraphic = null;
+  let scoreTab = 'batting', statsTab = 'overview';
   function tabs(root, attribute, changed) {
     const buttons = [...$(root).querySelectorAll('button')];
     for (const [i, b] of buttons.entries()) {
@@ -17,13 +16,22 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   tabs('scoreTabs', 'scoreTab', value => { scoreTab = value; tables(); });
   tabs('statsTabs', 'statTab', value => { statsTab = value; tables(); });
-  tabs('clipFilters', 'clipFilter', value => { clipFilter = value; filterClips(); });
-  function filterClips() { let count = 0; for (const row of $('clipList').children) { row.hidden = clipFilter !== 'all' && row.dataset.kind !== clipFilter; if (!row.hidden && row.tagName === 'ARTICLE') count++; } $('clipEmpty').hidden = count > 0; }
   document.body.append($('notice'), $('dismissNotice'));
   try { $('watchUrl').value = localStorage.getItem('boundary.watch') || ''; } catch {}
+  function closeMenu() { $('studioMenu').hidden = true; $('moreButton').setAttribute('aria-expanded', 'false'); }
+  $('moreButton').addEventListener('click', () => { const open = $('studioMenu').hidden; $('studioMenu').hidden = !open; $('moreButton').setAttribute('aria-expanded', String(open)); if (open) $('studioMenu').querySelector('button:not(:disabled)')?.focus(); });
+  document.addEventListener('click', e => { if (!e.target.closest('#studioMenu, #moreButton')) closeMenu(); });
+  $('studioMenu').addEventListener('keydown', e => {
+    const buttons = [...$('studioMenu').querySelectorAll('button:not(:disabled)')]; const index = buttons.indexOf(document.activeElement);
+    if (e.key === 'Escape') { closeMenu(); $('moreButton').focus(); }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) { e.preventDefault(); const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length; buttons[next]?.focus(); }
+  });
+  $('monitorInfo').addEventListener('click', () => { panel('stats'); });
   function closeDrawer() { $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; lastFocus?.focus(); }
   function panel(name) {
-    lastFocus = document.activeElement;
+    const focus = document.activeElement;
+    if (!$('drawer').contains(focus)) lastFocus = $('studioMenu').contains(focus) ? $('moreButton') : focus;
+    closeMenu();
     for (const p of document.querySelectorAll('[data-drawer]')) p.hidden = p.dataset.drawer !== name;
     $('drawerTitle').textContent = label[name]; $('drawer').hidden = false; $('drawerScrim').hidden = false; $('studio').inert = true;
     $('closeDrawer').focus(); $('drawer').scrollTop = 0;
@@ -52,7 +60,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       else document.body.classList.toggle('theater');
     } catch { document.body.classList.toggle('theater'); }
   }
-  $('fullscreenTop').addEventListener('click', fullscreen); $('fullscreenBottom').addEventListener('click', fullscreen);
+  $('fullscreenTop').addEventListener('click', () => { closeMenu(); fullscreen(); }); $('fullscreenBottom').addEventListener('click', fullscreen);
   document.addEventListener('fullscreenchange', () => { for (const id of ['fullscreenTop', 'fullscreenBottom']) $(id).setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'); });
   $('resolutionOptions').addEventListener('click', async e => {
     const b = e.target.closest('button[data-resolution]'); if (!b || b.disabled) return;
@@ -60,53 +68,17 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     if (state.stream) await openCamera(state.camera?.deviceId || '');
     else notice(`${state.captureResolution === 'auto' ? 'Auto will try 1080p, then 720p/480p if unsupported' : state.captureResolution + 'p capture selected'}. Open the camera to check support.`);
   });
-  function resetMonitor() {
-    request++; if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = null; state.monitorClip = false;
-    $('cameraVideo').removeAttribute('src'); $('replayMonitorBadge').hidden = true;
-    $('cameraVideo').muted = true; $('monitorVolume').value = 0;
-    graphic(lastGraphic);
-  }
-  function returnLive() {
-    resetMonitor(); $('cameraVideo').srcObject = state.stream;
-    if (state.stream) { $('cameraVideo').hidden = false; state.previewOff = false; togglePreview(false); }
-    update();
-  }
-  $('jumpLive').addEventListener('click', returnLive);
-  async function clipVideo(id, download = false) {
-    const identity = state.session, generation = ++request;
-    const r = await fetch(state.relay + `/api/clips/${id}.mp4`, { headers: { Authorization: `Bearer ${identity}` }, credentials: 'omit', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(45000) });
-    if (!r.ok) { let m; try { m = await r.json(); } catch {} throw new Error(m?.error || 'Clip could not be prepared.'); }
-    const blob = await r.blob(); if (identity !== state.session || generation !== request) return;
-    if (blob.size > 32 * 1024 * 1024 || blob.size < 100) throw new Error('Clip response was outside its permitted size.');
-    const url = URL.createObjectURL(blob);
-    if (download) { const a = el('a'); a.href = url; a.download = `MK97-Replay-${id}.mp4`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); return; }
-    resetMonitor(); objectUrl = url; state.monitorClip = true; graphic(lastGraphic);
-    $('cameraVideo').srcObject = null; $('cameraVideo').src = url; $('cameraVideo').hidden = false; $('cameraPlaceholder').hidden = true; $('previewHidden').hidden = true;
-    state.previewOff = false; $('replayMonitorBadge').hidden = false; closeDrawer();
-    await $('cameraVideo').play(); update();
-  }
-  async function select(behind = 0, preview = false) {
-    try { const clip = await api('/api/clip/select', { method: 'POST', body: JSON.stringify({ behind }) });
-      const snapshot = await api('/api/automation'); state.automation = snapshot; automation(snapshot);
-      if (preview) await clipVideo(clip.id); else notice('Ball clip saved to the private buffer. Preview it or put it on air from Clips.', 'success');
-    } catch (e) { notice(e.message, 'error'); }
-  }
-  $('clipLatest').addEventListener('click', () => select());
-  for (const id of ['markBall', 'markBallClips']) $(id).addEventListener('click', () => sendControl({ type: 'mark-ball' }));
-  $('replayTimeline').addEventListener('pointerdown', () => { dragging = true; });
-  for (const event of ['pointerup', 'pointercancel']) $('replayTimeline').addEventListener(event, () => { dragging = false; });
-  $('replayTimeline').addEventListener('input', () => { $('timelineLabel').textContent = `${Math.max(0, Number($('replayTimeline').max) - Number($('replayTimeline').value)).toFixed(1)}s behind live · release to preview`; });
-  $('replayTimeline').addEventListener('change', async () => { const behind = Math.max(0, Number($('replayTimeline').max) - Number($('replayTimeline').value)); await select(behind, true); dragging = false; });
-  $('showBatting').addEventListener('click', () => sendControl({ type: 'card', kind: 'batting' })); $('showBowling').addEventListener('click', () => sendControl({ type: 'card', kind: 'bowling' }));
-  $('monitorVolume').addEventListener('input', () => { if (!state.monitorClip) return; const v = Number($('monitorVolume').value); $('cameraVideo').volume = v; $('cameraVideo').muted = v === 0; });
-  $('volumeButton').addEventListener('click', () => { if (!state.monitorClip) return; const v = $('cameraVideo'); v.muted = !v.muted; if (!v.muted && v.volume === 0) v.volume = .6; $('monitorVolume').value = v.muted ? 0 : v.volume; });
-  $('cameraVideo').addEventListener('ended', () => { if (state.monitorClip) returnLive(); });
+  function resetMonitor() { lastGraphic = null; graphic(null); $('cameraVideo').muted = true; }
+  $('jumpLive').addEventListener('click', () => { if (state.stream) togglePreview(false); else openCamera(); });
+  $('showBatting').addEventListener('click', () => sendControl({ type: 'card', kind: 'batting' }));
+  $('showBowling').addEventListener('click', () => sendControl({ type: 'card', kind: 'bowling' }));
+  $('volumeButton').addEventListener('click', () => { if (!$('micToggle').disabled) $('micToggle').click(); });
   async function watch() { const url = safeWatch($('watchUrl').value.trim()); try { localStorage.setItem('boundary.watch', url); } catch {} return url; }
   $('copyWatch').addEventListener('click', async () => { try { const url = await watch(); await navigator.clipboard.writeText(url); notice('Public broadcast link copied.', 'success'); } catch (e) { $('watchUrl').focus(); $('watchUrl').select(); notice(e.message || 'Copy the selected public link manually.', 'error'); } });
   $('shareWatch').addEventListener('click', async () => { try { const url = await watch(); if (navigator.share) await navigator.share({ title: state.score?.series || 'Live cricket', url }); else { await navigator.clipboard.writeText(url); notice('Public broadcast link copied.', 'success'); } } catch (e) { if (e.name !== 'AbortError') notice(e.message, 'error'); } });
   $('castButton').addEventListener('click', async () => {
     try { const v = $('cameraVideo'); if (v.webkitShowPlaybackTargetPicker) { v.webkitShowPlaybackTargetPicker(); return; } if (v.remote?.prompt) { await v.remote.prompt(); return; } throw new Error(); }
-    catch { panel('share'); notice('This browser cannot cast the local camera/replay source. Open your public broadcast in its platform player and use that player’s Cast or AirPlay control.'); }
+    catch { panel('share'); notice('This browser cannot cast the local camera source. Open your public broadcast in its platform player and use that player’s Cast or AirPlay control.'); }
   });
   $('inningsSelect').addEventListener('change', tables);
   function table(title, rows, columns) {
@@ -143,7 +115,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       if (detail.didNotBat?.length) root.append(el('p', 'Did not bat: ' + detail.didNotBat.join(', '), 'helper'));
       for (const text of detail.fallOfWickets || []) root.append(el('p', 'Fall of wickets: ' + text, 'helper'));
     }
-    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? 'Connect the relay for full scorecard reading.' : '')} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
+    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? state.session ? 'Full scorecard data is not available from the relay.' : 'Connect the relay for full scorecard reading.' : '')} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
     const stats = $('statsTables'); stats.replaceChildren();
     if (!s) return stats.append(el('p', 'Load a match to see source statistics.', 'source-empty'));
     const teams = s.teams?.length ? s.teams : [{ code: s.batting, name: s.batting, runs: s.runs, wickets: s.wickets, overs: s.overs }];
@@ -162,31 +134,9 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     }
     stats.append(el('p', 'Values come from the selected source match. Missing players or statistics are not estimated.', 'helper'));
   }
-  function automation(a) {
-    const sec = Number(a?.bufferSeconds || 0); $('bufferInfo').textContent = `${sec.toFixed(1)}s buffered · ${a?.memoryMB || 0} MB · laptop memory only`;
-    $('replayTimeline').disabled = !state.live || sec < 1;
-    if (!dragging && !state.monitorClip) { $('replayTimeline').max = Math.max(1, sec); $('replayTimeline').value = Math.max(1, sec); $('timelineLabel').textContent = sec >= 1 ? `${sec.toFixed(1)}s private replay buffer` : 'Replay buffer warming up'; }
-    $('clipLatest').disabled = !state.live || sec < 1;
-    const key = JSON.stringify(a?.clips || []);
-    if ($('clipList').dataset.key !== key) {
-      $('clipList').dataset.key = key; $('clipList').replaceChildren();
-      const ids = new Set((a?.clips || []).map(c => c.id)); for (const [id, url] of thumbnails) if (!ids.has(id)) { URL.revokeObjectURL(url); thumbnails.delete(id); }
-      for (const c of a?.clips || []) {
-        const article = el('article'), actions = el('div', null, 'row'); article.dataset.kind = c.kind || 'manual'; article.append(el('strong', c.title), el('p', `${c.duration.toFixed(1)}s · ${c.timing} · ${new Date(c.createdAt).toLocaleTimeString()}`));
-        const thumbnail = el('img', null, 'clip-thumbnail'); thumbnail.alt = 'Private buffered ball frame'; article.prepend(thumbnail);
-        if (thumbnails.has(c.id)) thumbnail.src = thumbnails.get(c.id);
-        else { const identity = state.session; fetch(state.relay + `/api/clips/${c.id}.jpg`, { headers: { Authorization: `Bearer ${identity}` }, cache: 'no-store', credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(10000) }).then(async r => { if (!r.ok) throw new Error(); const b = await r.blob(); if (b.size > 4 * 1024 * 1024 || identity !== state.session || !article.isConnected) return; const url = URL.createObjectURL(b); thumbnails.set(c.id, url); thumbnail.src = url; }).catch(() => thumbnail.hidden = true); }
-        for (const [name, action] of [['Preview', () => clipVideo(c.id)], ['On air', () => sendControl({ type: 'replay', clipId: c.id })], ['Download', () => clipVideo(c.id, true)]]) {
-          const b = el('button', name, name === 'On air' ? 'primary' : 'secondary'); b.addEventListener('click', async () => { b.disabled = true; try { await action(); } catch (e) { notice(e.message, 'error'); } finally { b.disabled = false; } }); actions.append(b);
-        }
-        article.append(actions); $('clipList').append(article);
-      }
-      if (!a?.clips?.length) $('clipList').append(el('p', 'Confirmed boundary clips will appear here. Use Clip last ball to save a manual selection.', 'helper'));
-      filterClips();
-    }
-    const cardKey = JSON.stringify(a?.cards || null); if (cardKey !== statsKey) { statsKey = cardKey; tables(); }
+  function graphics(a) {
     const stats = $('sessionStats'); stats.replaceChildren();
-    for (const [k, v] of [['Capture', state.camera ? `${state.camera.width} × ${state.camera.height}` : 'Camera off'], ['Camera frame rate', state.camera?.frameRate ? `${Math.round(state.camera.frameRate)} fps` : '—'], ['Replay buffer', `${sec.toFixed(1)} seconds`], ['Replay RAM', `${a?.memoryMB || 0} MB`], ['On-air graphic', a?.current?.type || 'Live camera'], ['Viewer count', 'Check platform analytics']]) stats.append(el('dt', k), el('dd', v));
+    for (const [k, v] of [['Capture', state.camera ? `${state.camera.width} × ${state.camera.height}` : 'Camera off'], ['Camera frame rate', state.camera?.frameRate ? `${Math.round(state.camera.frameRate)} fps` : '—'], ['On-air graphic', a?.current?.type || 'Live camera'], ['Cloud studio', state.session ? 'Connected' : 'Disconnected'], ['Viewer count', 'Check platform analytics']]) stats.append(el('dt', k), el('dd', v));
   }
   function score(s) {
     if (!s) { tables(); return; }
@@ -202,20 +152,27 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function graphic(g) {
     lastGraphic = g;
-    $('programGraphic').hidden = !g || state.monitorClip; $('studio').classList.toggle('graphic-active', Boolean(g) && !state.monitorClip);
+    $('programGraphic').hidden = !g; $('studio').classList.toggle('graphic-active', Boolean(g));
     if (g?.png && /^[A-Za-z0-9+/=]+$/.test(g.png) && g.png.length < 2_000_000) $('programGraphic').src = 'data:image/png;base64,' + g.png;
     else if (!g) $('programGraphic').removeAttribute('src');
-    $('onAirAction').textContent = g ? g.type === 'replay' ? 'REPLAY ON AIR · camera monitor stays live' : `${g.type.toUpperCase()} ON AIR · ${g.duration}s` : 'Local camera monitor';
+    $('onAirAction').textContent = g ? `${g.type.toUpperCase()} ON AIR · ${g.duration}s` : 'Local camera monitor';
   }
   function update() {
     const locked = state.live || state.starting || state.stopping;
     if (!state.camera) $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · 30 fps`;
     for (const id of ['youtube', 'facebook']) $(id + 'Resolution').textContent = `${state.camera?.height ? state.camera.height + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · landscape`;
-    for (const b of $('resolutionOptions').querySelectorAll('button')) { b.disabled = locked || state.cameraBusy; b.classList.toggle('selected', b.dataset.resolution === state.captureResolution); }
-    for (const id of ['markBall', 'markBallClips', 'showBatting', 'showBowling']) $(id).disabled = !state.live || !state.programEnabled;
-    $('previewToggle').replaceChildren(icon(state.previewOff ? 'play' : 'pause')); $('previewToggle').setAttribute('aria-label', state.previewOff ? 'Resume local monitor' : 'Pause local monitor · broadcast continues');
-    $('volumeButton').disabled = !state.monitorClip; $('monitorVolume').disabled = !state.monitorClip; $('volumeButton').setAttribute('aria-label', state.monitorClip ? 'Toggle replay monitor audio' : 'Camera monitor stays muted to prevent feedback');
-    if (!state.live) { $('replayTimeline').disabled = true; $('clipLatest').disabled = true; }
+    for (const b of $('resolutionOptions').querySelectorAll('button')) { b.disabled = locked || state.cameraBusy; b.classList.toggle('selected', b.dataset.resolution === state.captureResolution); b.setAttribute('aria-pressed', String(b.dataset.resolution === state.captureResolution)); }
+    for (const id of ['showBatting', 'showBowling']) $(id).disabled = !state.live || !state.programEnabled;
+    $('previewToggle').replaceChildren(icon(state.previewOff ? 'play' : 'pause'), el('span', state.previewOff ? 'Resume local monitor' : 'Pause local monitor'));
+    $('studio').classList.toggle('camera-open', Boolean(state.stream));
+    $('studio').classList.toggle('is-streaming', Boolean(state.live)); $('previewToggle').setAttribute('aria-label', state.previewOff ? 'Resume local monitor' : 'Pause local monitor · broadcast continues');
+    $('volumeButton').disabled = !state.stream?.getAudioTracks().length;
+    $('volumeButton').replaceChildren(icon(state.micMuted ? 'volume-off' : 'volume'));
+    $('volumeButton').setAttribute('aria-label', state.micMuted ? 'Unmute live microphone' : 'Mute live microphone');
+    $('volumeButton').setAttribute('aria-pressed', String(state.micMuted));
+    $('transportHint').textContent = state.live ? state.micMuted ? 'Microphone muted' : 'Sending live camera' : 'One camera. One upload.';
+    graphics(state.graphics);
+
   }
-  return { panel, closeDrawer, update, score, automation, graphic, resetMonitor };
+  return { panel, closeDrawer, update, score, graphics, graphic, resetMonitor };
 }

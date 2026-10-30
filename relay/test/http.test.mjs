@@ -58,14 +58,13 @@ test('YouTube routes require relay authorization and cannot inject arbitrary OAu
   const bad = await fetch(base + '/api/youtube/auth/complete', { method: 'POST', headers: headers(session), body: JSON.stringify({ state: 'attacker', code: 'stolen' }) }); assert.equal(bad.status, 401);
   const callback = await fetch(base + '/youtube-callback.html'); assert.equal(callback.status, 200); assert.equal(callback.headers.get('referrer-policy'), 'no-referrer');
 });
-test('clip APIs require an authenticated active broadcast and reject arbitrary file paths', async () => {
-  for (const route of ['/api/automation', '/api/clips/0000000000000000.mp4']) {
-    assert.equal((await fetch(base + route, { headers: { Origin: origin } })).status, 401);
+test('removed replay endpoints cannot allocate or export camera history', async () => {
+  const status=await fetch(base+'/api/graphics',{headers:headers(session)}); assert.equal(status.status,200);
+  assert.deepEqual(await status.json(), {cards:null,current:null});
+  for (const route of ['/api/clip/select','/api/clips/0000000000000000.mp4','/api/automation']) {
+    const r=await fetch(base+route,{method:route.endsWith('select')?'POST':'GET',headers:headers(session),body:route.endsWith('select')?'{}':undefined});
+    assert.equal(r.status,404);
   }
-  const status = await fetch(base + '/api/automation', { headers: headers(session) }); assert.deepEqual((await status.json()).clips, []);
-  assert.equal((await fetch(base + '/api/clip/select', { method: 'POST', headers: headers(session), body: '{"behind":0}' })).status, 409);
-  assert.equal((await fetch(base + '/api/clips/0000000000000000.mp4', { headers: headers(session) })).status, 409);
-  assert.equal((await fetch(base + '/api/clips/../../relay/.env', { headers: headers(session) })).status, 404);
 });
 test('preflight only allows the configured origin', async () => {
   const r = await fetch(base + '/api/ticket', { method: 'OPTIONS', headers: { Origin: origin } });
@@ -112,8 +111,69 @@ test('stream startup rejects a score overlay for a different selected match', as
   assert.match(await wsError(message), /selected Match ID changed/);
   const info = await (await fetch(base + '/api/info', { headers: headers(session) })).json(); assert.equal(info.busy, false);
 });
+test('live score subscription requires a session, never puts tokens in URLs, and closes on a match change', async () => {
+  const route = '/api/score/stream?clubId=300&matchId=987';
+  assert.equal((await fetch(base + route, { headers: { Origin: origin } })).status, 401);
+  assert.equal((await fetch(base + route, { headers: headers(secret) })).status, 401);
+  const response = await fetch(base + route, { headers: headers(session) });
+  assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /text\/event-stream/);
+  assert.equal(response.headers.get('x-accel-buffering'), 'no');
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  try {
+    const first = decoder.decode((await reader.read()).value);
+    assert.match(first, /event: score/); assert.match(first, /"matchId":"987"/);
+    assert.equal(first.includes(secret), false); assert.equal(first.includes(session), false);
+    await fetch(base + '/api/match', { method: 'POST', headers: headers(session), body: JSON.stringify({ clubId: '300', matchId: '988' }) });
+    const next = decoder.decode((await reader.read()).value);
+    assert.match(next, /MATCH_CHANGED/);
+  } finally { await reader.cancel(); }
+});
 test('session logout revokes further access', async () => {
   const r = await fetch(base + '/api/session', { method: 'POST', headers: headers(secret), body: '{}' }); const s = (await r.json()).sessionToken;
   const logout = await fetch(base + '/api/logout', { method: 'POST', headers: headers(s), body: '{}' }); assert.equal(logout.status, 200);
   assert.equal((await fetch(base + '/api/info', { headers: headers(s) })).status, 401);
+});
+
+test('public cloud discovery exposes no secrets and does not grant an authenticated session', async () => {
+  const response = await fetch(base + '/api/public-config'); assert.equal(response.status, 200);
+  const value = await response.json(); assert.equal(value.product, 'mk97'); assert.equal(value.sameOrigin, false);
+  assert.equal(JSON.stringify(value).includes(secret), false); assert.equal(value.sessionToken, undefined);
+});
+test('in-app destination setup needs a session and returns no stream credentials', async () => {
+  const payload = { id: 'facebook', server: 'rtmps://live-api-s.facebook.com:443/rtmp/', key: 'fixture-session-key-do-not-return' };
+  assert.equal((await fetch(base+'/api/destination', {method:'POST', headers:headers(secret), body:JSON.stringify(payload)})).status, 401);
+  const response = await fetch(base+'/api/destination', {method:'POST', headers:headers(session), body:JSON.stringify(payload)});
+  assert.equal(response.status, 200); assert.deepEqual(await response.json(), {ok:true,id:'facebook'});
+  const info = await (await fetch(base+'/api/info', {headers:headers(session)})).json();
+  assert.equal(info.destinations.find(d=>d.id==='facebook').configured,true);
+  assert.equal(info.destinations.find(d=>d.id==='facebook').mode,'session');
+  assert.equal(JSON.stringify(info).includes(payload.key),false); assert.equal(JSON.stringify(info).includes(payload.server),false);
+});
+test('a second authenticated session cannot read or clear another operator’s key', async () => {
+  const owner = await (await fetch(base+'/api/session', {method:'POST',headers:headers(secret),body:'{}'})).json();
+  const info = await (await fetch(base+'/api/info',{headers:headers(owner.sessionToken)})).json();
+  assert.equal(info.destinations.find(d=>d.id==='facebook').configured,false);
+  await fetch(base+'/api/destination/clear', {method:'POST',headers:headers(owner.sessionToken),body:JSON.stringify({id:'facebook'})});
+  const original = await (await fetch(base+'/api/info',{headers:headers(session)})).json();
+  assert.equal(original.destinations.find(d=>d.id==='facebook').configured,true);
+  await fetch(base+'/api/logout',{method:'POST',headers:headers(owner.sessionToken),body:'{}'});
+});
+test('HTTP destination setup rejects arbitrary network destinations and clears only session keys', async () => {
+  for (const value of [
+    { id:'youtube',server:'rtmps://169.254.169.254/live',key:'fixture' },
+    { id:'facebook',server:'rtmps://live.facebook.com:9000/live',key:'fixture' },
+    { id:'instagram',server:'https://live.instagram.com/live',key:'fixture' },
+    { id:'facebook',server:'rtmps://live.facebook.com/live',key:'a'.repeat(2049) }
+  ]) assert.equal((await fetch(base+'/api/destination',{method:'POST',headers:headers(session),body:JSON.stringify(value)})).status,400);
+  const removed=await fetch(base+'/api/destination/clear',{method:'POST',headers:headers(session),body:JSON.stringify({id:'facebook'})}); assert.equal(removed.status,200);
+  const info=await (await fetch(base+'/api/info',{headers:headers(session)})).json();
+  assert.equal(info.destinations.find(d=>d.id==='facebook').configured,false);
+  assert.equal(info.destinations.find(d=>d.id==='youtube').configured,true); // Existing environment fallback is preserved.
+});
+test('forged capture profile cannot label 720p as native 1080p or choose an unknown profile', async()=>{
+  for(const resolution of ['1080','unknown']){
+    const response=await fetch(base+'/api/ticket',{method:'POST',headers:headers(session),body:'{}'});const{ticket}=await response.json();
+    assert.match(await wsError({type:'start',ticket,destinations:['youtube'],mimeType:'video/mp4',width:1280,height:720,resolution,overlay:false}),/capture profile requires/);
+  }
+  const info=await(await fetch(base+'/api/info',{headers:headers(session)})).json();assert.equal(info.busy,false);
 });

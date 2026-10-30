@@ -68,25 +68,10 @@ test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly wit
             const bytes = fs.readFileSync(clip);
             for (let i = 0; i < bytes.length; i += 16000) ws.send(bytes.subarray(i, i + 16000));
             const authHeaders = { Origin: origin, Authorization: `Bearer ${sessionToken}` };
-            let snapshot;
-            for (let i = 0; i < 100; i++) {
-              snapshot = await (await fetch(base + '/api/automation', { headers: authHeaders })).json();
-              if (snapshot.bufferSeconds >= 1.6) break;
-              await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            assert.ok(snapshot.bufferSeconds >= 1.6, 'Private replay buffer should warm up during upload: ' + JSON.stringify(snapshot));
-            const selected = await call('/api/clip/select', sessionToken); assert.match(selected.id, /^[a-f0-9]{16}$/);
-            const thumbnail = await fetch(base + `/api/clips/${selected.id}.jpg`, { headers: authHeaders }); assert.equal(thumbnail.status, 200); assert.equal(thumbnail.headers.get('content-type'), 'image/jpeg');
-            const image = Buffer.from(await thumbnail.arrayBuffer()); assert.equal(image.readUInt16BE(0), 0xffd8);
-            const second = await call('/api/session', token);
-            const denied = await fetch(base + `/api/clips/${selected.id}.mp4`, { headers: { Origin: origin, Authorization: `Bearer ${second.sessionToken}` } });
-            assert.equal(denied.status, 409, 'Another authenticated operator cannot read the active owner’s clips');
-            const exported = await fetch(base + `/api/clips/${selected.id}.mp4`, { headers: authHeaders });
-            assert.equal(exported.status, 200); assert.equal(exported.headers.get('cache-control'), 'no-store');
-            const exportedFile = path.join(dir, 'exported.mp4'); fs.writeFileSync(exportedFile, Buffer.from(await exported.arrayBuffer()));
-            const probe = spawnSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', exportedFile], { timeout: 5000, encoding: 'utf8' });
-            assert.equal(probe.status, 0, probe.stderr); const streams = JSON.parse(probe.stdout).streams;
-            assert.equal(streams[0].width, 1920); assert.ok(streams.some(s => s.codec_name === 'aac'));
+            const snapshot = await (await fetch(base + '/api/graphics', { headers: authHeaders })).json();
+            assert.equal(snapshot.bufferSeconds, undefined); assert.equal(snapshot.clips, undefined);
+            const edit = await fetch(base + '/api/destination', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({id:'facebook',server:'rtmps://live-api-s.facebook.com/rtmp',key:'fixture'}) });
+            assert.equal(edit.status,409,'Active camera destination must remain fixed');
             for (let i = 0; i < 100 && sending.size < 2; i++) await new Promise(resolve => setTimeout(resolve, 50));
             assert.equal(sending.size, 2, 'Both real writers must send video before simulating YouTube live status: ' + JSON.stringify(lastStats));
             await call('/api/youtube/transition', sessionToken, { state: 'testing' });

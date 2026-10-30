@@ -1,0 +1,29 @@
+# Free-tier smoke-test template. Not a promise of sustained 1080p capacity.
+# Review current hosting limits in the provider dashboard before deployment.
+# Do not add real secrets to this file. A generated RELAY_TOKEN is a dashboard secret.
+services:
+  - type: web
+    name: mk97-cloud-studio
+    runtime: docker
+    plan: free
+    autoDeployTrigger: "off"
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: RELAY_TOKEN
+        generateValue: true
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "10000"
+      - key: SCORE_POLL_SECONDS
+        value: "5"
+      - key: CRICCLUBS_CLUB_ID
+        value: "300"
+      - key: CRICCLUBS_LEAGUE
+        value: "FWCWL"
+      - key: CRICCLUBS_SCORECARD_ENABLED
+        value: "true"
+# Render supplies RENDER_EXTERNAL_URL. MK97 adds only that exact origin to its
+# allowlist. On another provider set PUBLIC_URL to the exact HTTPS service origin.
+# Add Google OAuth secrets in the dashboard when enabling YouTube sign-in.

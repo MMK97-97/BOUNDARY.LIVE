@@ -11,18 +11,20 @@ export class ScoreService {
     this.scorecardScraper = template ? null : scorecardScraper;
     this.scorecardClubId = String(scorecardClubId); this.scorecardLeague = scorecardLeague;
     this.scorecardDocument = null; this.scorecardTask = null;
+    this.revision = 0; this.listeners = new Set(); this.retryAt = 0;
   }
   select(clubId, matchId) {
     const ids = validateIds(clubId, matchId);
     if (!this.ids || this.ids.clubId !== ids.clubId || this.ids.matchId !== ids.matchId) {
       this.ids = ids; this.score = null; this.error = null; this.lastAttempt = 0; this.inflight = null; this.generation++;
       this.scorecardDocument = null; this.scorecardTask = null;
+      this.retryAt = 0; this.notify();
     }
   }
   async refresh() {
     if (!this.ids) return null;
     if (this.inflight) return this.inflight;
-    if (Date.now() - this.lastAttempt < this.pollMs) return this.snapshot();
+    if (Date.now() < this.nextAttemptAt) return this.snapshot();
     const ids = { ...this.ids }, generation = this.generation;
     this.lastAttempt = Date.now();
     const operation = (async () => {
@@ -31,8 +33,16 @@ export class ScoreService {
         if (url.protocol !== 'https:') throw new Error('Score feed must use HTTPS.');
         const headers = { Accept: 'application/json' };
         if (this.headerName && this.headerValue) headers[this.headerName] = this.headerValue;
-        const response = await this.fetchFn(url, { headers, signal: AbortSignal.timeout(8000), redirect: 'error' });
-        if (!response.ok) throw new Error(`CricClubs/feed returned HTTP ${response.status}. Ask your league to enable score access.`);
+        const response = await this.fetchFn(url, { headers, cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(8000), redirect: 'error' });
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retry = response.headers.get('retry-after');
+            const seconds = /^\d+$/.test(retry || '') ? Number(retry) : (Date.parse(retry) - Date.now()) / 1000;
+            if (generation === this.generation) this.retryAt = Date.now() + Math.max(this.pollMs, Math.min(86400000, Number.isFinite(seconds) ? seconds * 1000 : 60000));
+          }
+          await response.body?.cancel();
+          throw new Error(`CricClubs/feed returned HTTP ${response.status}. Ask your league to enable score access.`);
+        }
         // Bound upstream responses and never forward raw player data to the phone.
         const reader = response.body.getReader(); let size = 0; const chunks = [];
         while (true) {
@@ -44,10 +54,11 @@ export class ScoreService {
         const raw = JSON.parse(Buffer.concat(chunks).toString().replace(/^\uFEFF/, ''));
         const next = normalizeScore(raw, ids);
         if (generation === this.generation) {
-          this.score = next; this.error = null;
+          this.score = next; this.error = null; this.retryAt = 0;
           // HTML scraping runs independently; a slow or blocked scorecard must
           // not hold up live totals, camera upload or the encoder.
           this.enrich(ids, generation);
+          this.notify();
         }
       } catch (error) {
         if (generation === this.generation) {
@@ -55,12 +66,22 @@ export class ScoreService {
             : error instanceof SyntaxError ? 'Feed returned a page instead of JSON; score access may be restricted.'
             : clean(error.message, 180);
           if (this.score) this.score = { ...this.score, stale: true, error: this.error };
+          this.retryAt = Math.max(this.retryAt, Date.now() + this.pollMs);
+          this.notify();
         }
       }
       return this.snapshot();
     })();
     this.inflight = operation;
     try { return await operation; } finally { if (this.inflight === operation) this.inflight = null; }
+  }
+  get nextAttemptAt() { return Math.max(this.lastAttempt + this.pollMs, this.retryAt); }
+  subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+  notify() {
+    this.revision++;
+    const snapshot = this.snapshot();
+    // A disconnected viewer must never turn a successful source read into a failure.
+    for (const listener of this.listeners) { try { listener(snapshot); } catch {} }
   }
   enrich(ids, generation) {
     if (!this.scorecardScraper) return;
@@ -77,12 +98,14 @@ export class ScoreService {
         const document = await this.scorecardScraper.scrape({ ...ids, league: this.scorecardLeague });
         if (generation !== this.generation || !this.score) return;
         this.score = enrichCricClubsScore(this.score, document); this.scorecardDocument = document;
+        this.notify();
       } catch (error) {
         if (generation !== this.generation || !this.score) return;
         if (error.code === 'COOLDOWN' && this.scorecardDocument) return;
         this.scorecardDocument = null;
         this.score = { ...this.score, scorecard: { state: ['ACCESS_BLOCKED', 'ROBOTS_DENIED'].includes(error.code) ? 'blocked' : error.code === 'RATE_LIMITED' ? 'rate_limited' : 'unavailable',
           code: clean(error.code, 40), message: clean(error.message, 220) } };
+        this.notify();
       }
     })();
     this.scorecardTask = task;
@@ -91,7 +114,22 @@ export class ScoreService {
   snapshot() {
     return {
       score: this.score ? { ...this.score, stale: this.score.stale || Date.now() - this.score.fetchedAt > 30000 } : null,
-      error: this.error, ids: this.ids, pollSeconds: this.pollMs / 1000
+      error: this.error, ids: this.ids, pollSeconds: this.pollMs / 1000, revision: this.revision
     };
   }
+}
+
+// One source request stream, scheduled from its actual deadline rather than a
+// second independent interval. HTML enrichment is already asynchronous above.
+export function startScorePolling(service, { enabled = () => true, setTimer = setTimeout, clearTimer = clearTimeout, now = Date.now } = {}) {
+  let stopped = false, timer;
+  async function tick() {
+    if (stopped) return;
+    if (enabled() && service.ids) await service.refresh();
+    if (stopped) return;
+    const delay = enabled() && service.ids ? Math.max(50, service.nextAttemptAt - now()) : 1000;
+    timer = setTimer(tick, delay); timer?.unref?.();
+  }
+  tick();
+  return () => { stopped = true; clearTimer(timer); };
 }

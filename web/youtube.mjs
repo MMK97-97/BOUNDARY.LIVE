@@ -19,7 +19,7 @@ export function installYouTube({ state, api, notice, refreshInfo }) {
     $('ytDisconnect').hidden = !connected; $('ytDisconnect').disabled = disabled;
     $('ytConfiguration').hidden = Boolean(data?.configured); $('ytAccountState').textContent = !state.session ? 'Connect relay first' : connected ? 'Account connected' : 'Not connected';
     $('ytChannel').textContent = data?.channel?.title || 'Your channel. Your broadcast.';
-    $('ytSetupHelp').textContent = !state.session ? 'Connect your laptop relay in Settings before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in relay memory.';
+    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in relay memory.';
     for (const name of ['ytTitle', 'ytDescription', 'ytPrivacy', 'ytSchedule', 'ytAudience']) $(name).disabled = disabled || !connected || Boolean(data?.setup);
     $('ytCreate').disabled = disabled || !connected || data?.setup?.stage === 'ready' || data?.setup?.uncertain;
     $('ytCreate').textContent = busy ? 'Working…' : data?.setup?.stage === 'ready' ? 'Setup ready' : data?.setup ? 'Retry setup' : 'Create YouTube setup';

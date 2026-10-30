@@ -31,12 +31,12 @@ export function installHome({ state, ui, loadMatch, notice }) {
     $('homeMatchDetail').textContent = s ? s.teams?.map(t => `${t.name} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ') || `v ${s.bowling}` : 'Enter a CricClubs Match ID and Club ID, or paste the full scorecard URL.';
     $('homeMatchResult').textContent = s ? s.result || s.series || '' : '';
     $('homeSource').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${state.scoreTransport === 'relay' ? 'relay feed' : 'direct feed'} · ${s.stale ? 'last verified' : 'fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()}` : 'Scorecard, commentary and stats from your selected match appear here.';
-    $('homeRelayState').textContent = state.session ? state.info?.encoder.ready ? 'Relay connected' : 'Encoder needs attention' : 'Connect your laptop';
+    $('homeRelayState').textContent = state.session ? state.info?.encoder.ready ? 'Relay connected' : 'Encoder needs attention' : 'Connect your cloud studio';
     const ready = state.info?.destinations?.filter(d => d.configured).map(d => d.id) || [];
     $('homePlatformState').textContent = ready.length ? `Ready: ${ready.join(', ')}` : 'Choose your destinations';
     $('homeCameraState').textContent = state.camera ? `${state.camera.width} × ${state.camera.height} · camera ready` : '1080p target · camera off';
     $('homeConnection').textContent = state.live ? 'Sending video' : state.session ? 'Relay online' : 'Studio offline';
   }
-  document.body.classList.add('at-home'); update();
+  update();
   return { update, openStudio };
 }

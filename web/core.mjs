@@ -39,7 +39,7 @@ export function duration(seconds) {
   return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, '0')).join(':');
 }
 export function preflight({ connected, encoderReady, camera, destinations, overlay, score, resolution = '1080' }) {
-  if (!connected) return 'Connect your laptop relay first.';
+  if (!connected) return 'Connect your cloud studio first.';
   if (!encoderReady) return 'The relay needs FFmpeg and a font. Check its setup.';
   if (!camera) return 'Open the camera to continue.';
   if (!captureReady(camera, resolution)) return `${resolution === 'auto' ? 'Landscape capture' : resolution + 'p landscape'} is required. Rotate the phone and reopen the camera.`;
