@@ -1,0 +1,451 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "984",
+  "league": "FWCWL",
+  "createdAt": 1793333609316,
+  "updatedAt": 1793333609441,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Winter Haven",
+    "toss": "Silver Hawks CC WON THE TOSS AND ELECTED TO BOWL",
+    "result": "SHCC won by 1 Wicket",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "Harit Patel",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "163",
+        "name": "Florida Panthers CC",
+        "code": "FPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/f659d614-2b19-4cef-bbc3-c7377118299c.jpg",
+        "runs": 200,
+        "wickets": 10,
+        "overs": "33.1",
+        "runRate": "6.03"
+      },
+      "t2": {
+        "id": "169",
+        "name": "Silver Hawks CC",
+        "code": "SHCC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team1.jpg",
+        "runs": 201,
+        "wickets": 9,
+        "overs": "34",
+        "runRate": "5.91"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "984",
+    "at": 1793333609441,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Winter Haven",
+    "toss": "Silver Hawks CC WON THE TOSS AND ELECTED TO BOWL",
+    "result": "SHCC won by 1 Wicket",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "2",
+    "batKey": "t2",
+    "bowlKey": "t1",
+    "teams": {
+      "t1": {
+        "id": "163",
+        "name": "Florida Panthers CC",
+        "code": "FPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/f659d614-2b19-4cef-bbc3-c7377118299c.jpg",
+        "runs": 200,
+        "wickets": 10,
+        "overs": "33.1",
+        "runRate": "6.03"
+      },
+      "t2": {
+        "id": "169",
+        "name": "Silver Hawks CC",
+        "code": "SHCC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team1.jpg",
+        "runs": 201,
+        "wickets": 9,
+        "overs": "34",
+        "runRate": "5.91"
+      }
+    },
+    "hasScore": true,
+    "batting": "Silver Hawks CC",
+    "bowling": "Florida Panthers CC",
+    "runs": 201,
+    "wickets": 9,
+    "overs": "34",
+    "legal": 204,
+    "runRate": "5.91",
+    "requiredRate": "0.00",
+    "requiredRuns": 0,
+    "remainingBalls": 6,
+    "target": 201,
+    "parScore": 195,
+    "dls": false,
+    "batters": [
+      {
+        "id": "1288354",
+        "name": "Jay P",
+        "runs": 13,
+        "balls": 14,
+        "fours": 1,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      },
+      {
+        "id": "5148078",
+        "name": "Vaibhav P",
+        "runs": 16,
+        "balls": 19,
+        "fours": 2,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      }
+    ],
+    "bowler": {
+      "id": "5983635",
+      "name": "Nagaraju P",
+      "overs": "6",
+      "maidens": 0,
+      "runs": 28,
+      "wickets": 0,
+      "wides": null,
+      "noBalls": null,
+      "dots": null
+    },
+    "balls": [
+      "1",
+      ".",
+      "2",
+      "1",
+      "1",
+      "1"
+    ],
+    "partnership": {
+      "runs": 28,
+      "balls": 30,
+      "b1": {
+        "id": "1288354",
+        "name": "Jay P",
+        "runs": 12,
+        "balls": 11
+      },
+      "b2": {
+        "id": "5148078",
+        "name": "Vaibhav P",
+        "runs": 16,
+        "balls": 19
+      }
+    },
+    "lastOut": {
+      "id": "2882338",
+      "name": "Vamshi Krishna M",
+      "runs": 15,
+      "balls": 17,
+      "fours": 0,
+      "sixes": 0,
+      "out": true,
+      "howOut": "c Dikshant P b Sumit S"
+    },
+    "comment": "",
+    "fow": "",
+    "mom": "Harit Patel",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1",
+    "2"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 200,
+      "wickets": 10,
+      "overs": "33.1",
+      "legal": 199,
+      "runRate": "6.03",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": null,
+      "overs_": {},
+      "commentary": [],
+      "lastComment": "",
+      "last": null,
+      "firstSeenLegal": null
+    },
+    "2": {
+      "key": "2",
+      "batKey": "t2",
+      "bowlKey": "t1",
+      "runs": 201,
+      "wickets": 9,
+      "overs": "34",
+      "legal": 204,
+      "runRate": "5.91",
+      "batting": [
+        {
+          "id": "1288354",
+          "name": "Jay P",
+          "runs": 13,
+          "balls": 14,
+          "fours": 1,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 1
+        },
+        {
+          "id": "5148078",
+          "name": "Vaibhav P",
+          "runs": 16,
+          "balls": 19,
+          "fours": 2,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 2
+        },
+        {
+          "id": "2882338",
+          "name": "Vamshi Krishna M",
+          "runs": 15,
+          "balls": 17,
+          "fours": 0,
+          "sixes": 0,
+          "out": true,
+          "howOut": "c Dikshant P b Sumit S",
+          "seen": 3
+        }
+      ],
+      "bowling": [
+        {
+          "id": "5983635",
+          "name": "Nagaraju P",
+          "overs": "6",
+          "maidens": 0,
+          "runs": 28,
+          "wickets": 0,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
+          "seen": 1
+        }
+      ],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 28,
+        "balls": 30,
+        "b1": {
+          "id": "1288354",
+          "name": "Jay P",
+          "runs": 12,
+          "balls": 11
+        },
+        "b2": {
+          "id": "5148078",
+          "name": "Vaibhav P",
+          "runs": 16,
+          "balls": 19
+        }
+      },
+      "overs_": {
+        "33": {
+          "n": 34,
+          "start": 195,
+          "runs": 6,
+          "wickets": 0,
+          "balls": [
+            "1",
+            ".",
+            "2",
+            "1",
+            "1",
+            "1"
+          ],
+          "bowler": "Nagaraju P",
+          "complete": true
+        }
+      },
+      "commentary": [
+        {
+          "id": "2:33.0",
+          "sort": 3300,
+          "at": 1793333609441,
+          "over": "33.1",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:33.1",
+          "sort": 3301,
+          "at": 1793333609441,
+          "over": "33.2",
+          "code": ".",
+          "kind": "dot",
+          "runs": 0,
+          "batRuns": 0,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:33.2",
+          "sort": 3302,
+          "at": 1793333609441,
+          "over": "33.3",
+          "code": "2",
+          "kind": "run",
+          "runs": 2,
+          "batRuns": 2,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:33.3",
+          "sort": 3303,
+          "at": 1793333609441,
+          "over": "33.4",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:33.4",
+          "sort": 3304,
+          "at": 1793333609441,
+          "over": "33.5",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:33.5",
+          "sort": 3305,
+          "at": 1793333609441,
+          "over": "33.6",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Nagaraju P",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        }
+      ],
+      "lastComment": "",
+      "last": {
+        "runs": 201,
+        "wickets": 9,
+        "legal": 204,
+        "overs": "34",
+        "balls": [
+          "1",
+          ".",
+          "2",
+          "1",
+          "1",
+          "1"
+        ],
+        "batters": [
+          {
+            "id": "1288354",
+            "name": "Jay P",
+            "runs": 13,
+            "balls": 14,
+            "fours": 1,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          },
+          {
+            "id": "5148078",
+            "name": "Vaibhav P",
+            "runs": 16,
+            "balls": 19,
+            "fours": 2,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          }
+        ],
+        "partnership": {
+          "runs": 28,
+          "balls": 30,
+          "b1": {
+            "id": "1288354",
+            "name": "Jay P",
+            "runs": 12,
+            "balls": 11
+          },
+          "b2": {
+            "id": "5148078",
+            "name": "Vaibhav P",
+            "runs": 16,
+            "balls": 19
+          }
+        }
+      },
+      "firstSeenLegal": 204
+    }
+  }
+}

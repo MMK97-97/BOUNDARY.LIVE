@@ -1,0 +1,194 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "980",
+  "league": "FWCWL",
+  "createdAt": 1793333608612,
+  "updatedAt": 1793333608900,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "",
+    "result": "No Result",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "164",
+        "name": "Floridians CC",
+        "code": "FCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/74bb87dd-2c57-43f6-9a6c-d8c700610340.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      },
+      "t2": {
+        "id": "168",
+        "name": "Sarasota International CC",
+        "code": "SIC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/e352a014-44a0-424a-b823-c21c617135f2.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "980",
+    "at": 1793333608900,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "",
+    "result": "No Result",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "1",
+    "batKey": "t1",
+    "bowlKey": "t2",
+    "teams": {
+      "t1": {
+        "id": "164",
+        "name": "Floridians CC",
+        "code": "FCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/74bb87dd-2c57-43f6-9a6c-d8c700610340.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      },
+      "t2": {
+        "id": "168",
+        "name": "Sarasota International CC",
+        "code": "SIC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/e352a014-44a0-424a-b823-c21c617135f2.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      }
+    },
+    "hasScore": true,
+    "batting": "Floridians CC",
+    "bowling": "Sarasota International CC",
+    "runs": 0,
+    "wickets": 0,
+    "overs": "0",
+    "legal": 0,
+    "runRate": "--.--",
+    "requiredRate": "0.03",
+    "requiredRuns": null,
+    "remainingBalls": null,
+    "target": null,
+    "parScore": 0,
+    "dls": false,
+    "batters": [],
+    "bowler": null,
+    "balls": [],
+    "partnership": {
+      "runs": 0,
+      "balls": 0,
+      "b1": {
+        "id": "0",
+        "name": "",
+        "runs": 0,
+        "balls": 0
+      },
+      "b2": {
+        "id": "0",
+        "name": "",
+        "runs": 0,
+        "balls": 0
+      }
+    },
+    "lastOut": null,
+    "comment": "",
+    "fow": "",
+    "mom": "",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 0,
+      "wickets": 0,
+      "overs": "0",
+      "legal": 0,
+      "runRate": "--.--",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 0,
+        "balls": 0,
+        "b1": {
+          "id": "0",
+          "name": "",
+          "runs": 0,
+          "balls": 0
+        },
+        "b2": {
+          "id": "0",
+          "name": "",
+          "runs": 0,
+          "balls": 0
+        }
+      },
+      "overs_": {
+        "0": {
+          "n": 1,
+          "start": 0,
+          "runs": 0,
+          "wickets": 0,
+          "balls": [],
+          "bowler": "",
+          "complete": false
+        }
+      },
+      "commentary": [],
+      "lastComment": "",
+      "last": {
+        "runs": 0,
+        "wickets": 0,
+        "legal": 0,
+        "overs": "0",
+        "balls": [],
+        "batters": [],
+        "partnership": {
+          "runs": 0,
+          "balls": 0,
+          "b1": {
+            "id": "0",
+            "name": "",
+            "runs": 0,
+            "balls": 0
+          },
+          "b2": {
+            "id": "0",
+            "name": "",
+            "runs": 0,
+            "balls": 0
+          }
+        }
+      },
+      "firstSeenLegal": 0
+    }
+  }
+}

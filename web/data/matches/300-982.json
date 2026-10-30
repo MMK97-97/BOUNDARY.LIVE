@@ -1,0 +1,391 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "982",
+  "league": "FWCWL",
+  "createdAt": 1793333609032,
+  "updatedAt": 1793333609172,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Hamilton",
+    "toss": "Game Changers CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "GCC won by 81 Runs",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "Daud Khalid",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "166",
+        "name": "Game Changers CC",
+        "code": "GCC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team1.jpg",
+        "runs": 268,
+        "wickets": 7,
+        "overs": "35",
+        "runRate": "7.66"
+      },
+      "t2": {
+        "id": "172",
+        "name": "Royal Phoenix CC",
+        "code": "RPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/9ee627ff-b86f-425d-adbe-2728998605f6.jpg",
+        "runs": 187,
+        "wickets": 9,
+        "overs": "31.3",
+        "runRate": "5.94"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "982",
+    "at": 1793333609172,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Hamilton",
+    "toss": "Game Changers CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "GCC won by 81 Runs",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "2",
+    "batKey": "t2",
+    "bowlKey": "t1",
+    "teams": {
+      "t1": {
+        "id": "166",
+        "name": "Game Changers CC",
+        "code": "GCC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team1.jpg",
+        "runs": 268,
+        "wickets": 7,
+        "overs": "35",
+        "runRate": "7.66"
+      },
+      "t2": {
+        "id": "172",
+        "name": "Royal Phoenix CC",
+        "code": "RPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/9ee627ff-b86f-425d-adbe-2728998605f6.jpg",
+        "runs": 187,
+        "wickets": 9,
+        "overs": "31.3",
+        "runRate": "5.94"
+      }
+    },
+    "hasScore": true,
+    "batting": "Royal Phoenix CC",
+    "bowling": "Game Changers CC",
+    "runs": 187,
+    "wickets": 9,
+    "overs": "31.3",
+    "legal": 189,
+    "runRate": "5.94",
+    "requiredRate": "23.43",
+    "requiredRuns": 82,
+    "remainingBalls": 21,
+    "target": 269,
+    "parScore": 259,
+    "dls": false,
+    "batters": [
+      {
+        "id": "4454002",
+        "name": "Mani prasanth s",
+        "runs": 0,
+        "balls": 0,
+        "fours": 0,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      },
+      {
+        "id": "2092861",
+        "name": "Madhu Reddy R",
+        "runs": 5,
+        "balls": 7,
+        "fours": 0,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      }
+    ],
+    "bowler": {
+      "id": "7221316",
+      "name": "Ali A",
+      "overs": "6.3",
+      "maidens": 0,
+      "runs": 33,
+      "wickets": 1,
+      "wides": null,
+      "noBalls": null,
+      "dots": null
+    },
+    "balls": [
+      ".",
+      "6",
+      "W"
+    ],
+    "partnership": {
+      "runs": 0,
+      "balls": 0,
+      "b1": {
+        "id": "4454002",
+        "name": "Mani prasanth s",
+        "runs": 0,
+        "balls": 0
+      },
+      "b2": {
+        "id": "2092861",
+        "name": "Madhu Reddy R",
+        "runs": 0,
+        "balls": 0
+      }
+    },
+    "lastOut": {
+      "id": "4610506",
+      "name": "Nikhil P",
+      "runs": 51,
+      "balls": 32,
+      "fours": 0,
+      "sixes": 4,
+      "out": true,
+      "howOut": "c Sadik H b Ali A"
+    },
+    "comment": "",
+    "fow": "",
+    "mom": "Daud Khalid",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1",
+    "2"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 268,
+      "wickets": 7,
+      "overs": "35",
+      "legal": 210,
+      "runRate": "7.66",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": null,
+      "overs_": {},
+      "commentary": [],
+      "lastComment": "",
+      "last": null,
+      "firstSeenLegal": null
+    },
+    "2": {
+      "key": "2",
+      "batKey": "t2",
+      "bowlKey": "t1",
+      "runs": 187,
+      "wickets": 9,
+      "overs": "31.3",
+      "legal": 189,
+      "runRate": "5.94",
+      "batting": [
+        {
+          "id": "4454002",
+          "name": "Mani prasanth s",
+          "runs": 0,
+          "balls": 0,
+          "fours": 0,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 1
+        },
+        {
+          "id": "2092861",
+          "name": "Madhu Reddy R",
+          "runs": 5,
+          "balls": 7,
+          "fours": 0,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 2
+        },
+        {
+          "id": "4610506",
+          "name": "Nikhil P",
+          "runs": 51,
+          "balls": 32,
+          "fours": 0,
+          "sixes": 4,
+          "out": true,
+          "howOut": "c Sadik H b Ali A",
+          "seen": 3
+        }
+      ],
+      "bowling": [
+        {
+          "id": "7221316",
+          "name": "Ali A",
+          "overs": "6.3",
+          "maidens": 0,
+          "runs": 33,
+          "wickets": 1,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
+          "seen": 1
+        }
+      ],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 0,
+        "balls": 0,
+        "b1": {
+          "id": "4454002",
+          "name": "Mani prasanth s",
+          "runs": 0,
+          "balls": 0
+        },
+        "b2": {
+          "id": "2092861",
+          "name": "Madhu Reddy R",
+          "runs": 0,
+          "balls": 0
+        }
+      },
+      "overs_": {
+        "31": {
+          "n": 32,
+          "start": 181,
+          "runs": 6,
+          "wickets": 1,
+          "balls": [
+            ".",
+            "6",
+            "W"
+          ],
+          "bowler": "Ali A",
+          "complete": false
+        }
+      },
+      "commentary": [
+        {
+          "id": "2:31.0",
+          "sort": 3100,
+          "at": 1793333609172,
+          "over": "31.1",
+          "code": ".",
+          "kind": "dot",
+          "runs": 0,
+          "batRuns": 0,
+          "extra": "",
+          "bowler": "Ali A",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:31.1",
+          "sort": 3101,
+          "at": 1793333609172,
+          "over": "31.2",
+          "code": "6",
+          "kind": "six",
+          "runs": 6,
+          "batRuns": 6,
+          "extra": "",
+          "bowler": "Ali A",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:31.2",
+          "sort": 3102,
+          "at": 1793333609172,
+          "over": "31.3",
+          "code": "W",
+          "kind": "wicket",
+          "runs": 0,
+          "batRuns": 0,
+          "extra": "",
+          "bowler": "Ali A",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        }
+      ],
+      "lastComment": "",
+      "last": {
+        "runs": 187,
+        "wickets": 9,
+        "legal": 189,
+        "overs": "31.3",
+        "balls": [
+          ".",
+          "6",
+          "W"
+        ],
+        "batters": [
+          {
+            "id": "4454002",
+            "name": "Mani prasanth s",
+            "runs": 0,
+            "balls": 0,
+            "fours": 0,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          },
+          {
+            "id": "2092861",
+            "name": "Madhu Reddy R",
+            "runs": 5,
+            "balls": 7,
+            "fours": 0,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          }
+        ],
+        "partnership": {
+          "runs": 0,
+          "balls": 0,
+          "b1": {
+            "id": "4454002",
+            "name": "Mani prasanth s",
+            "runs": 0,
+            "balls": 0
+          },
+          "b2": {
+            "id": "2092861",
+            "name": "Madhu Reddy R",
+            "runs": 0,
+            "balls": 0
+          }
+        }
+      },
+      "firstSeenLegal": 189
+    }
+  }
+}

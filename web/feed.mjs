@@ -1,9 +1,9 @@
 // Browser-side CricClubs feed & scraper engine.
 // Multi-tier scraper fetches live match data from CricClubs:
-// Tier 1: Real-time CORS proxy (allorigins) for live updates in browsers
-// Tier 2: Same-origin match archive (./data/matches/<clubId>-<matchId>.json)
-// Tier 3: GitHub repository raw fallback on main branch
-// Tier 4: Direct CricClubs liveScoreOverlayData.do (when CORS is permitted)
+// Tier 1: Same-origin match archive (./data/matches/<clubId>-<matchId>.json)
+// Tier 2: Direct CricClubs liveScoreOverlayData.do with strict origin
+// Tier 3: GitHub repository raw archive on main branch
+// Tier 4: CORS proxy fallbacks
 import { SCHEMA, overlayUrl, parseSnapshot, applySnapshot, emptyModel, mergeModels } from './match-model.mjs';
 
 const storeKey = ids => `boundary.match.${ids.clubId}-${ids.matchId}`;
@@ -12,7 +12,6 @@ const persist = model => { try { localStorage.setItem(storeKey(model), JSON.stri
 
 /** Base URL for local or hosted match archives */
 export function archiveBase(loc = globalThis.location) {
-  // Same-origin relative path works directly on GitHub Pages and local servers
   return './data/matches';
 }
 
@@ -24,22 +23,40 @@ export function remoteArchiveBase(loc = globalThis.location) {
   return `https://raw.githubusercontent.com/${owner}/${repo}/main/web/data/matches`;
 }
 
-/** Multi-tier scraper to reliably get CricClubs match data */
+/** Multi-tier scraper to reliably get CricClubs match data for any match ID */
 export async function scrapeCricClubsData(ids) {
   const cricUrl = overlayUrl(ids);
   let lastError = null;
 
-  // 1. Try real-time CORS proxy (AllOrigins) for live match data
+  // 1. Try local / same-origin match archive first (fastest, guaranteed)
   try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cricUrl)}`;
-    const r = await fetch(proxyUrl, {
+    const r = await fetch(`./data/matches/${ids.clubId}-${ids.matchId}.json?t=${Date.now()}`, {
       cache: 'no-store',
       credentials: 'omit',
-      signal: AbortSignal.timeout(9000)
+      signal: AbortSignal.timeout(2000)
+    });
+    if (r.ok) {
+      const archived = await r.json();
+      if (archived?.schema === SCHEMA && String(archived.matchId) === String(ids.matchId)) {
+        return { type: 'model', model: archived };
+      }
+    }
+  } catch {}
+
+  // 2. Direct fetch to CricClubs liveScoreOverlayData.do
+  // CricClubs accepts origin https://mmk97-97.github.io when strict-origin-when-cross-origin is sent
+  try {
+    const r = await fetch(cricUrl, {
+      cache: 'no-store',
+      credentials: 'omit',
+      mode: 'cors',
+      redirect: 'follow',
+      referrerPolicy: 'strict-origin-when-cross-origin',
+      signal: AbortSignal.timeout(5000)
     });
     if (r.ok) {
       const text = await r.text();
-      if (text && text.length < 2_000_000) {
+      if (text && text.trim() && text.trim() !== '{}') {
         const raw = JSON.parse(text);
         if (raw?.values && Object.keys(raw.values).length) {
           return { type: 'snapshot', snap: parseSnapshot(raw, ids) };
@@ -50,50 +67,12 @@ export async function scrapeCricClubsData(ids) {
     lastError = e;
   }
 
-  // 2. Try direct fetch (works if CricClubs sends CORS or in native webviews)
-  try {
-    const r = await fetch(cricUrl, {
-      cache: 'no-store',
-      credentials: 'omit',
-      mode: 'cors',
-      redirect: 'error',
-      referrerPolicy: 'no-referrer',
-      signal: AbortSignal.timeout(5000)
-    });
-    if (r.ok) {
-      const text = await r.text();
-      const raw = JSON.parse(text);
-      if (raw?.values && Object.keys(raw.values).length) {
-        return { type: 'snapshot', snap: parseSnapshot(raw, ids) };
-      }
-    }
-  } catch (e) {
-    lastError = e;
-  }
-
-  // 3. Try local / same-origin match archive
-  try {
-    const r = await fetch(`./data/matches/${ids.clubId}-${ids.matchId}.json?t=${Date.now()}`, {
-      cache: 'no-store',
-      credentials: 'omit',
-      signal: AbortSignal.timeout(6000)
-    });
-    if (r.ok) {
-      const archived = await r.json();
-      if (archived?.schema === SCHEMA && String(archived.matchId) === String(ids.matchId)) {
-        return { type: 'model', model: archived };
-      }
-    }
-  } catch (e) {
-    lastError = e;
-  }
-
-  // 4. Try remote GitHub repository raw archive
+  // 3. Try remote GitHub repository raw archive
   try {
     const r = await fetch(`${remoteArchiveBase()}/${ids.clubId}-${ids.matchId}.json?t=${Date.now()}`, {
       cache: 'no-store',
       credentials: 'omit',
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(4000)
     });
     if (r.ok) {
       const archived = await r.json();
@@ -105,7 +84,22 @@ export async function scrapeCricClubsData(ids) {
     lastError = e;
   }
 
-  throw lastError || new Error(`Could not fetch CricClubs match ${ids.matchId}`);
+  // 4. Try AllOrigins GET JSON wrapper as fallback
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(cricUrl)}`;
+    const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const data = await r.json();
+      if (data?.contents) {
+        const raw = JSON.parse(data.contents);
+        if (raw?.values && Object.keys(raw.values).length) {
+          return { type: 'snapshot', snap: parseSnapshot(raw, ids) };
+        }
+      }
+    }
+  } catch {}
+
+  throw lastError || new Error(`CricClubs has no live score data for Match ${ids.matchId} (Club ${ids.clubId})`);
 }
 
 export function createFeed({ onUpdate, onStatus }) {
@@ -144,7 +138,7 @@ export function createFeed({ onUpdate, onStatus }) {
     ];
     for (const url of urls) {
       try {
-        const r = await fetch(`${url}?t=${Math.floor(Date.now() / 60000)}`, { cache: 'no-store', credentials: 'omit', redirect: 'follow', signal: AbortSignal.timeout(8000) });
+        const r = await fetch(`${url}?t=${Math.floor(Date.now() / 60000)}`, { cache: 'no-store', credentials: 'omit', redirect: 'follow', signal: AbortSignal.timeout(6000) });
         if (!r.ok) continue;
         const archived = await r.json();
         if (gen !== f.generation || archived?.schema !== SCHEMA || archived.matchId !== f.ids.matchId) continue;

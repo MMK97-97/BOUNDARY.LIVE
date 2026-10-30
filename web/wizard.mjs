@@ -12,6 +12,42 @@ const el = (tag, content, className) => {
   return node;
 };
 
+export function parseMatchInput(raw, defaultClub = '300') {
+  const str = String(raw || '').trim();
+  if (!str) return { clubId: defaultClub, matchId: '986', league: 'FWCWL' };
+
+  let clubId = defaultClub;
+  let matchId = '';
+  let league = 'FWCWL';
+
+  // Extract league from URL if present (e.g. cricclubs.com/FWCWL/...)
+  const leagueMatch = /(?:cricclubs\.com\/)([a-zA-Z0-9_-]+)(?:\/|\?|$)/i.exec(str);
+  if (leagueMatch && !['viewscorecard.do', 'livescoreoverlaydata.do', 'results'].includes(leagueMatch[1].toLowerCase())) {
+    league = leagueMatch[1];
+  }
+
+  // Check for clubId in query or path (e.g. clubId=300)
+  const clubParam = /(?:[?&]clubId=|\bclub[=/:])([0-9]+)/i.exec(str);
+  if (clubParam) clubId = clubParam[1];
+
+  // Check for matchId in query or path (e.g. matchId=985)
+  const matchParam = /(?:[?&]matchId=|\bmatch[=/:])([0-9]+)/i.exec(str);
+  if (matchParam) {
+    matchId = matchParam[1];
+  } else if (/^([0-9]+)[-_/]([0-9]+)$/.test(str)) {
+    const parts = str.split(/[-_/]/);
+    clubId = parts[0];
+    matchId = parts[1];
+  } else if (/^[0-9]+$/.test(str)) {
+    matchId = str;
+  } else {
+    const digits = str.match(/\d{2,10}/);
+    matchId = digits ? digits[0] : '986';
+  }
+
+  return { clubId, matchId, league };
+}
+
 export function getTeamLogoUrl(team) {
   if (!team) return './assets/logo-icat.png';
   const name = (team.name || team.code || '').toLowerCase();
@@ -93,14 +129,7 @@ export function installWizard({ state, feed, notice }) {
     }
 
     try {
-      let ids;
-      try {
-        ids = parseMatch(raw, '300');
-      } catch {
-        const cleanId = raw.replace(/\D/g, '') || '986';
-        ids = { clubId: '300', matchId: cleanId };
-      }
-
+      const ids = parseMatchInput(raw, '300');
       notice(`Scraping CricClubs match ${ids.matchId}…`, 'info');
 
       // Fetch live data directly with multi-tier scraper
@@ -113,14 +142,11 @@ export function installWizard({ state, feed, notice }) {
       showScreen('screenMatchPreview');
 
       const sName = model.meta?.series || 'FWCWL 2026-27 Season';
-      const t1 = model.meta?.teams?.t1?.name || 'Royal Bulls CC';
-      const t2 = model.meta?.teams?.t2?.name || 'ICAT';
+      const t1 = model.meta?.teams?.t1?.name || 'Team 1';
+      const t2 = model.meta?.teams?.t2?.name || 'Team 2';
       notice(`Match ${ids.matchId} loaded: ${t1} vs ${t2} (${sName})`, 'success');
     } catch (e) {
-      // In case network completely fails, load preview with match ID
-      updatePreviewFromModel(raw.replace(/\D/g, '') || '986');
-      showScreen('screenMatchPreview');
-      notice(e.message || 'Loaded match preview.', 'info');
+      notice(`Could not fetch CricClubs match data: ${e.message}`, 'error');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -325,20 +351,22 @@ export function installWizard({ state, feed, notice }) {
 
     // Team Header
     if (inn) {
-      const batTeam = m?.meta.teams[inn.batKey] || { name: 'ICAT', code: 'ICAT' };
+      const batTeam = m?.meta.teams[inn.batKey] || { name: 'Team', code: 'Team' };
       if ($('scoreScreenLogo')) $('scoreScreenLogo').src = getTeamLogoUrl(batTeam);
-      if ($('scoreScreenTeamRuns')) $('scoreScreenTeamRuns').textContent = `${batTeam.name || batTeam.code} ${inn.runs ?? 208}/${inn.wickets ?? 5}`;
-      if ($('scoreScreenOvers')) $('scoreScreenOvers').textContent = ` (${inn.overs || '30.5'})`;
+      const runsStr = inn.runs != null ? `${inn.runs}/${inn.wickets ?? 0}` : '';
+      if ($('scoreScreenTeamRuns')) $('scoreScreenTeamRuns').textContent = `${batTeam.name || batTeam.code} ${runsStr}`;
+      if ($('scoreScreenOvers')) $('scoreScreenOvers').textContent = inn.overs ? ` (${inn.overs})` : '';
     }
 
     if (activeScoreTab === 'batting') {
-      const batters = (inn?.batting && inn.batting.length > 0) ? inn.batting : [
-        { name: 'Devalapalli Lakshmi Narasimha K', runs: 60, balls: 48, fours: 5, sixes: 1, howOut: 'not out' },
-        { name: 'Vinod K', runs: 25, balls: 35, fours: 0, sixes: 0, howOut: 'not out' },
-        { name: 'Sriraj K', runs: 19, balls: 22, fours: 1, sixes: 0, howOut: 'b Hemant Kumar D' },
-        { name: 'A. Rahman', runs: 25, balls: 20, fours: 3, sixes: 0, howOut: 'c Awais Mehmood b Keyur Patel' },
-        { name: 'S. Khan', runs: 12, balls: 8, fours: 1, sixes: 1, howOut: 'b Rakib Hassan' }
-      ];
+      const batters = (inn?.batting && inn.batting.length > 0)
+        ? inn.batting
+        : (m?.latest?.batters && m.latest.batters.length > 0)
+          ? m.latest.batters
+          : [
+            { name: 'Batsman 1', runs: inn?.runs ? Math.round(inn.runs * 0.4) : 40, balls: 30, fours: 4, sixes: 1, howOut: 'not out' },
+            { name: 'Batsman 2', runs: inn?.runs ? Math.round(inn.runs * 0.25) : 25, balls: 20, fours: 2, sixes: 0, howOut: 'not out' }
+          ];
 
       let html = `<table class="score-table"><thead><tr><th>Player</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead><tbody>`;
       for (const p of batters) {
@@ -347,17 +375,19 @@ export function installWizard({ state, feed, notice }) {
         html += `<tr><td><strong>${p.name}</strong><small class="${isNotOut ? 'not-out' : ''}">${p.howOut || 'not out'}</small></td><td>${p.runs}</td><td>${p.balls}</td><td>${p.fours || 0}</td><td>${p.sixes || 0}</td><td>${sr}</td></tr>`;
       }
       const st = inn ? inningsStats(inn) : null;
-      html += `</tbody></table><div class="card-footer"><p>Extras: ${st?.extras != null ? st.extras : '4 (b 0, lb 1, w 3, nb 0)'}</p><p>Total: ${inn?.runs ?? 208}/${inn?.wickets ?? 5} (${inn?.overs || '30.5'} overs)</p></div>`;
+      const extrasStr = st?.extras != null ? st.extras : 'Extras: 4 (b 0, lb 1, w 3, nb 0)';
+      html += `</tbody></table><div class="card-footer"><p>${extrasStr}</p><p>Total: ${inn?.runs ?? 0}/${inn?.wickets ?? 0} (${inn?.overs || '0.0'} overs)</p></div>`;
       container.innerHTML = html;
 
     } else {
-      const bowlers = (inn?.bowling && inn.bowling.length > 0) ? inn.bowling : [
-        { name: 'Kaushal T', overs: '2.5', maidens: 0, runs: 27, wickets: 0 },
-        { name: 'Hemant Kumar D', overs: '6.0', maidens: 0, runs: 32, wickets: 1 },
-        { name: 'Israr Khan', overs: '7.0', maidens: 0, runs: 41, wickets: 2 },
-        { name: 'Keyur Patel', overs: '6.0', maidens: 0, runs: 38, wickets: 1 },
-        { name: 'Rakib Hassan', overs: '5.0', maidens: 0, runs: 34, wickets: 1 }
-      ];
+      const bowlers = (inn?.bowling && inn.bowling.length > 0)
+        ? inn.bowling
+        : m?.latest?.bowler
+          ? [m.latest.bowler]
+          : [
+            { name: 'Bowler 1', overs: '4.0', maidens: 0, runs: 28, wickets: 1 },
+            { name: 'Bowler 2', overs: '4.0', maidens: 0, runs: 32, wickets: 1 }
+          ];
 
       let html = `<table class="score-table"><thead><tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr></thead><tbody>`;
       for (const b of bowlers) {
@@ -390,8 +420,8 @@ export function installWizard({ state, feed, notice }) {
     const detailBox = $('statsScreenDetail');
     if (!compBox) return;
 
-    const t1 = m?.meta.teams.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
-    const t2 = m?.meta.teams.t2 || { name: 'ICAT', code: 'ICAT' };
+    const t1 = m?.meta?.teams?.t1 || { name: 'Team 1', code: 'T1' };
+    const t2 = m?.meta?.teams?.t2 || { name: 'Team 2', code: 'T2' };
 
     if ($('statsScreenBatLogo')) $('statsScreenBatLogo').src = getTeamLogoUrl(t1);
     if ($('statsScreenBowlLogo')) $('statsScreenBowlLogo').src = getTeamLogoUrl(t2);
@@ -405,12 +435,14 @@ export function installWizard({ state, feed, notice }) {
 
       const st1 = inn1 ? inningsStats(inn1) : null;
       const st2 = inn2 ? inningsStats(inn2) : null;
-      const r1 = t1.runs ?? inn1?.runs ?? 207, r2 = t2.runs ?? inn2?.runs ?? 208;
-      const w1 = t1.wickets ?? inn1?.wickets ?? 9, w2 = t2.wickets ?? inn2?.wickets ?? 5;
-      const o1 = t1.overs || inn1?.overs || '35.0', o2 = t2.overs || inn2?.overs || '30.5';
-      const rr1 = t1.runRate || inn1?.runRate || '5.91', rr2 = t2.runRate || inn2?.runRate || '6.75';
-      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || 14, bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || 16;
-      const sx1 = st1?.sixes || 3, sx2 = st2?.sixes || 4;
+      const r1 = t1.runs ?? inn1?.runs ?? 0, r2 = t2.runs ?? inn2?.runs ?? 0;
+      const w1 = t1.wickets ?? inn1?.wickets ?? 0, w2 = t2.wickets ?? inn2?.wickets ?? 0;
+      const o1 = t1.overs || inn1?.overs || '0.0', o2 = t2.overs || inn2?.overs || '0.0';
+      const rr1 = t1.runRate || inn1?.runRate || '0.00', rr2 = t2.runRate || inn2?.runRate || '0.00';
+      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || (r1 > 0 ? Math.round(r1 * 0.08) : 0);
+      const bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || (r2 > 0 ? Math.round(r2 * 0.08) : 0);
+      const sx1 = st1?.sixes ?? (r1 > 0 ? Math.round(r1 * 0.02) : 0);
+      const sx2 = st2?.sixes ?? (r2 > 0 ? Math.round(r2 * 0.02) : 0);
 
       const rows = [
         ['Runs', r1, r2],
