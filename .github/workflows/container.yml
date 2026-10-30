@@ -1,0 +1,45 @@
+name: Validate MK97 cloud container
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - relay/**
+      - web/**
+      - .github/workflows/container.yml
+permissions:
+  contents: read
+concurrency:
+  group: mk97-container
+  cancel-in-progress: true
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Build runtime
+        run: docker build --tag mk97-ci .
+      - name: Check non-root runtime, encoder and cloud origin
+        shell: bash
+        run: |
+          export RELAY_TOKEN="$(openssl rand -hex 32)"
+          docker run -d --name mk97-ci --read-only --tmpfs /tmp:rw,noexec,nosuid,size=128m --cap-drop ALL --security-opt no-new-privileges --env RELAY_TOKEN --env PUBLIC_URL=https://mk97.example --publish 127.0.0.1:8787:8787 mk97-ci
+          trap 'docker rm -f mk97-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8787/health >/dev/null; then break; fi
+            sleep 1
+          done
+          test "$(docker exec mk97-ci id -u)" != "0"
+          docker exec mk97-ci node --input-type=module -e '
+            const root="http://127.0.0.1:8787", origin="https://mk97.example";
+            const r=await fetch(root+"/api/session",{method:"POST",headers:{Origin:origin,Authorization:"Bearer "+process.env.RELAY_TOKEN}});
+            if(r.status!==201)throw Error("Session setup failed");
+            const session=await r.json();
+            const info=await (await fetch(root+"/api/info",{headers:{Origin:origin,Authorization:"Bearer "+session.sessionToken}})).json();
+            if(!info.encoder?.ready||info.mode!=="cloud")throw Error("Cloud encoder not ready");
+            console.log("Cloud container ready; encoder available; non-root runtime verified.");'
