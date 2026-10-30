@@ -1,0 +1,87 @@
+name: Archive CricClubs match
+on:
+  schedule:
+    # Run every 10 minutes during match days
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      match_id:
+        description: 'CricClubs Match ID'
+        required: true
+        default: '986'
+      club_id:
+        description: 'CricClubs Club ID'
+        required: true
+        default: '300'
+      league:
+        description: 'League Path'
+        required: false
+        default: 'FWCWL'
+      iterations:
+        description: 'Number of polls (1 for single snapshot, up to 120 for live logger)'
+        required: false
+        default: '6'
+      interval:
+        description: 'Seconds between polls'
+        required: false
+        default: '10'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: match-archive-${{ github.event.inputs.match_id || '986' }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Switch or initialize data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin data || true
+          if git ls-remote --exit-code --heads origin data; then
+            git checkout data
+            git checkout main -- scripts web package.json package-lock.json
+          else
+            git checkout --orphan data
+            git rm -rf .
+            git checkout main -- scripts web package.json package-lock.json
+          fi
+
+      - name: Scrape CricClubs match
+        env:
+          BOUNDARY_MATCH_ID: ${{ github.event.inputs.match_id || vars.BOUNDARY_MATCH_ID || '986' }}
+          BOUNDARY_CLUB_ID: ${{ github.event.inputs.club_id || vars.BOUNDARY_CLUB_ID || '300' }}
+          BOUNDARY_LEAGUE: ${{ github.event.inputs.league || vars.BOUNDARY_LEAGUE || 'FWCWL' }}
+          ARCHIVE_ITERATIONS: ${{ github.event.inputs.iterations || '6' }}
+          ARCHIVE_INTERVAL_SEC: ${{ github.event.inputs.interval || '10' }}
+          BOUNDARY_DATA_DIR: 'matches'
+        run: |
+          node scripts/archive-match.mjs --out matches
+
+      - name: Commit and push data
+        run: |
+          git add matches/
+          if git diff --staged --quiet; then
+            echo "No match updates detected."
+          else
+            git commit -m "Archive CricClubs match update [skip ci]"
+            git push origin data
+          fi

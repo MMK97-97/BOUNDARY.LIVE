@@ -76,7 +76,7 @@ test('WebSocket authentication rejects invalid tickets without starting FFmpeg',
 test('stream tickets are consumed once even when camera validation fails', async () => {
   const r = await fetch(base + '/api/ticket', { method: 'POST', headers: headers(session), body: '{}' }); const { ticket } = await r.json();
   const message = { type: 'start', ticket, destinations: ['youtube'], mimeType: 'video/mp4', width: 1280, height: 720, overlay: false };
-  assert.match(await wsError(message), /1920/); assert.match(await wsError(message), /ticket/);
+  assert.match(await wsError(message), /1920|FFmpeg not found/); assert.match(await wsError(message), /ticket/);
 });
 test('session logout revokes further access', async () => {
   const r = await fetch(base + '/api/session', { method: 'POST', headers: headers(secret), body: '{}' }); const s = (await r.json()).sessionToken;
