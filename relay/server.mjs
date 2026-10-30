@@ -94,7 +94,7 @@ const server = http.createServer(async (req, res) => {
   try { url = new URL(req.url, 'http://localhost'); } catch { return json(res, 400, { error: 'Invalid URL.' }); }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
-    product: 'mk97', version: '1.6.0', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
+    product: 'mk97', version: '1.6.1', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
   });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
@@ -112,7 +112,7 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.6.0', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
+        name: 'MK97 relay', version: '1.6.1', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
           mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : manualDestinations.get(authenticated.id)[id] ? 'session' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
@@ -166,8 +166,8 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && url.pathname === '/api/match') {
         if (active && active.sessionId !== authenticated.id) return json(res, 409, { error: 'Another device owns the active stream.' });
         const data = await body(req);
-        if (active && (String(data.clubId) !== scores.ids?.clubId || String(data.matchId) !== scores.ids?.matchId)) return json(res, 409, { error: 'Stop the active camera upload before changing matches.' });
-        scores.select(data.clubId, data.matchId);
+        if (active && (String(data.clubId) !== scores.ids?.clubId || String(data.matchId) !== scores.ids?.matchId || data.league != null && data.league !== scores.league)) return json(res, 409, { error: 'Stop the active camera upload before changing matches or leagues.' });
+        scores.select(data.clubId, data.matchId, data.league);
         const result = await scores.refresh(); updateOverlay();
         return json(res, result.score ? 200 : 502, result);
       }

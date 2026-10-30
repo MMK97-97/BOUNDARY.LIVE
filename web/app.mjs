@@ -5,6 +5,7 @@ import { createFeed } from './feed.mjs';
 import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
+import { knownLeague } from './cricclubs-reference.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
@@ -156,11 +157,13 @@ const feed = createFeed({
 async function pollScore() { return feed.refresh(); }
 async function loadSelectedMatch(input, club) {
   if (state.live || state.starting || state.stopping || state.scoreLoading) throw new Error('Stop the current upload before changing matches.');
-  const ids = parseMatch(input, club);
+  const ids = parseMatch(input, club, saved('league.' + club));
   state.scoreLoading = true; state.graphics.cards = null;
   $('matchInput').value = ids.matchId; $('clubInput').value = ids.clubId;
-  $('leagueDetails').querySelector('summary').textContent = ids.clubId === '300' ? 'FWCWL · Club 300' : `CricClubs · Club ${ids.clubId}`;
-  $('clubHelp').textContent = 'Match IDs belong to a club. Change the Club ID for another league, or paste its full scorecard URL.';
+  const league = ids.league || knownLeague(ids.clubId)?.league;
+  $('leagueDetails').querySelector('summary').textContent = `${knownLeague(ids.clubId)?.label || league || 'CricClubs'} · Club ${ids.clubId}`;
+  $('clubHelp').textContent = 'Match IDs belong to a club. FWCWL: 300 · Tampa Cricket: 1507 · TCL: 157. Full URLs supply the league path automatically.';
+  if (league) save('league.' + ids.clubId, league);
   save('club', ids.clubId); save('match', ids.matchId); updateControls();
   try {
     const result = await feed.select(ids);

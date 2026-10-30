@@ -27,3 +27,6 @@ services:
 # Render supplies RENDER_EXTERNAL_URL. MK97 adds only that exact origin to its
 # allowlist. On another provider set PUBLIC_URL to the exact HTTPS service origin.
 # Add Google OAuth secrets in the dashboard when enabling YouTube sign-in.
+
+# Club/path values above are an optional legacy override. Version 1.6.1 also
+# supports TampaCricket/1507 and TCL/157 automatically, and paths from full URLs.

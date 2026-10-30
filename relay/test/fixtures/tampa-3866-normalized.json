@@ -1,0 +1,145 @@
+{
+  "schema": "mk97.score.v1",
+  "batting": "ROR",
+  "bowling": "JGR",
+  "runs": "95",
+  "wickets": "5",
+  "overs": "16",
+  "runRate": "5.94",
+  "target": "0",
+  "result": "JGR won by 35 Runs",
+  "status": "complete",
+  "balls": [
+    "W",
+    ".",
+    ".",
+    "1wd",
+    ".",
+    ".",
+    "."
+  ],
+  "detail": "Roaring Royals NEED 36 FROM 0 OVERS --.-- RRR",
+  "source": "CricClubs",
+  "superOver": false,
+  "series": "Plate",
+  "ground": "Wesley Chapel Stadium",
+  "batters": [
+    {
+      "id": "4851344",
+      "name": "Harishwar P",
+      "runs": "0",
+      "balls": "5",
+      "fours": "0",
+      "sixes": "0",
+      "status": "not out",
+      "strikeRate": ""
+    },
+    {
+      "id": "1114913",
+      "name": "Anurag S",
+      "runs": "56",
+      "balls": "41",
+      "fours": "5",
+      "sixes": "2",
+      "status": "not out",
+      "strikeRate": ""
+    }
+  ],
+  "bowler": {
+    "id": "6219022",
+    "name": "Muthuraman M",
+    "overs": "3",
+    "maidens": "0",
+    "runs": "12",
+    "wickets": "1",
+    "economy": ""
+  },
+  "innings": "2",
+  "requiredRate": "--.--",
+  "totalOvers": "16",
+  "deliveries": [],
+  "cards": {
+    "batting": [],
+    "bowling": [],
+    "complete": false
+  },
+  "teams": [
+    {
+      "name": "Jaguars",
+      "code": "JGR",
+      "logo": "https://cricclubs.com/documentsRep/teamLogos/e8289bb4-452c-4710-863a-bd638300fa60.jpg",
+      "runs": "130",
+      "wickets": "5",
+      "overs": "16"
+    },
+    {
+      "name": "Roaring Royals",
+      "code": "ROR",
+      "logo": "https://cricclubs.com/documentsRep/teamLogos/f9025dd6-5c3b-46f4-a965-57a7980f36e5.jpg",
+      "runs": "95",
+      "wickets": "5",
+      "overs": "16"
+    }
+  ],
+  "partialView": false,
+  "lastOut": {
+    "id": "4851342",
+    "name": "Venkat D",
+    "runs": "1",
+    "balls": "4",
+    "fours": "0",
+    "sixes": "0",
+    "status": "c Satish K b Muthuraman M",
+    "strikeRate": ""
+  },
+  "commentary": [],
+  "stats": {
+    "toss": "Roaring Royals WON THE TOSS AND ELECTED TO BOWL",
+    "playerOfMatch": "Rakesh Cherukuri",
+    "partnership": {
+      "runs": "1",
+      "balls": "5",
+      "batters": [
+        {
+          "name": "Harishwar P",
+          "runs": "0",
+          "balls": "5"
+        },
+        {
+          "name": "Anurag S",
+          "runs": "0",
+          "balls": "0"
+        }
+      ]
+    }
+  },
+  "inningsCards": [
+    {
+      "id": "1",
+      "team": "Jaguars",
+      "bowling": "Roaring Royals",
+      "runs": "130",
+      "wickets": "5",
+      "overs": "16",
+      "batting": [],
+      "bowlers": [],
+      "complete": false
+    },
+    {
+      "id": "2",
+      "team": "Roaring Royals",
+      "bowling": "Jaguars",
+      "runs": "95",
+      "wickets": "5",
+      "overs": "16",
+      "batting": [],
+      "bowlers": [],
+      "complete": false
+    }
+  ],
+  "clubId": "1507",
+  "matchId": "3866",
+  "fetchedAt": 1793389805825,
+  "stale": false,
+  "error": null
+}

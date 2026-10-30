@@ -1,5 +1,6 @@
 import { clean, validateIds, normalizeScore } from '../../web/score-data.mjs';
 import { enrichCricClubsScore } from './cricclubs-parser.mjs';
+import { CRICCLUBS_LEAGUES, validateLeague } from '../../web/cricclubs-reference.mjs';
 export { clean, validateIds, normalizeScore, scoreLines } from '../../web/score-data.mjs';
 export class ScoreService {
   constructor({ template, headerName, headerValue, pollSeconds = 5, fetchFn = fetch, scorecardScraper = null, scorecardClubId = '300', scorecardLeague = 'FWCWL' } = {}) {
@@ -10,13 +11,18 @@ export class ScoreService {
     this.lastAttempt = 0; this.generation = 0;
     this.scorecardScraper = template ? null : scorecardScraper;
     this.scorecardClubId = String(scorecardClubId); this.scorecardLeague = scorecardLeague;
+    this.leagues = new Map(CRICCLUBS_LEAGUES.map(item => [item.clubId, item.league]));
+    if (scorecardClubId && scorecardLeague) this.leagues.set(validateIds(scorecardClubId, '1').clubId, validateLeague(scorecardLeague));
+    this.league = null;
     this.scorecardDocument = null; this.scorecardTask = null;
     this.revision = 0; this.listeners = new Set(); this.retryAt = 0;
   }
-  select(clubId, matchId) {
+  select(clubId, matchId, league) {
     const ids = validateIds(clubId, matchId);
-    if (!this.ids || this.ids.clubId !== ids.clubId || this.ids.matchId !== ids.matchId) {
+    const path = validateLeague(league) || this.leagues.get(ids.clubId) || (this.ids?.clubId === ids.clubId ? this.league : null);
+    if (!this.ids || this.ids.clubId !== ids.clubId || this.ids.matchId !== ids.matchId || this.league !== path) {
       this.ids = ids; this.score = null; this.error = null; this.lastAttempt = 0; this.inflight = null; this.generation++;
+      this.league = path;
       this.scorecardDocument = null; this.scorecardTask = null;
       this.retryAt = 0; this.notify();
     }
@@ -85,8 +91,9 @@ export class ScoreService {
   }
   enrich(ids, generation) {
     if (!this.scorecardScraper) return;
-    if (ids.clubId !== this.scorecardClubId) {
-      this.score.scorecard = { state: 'unavailable', message: 'Set CRICCLUBS_CLUB_ID and CRICCLUBS_LEAGUE on the relay for this league.' }; return;
+    const league = this.league;
+    if (!league) {
+      this.score.scorecard = { state: 'unavailable', message: 'Paste this league’s full CricClubs scorecard URL to enable full-card reading.' }; return;
     }
     if (this.scorecardDocument && Date.now() - this.scorecardDocument.fetchedAt < 120000) {
       try { this.score = enrichCricClubsScore(this.score, this.scorecardDocument); } catch { this.scorecardDocument = null; }
@@ -95,7 +102,7 @@ export class ScoreService {
     if (this.scorecardTask) return;
     const task = (async () => {
       try {
-        const document = await this.scorecardScraper.scrape({ ...ids, league: this.scorecardLeague });
+        const document = await this.scorecardScraper.scrape({ ...ids, league });
         if (generation !== this.generation || !this.score) return;
         this.score = enrichCricClubsScore(this.score, document); this.scorecardDocument = document;
         this.notify();
@@ -114,7 +121,7 @@ export class ScoreService {
   snapshot() {
     return {
       score: this.score ? { ...this.score, stale: this.score.stale || Date.now() - this.score.fetchedAt > 30000 } : null,
-      error: this.error, ids: this.ids, pollSeconds: this.pollMs / 1000, revision: this.revision
+      error: this.error, ids: this.ids, league: this.league, pollSeconds: this.pollMs / 1000, revision: this.revision
     };
   }
 }

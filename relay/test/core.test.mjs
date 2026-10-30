@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseMatch, relayOrigin, clampZoom, is1080Landscape, duration, chooseMime, preflight } from '../../web/core.mjs';
 test('match 986 accepts league ID and extracts IDs from a complete CricClubs URL', () => {
   assert.deepEqual(parseMatch('986', '300'), { clubId: '300', matchId: '986' });
-  assert.deepEqual(parseMatch('https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300'), { clubId: '300', matchId: '986' });
+  assert.deepEqual(parseMatch('https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300'), { clubId: '300', matchId: '986', league: 'FWCWL' });
 });
 for (const [name, value, club] of [
   ['missing club', '986', ''], ['negative match', '-1', '123'], ['nonnumeric match', '986;rm', '123'],

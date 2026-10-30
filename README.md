@@ -1,6 +1,8 @@
 # MK97 — phone-first live cricket streaming
 
-**Version 1.6: live streaming only.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
+**Version 1.6.1: live streaming only, with automatic multi-league score routing.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
+
+**New league support:** paste a full CricClubs scorecard URL; MK97 keeps its league path and extracts the IDs. Bare IDs use built-in mappings for FWCWL / Club 300, Tampa Cricket / Club 1507 and TCL / Club 157. Other full URLs work without changing host settings. Match IDs are never guessed across clubs. See [LEAGUES.md](docs/LEAGUES.md).
 
 Start with **[the complete free-hosting steps](docs/FREE_HOSTING.md)** and **[phone-only stream setup](docs/CLOUD_SETUP.md)**. No laptop needs to run at the ground. Host the container once; operate MK97 from your phone.
 
@@ -29,7 +31,7 @@ YouTube account setup and publication controls are implemented. Facebook/Instagr
 
 The public ticker returned completed FWCWL **Match 986 / Club 300**: Royal Bulls CC 207/9 (35), ICAT 208/5 (30.5), ICAT won by 5 Wickets. Match 985 also loaded during earlier browser validation. These are captured regression checks, not a live fallback.
 
-The tested ticker view contains limited current players and no full innings arrays/commentary for 986. Its full HTML presented verification and was not successfully scraped here. The parser is verified against explicit synthetic HTML; actual full 986 cards and an active CricClubs match remain unverified. The app labels incomplete/stale feeds and never fills missing rows with invented values. See [SCRAPER.md](docs/SCRAPER.md) and [LIVE_SCORES.md](docs/LIVE_SCORES.md).
+The tested ticker view contains limited current players and no full innings arrays/commentary for 986. Its full HTML presented verification and was not successfully scraped here. Live read-only ticker checks on October 30, 2026 also returned completed Tampa Cricket 3866 / 1507 and TCL 6098 / 157 with valid team totals. Those responses still omit full player cards/commentary; see LEAGUES.md. The parser is verified against explicit synthetic HTML; actual full 986 cards and an active CricClubs match remain unverified. The app labels incomplete/stale feeds and never fills missing rows with invented values. See [SCRAPER.md](docs/SCRAPER.md) and [LIVE_SCORES.md](docs/LIVE_SCORES.md).
 
 ## Development
 

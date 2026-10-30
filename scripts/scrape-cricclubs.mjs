@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { knownLeague } from '../web/cricclubs-reference.mjs';
 import { CricClubsScraper, cricclubsReference, parseCricClubsScorecard } from '../relay/lib/cricclubs.mjs';
 
 export function parseScrapeArgs(args) {
@@ -13,7 +14,7 @@ export function parseScrapeArgs(args) {
     o[name] = value;
   }
   if (o.url && (o.clubId || o.matchId || o.league)) throw new Error('Provide --url or separate match identifiers, not both.');
-  const ref = cricclubsReference(o.url || { clubId: o.clubId || '300', matchId: o.matchId, league: o.league || 'FWCWL' });
+  const ref = cricclubsReference(o.url || { clubId: o.clubId || '300', matchId: o.matchId, league: o.league || knownLeague(o.clubId || '300')?.league });
   return { ...o, ref };
 }
 export async function scrapeMatch(options, scraper = new CricClubsScraper()) {

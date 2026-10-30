@@ -1,0 +1,145 @@
+{
+  "schema": "mk97.score.v1",
+  "batting": "NWT",
+  "bowling": "KNG",
+  "runs": "79",
+  "wickets": "7",
+  "overs": "16",
+  "runRate": "4.94",
+  "target": "0",
+  "result": "KNG won by 59 Runs",
+  "status": "complete",
+  "balls": [
+    "1wd",
+    ".",
+    ".",
+    ".",
+    "2",
+    ".",
+    "2"
+  ],
+  "detail": "NewTampaHawks NEED 60 FROM 0 OVERS --.-- RRR",
+  "source": "CricClubs",
+  "superOver": false,
+  "series": "Division 1",
+  "ground": "Higginbotham Cricket Fields",
+  "batters": [
+    {
+      "id": "900505",
+      "name": "Vignan Reddy M",
+      "runs": "26",
+      "balls": "28",
+      "fours": "0",
+      "sixes": "0",
+      "status": "not out",
+      "strikeRate": ""
+    },
+    {
+      "id": "3467385",
+      "name": "Chaitanya A",
+      "runs": "5",
+      "balls": "9",
+      "fours": "0",
+      "sixes": "0",
+      "status": "not out",
+      "strikeRate": ""
+    }
+  ],
+  "bowler": {
+    "id": "666896",
+    "name": "Venugopal V",
+    "overs": "1",
+    "maidens": "0",
+    "runs": "5",
+    "wickets": "0",
+    "economy": ""
+  },
+  "innings": "2",
+  "requiredRate": "--.--",
+  "totalOvers": "16",
+  "deliveries": [],
+  "cards": {
+    "batting": [],
+    "bowling": [],
+    "complete": false
+  },
+  "teams": [
+    {
+      "name": "Kings",
+      "code": "KNG",
+      "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team4.jpg",
+      "runs": "138",
+      "wickets": "7",
+      "overs": "16"
+    },
+    {
+      "name": "NewTampaHawks",
+      "code": "NWT",
+      "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team3.jpg",
+      "runs": "79",
+      "wickets": "7",
+      "overs": "16"
+    }
+  ],
+  "partialView": false,
+  "lastOut": {
+    "id": "997988",
+    "name": "Maheshkumar M",
+    "runs": "19",
+    "balls": "19",
+    "fours": "2",
+    "sixes": "1",
+    "status": "b Raghu Ram K",
+    "strikeRate": ""
+  },
+  "commentary": [],
+  "stats": {
+    "toss": "NewTampaHawks WON THE TOSS AND ELECTED TO BOWL",
+    "playerOfMatch": "Dheeraj Reddy",
+    "partnership": {
+      "runs": "27",
+      "balls": "30",
+      "batters": [
+        {
+          "name": "Vignan Reddy M",
+          "runs": "21",
+          "balls": "21"
+        },
+        {
+          "name": "Chaitanya A",
+          "runs": "5",
+          "balls": "9"
+        }
+      ]
+    }
+  },
+  "inningsCards": [
+    {
+      "id": "1",
+      "team": "Kings",
+      "bowling": "NewTampaHawks",
+      "runs": "138",
+      "wickets": "7",
+      "overs": "16",
+      "batting": [],
+      "bowlers": [],
+      "complete": false
+    },
+    {
+      "id": "2",
+      "team": "NewTampaHawks",
+      "bowling": "Kings",
+      "runs": "79",
+      "wickets": "7",
+      "overs": "16",
+      "batting": [],
+      "bowlers": [],
+      "complete": false
+    }
+  ],
+  "clubId": "157",
+  "matchId": "6098",
+  "fetchedAt": 1793389805965,
+  "stale": false,
+  "error": null
+}

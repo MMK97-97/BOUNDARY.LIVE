@@ -1,4 +1,5 @@
 import { normalizeScore, validateIds } from './score-data.mjs';
+import { selectedReference } from './cricclubs-reference.mjs';
 
 export const overlayUrl = ids => {
   const valid = validateIds(ids.clubId, ids.matchId);
@@ -81,7 +82,7 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
       try {
         let result;
         if (relay?.session) {
-          const key = `${relay.session}:${selected.clubId}:${selected.matchId}`;
+          const key = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}`;
           result = binding === key ? await relay.request('/api/score')
             : await relay.request('/api/match', { method: 'POST', body: JSON.stringify(selected) });
           if (gen === generation) binding = key;
@@ -94,7 +95,7 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
       } catch (error) {
         if (gen !== generation) return null;
         const message = controller.signal.aborted ? 'Score request timed out. Keeping the last verified score.'
-          : error.name === 'TypeError' ? 'CricClubs cannot be reached directly from this browser. Connect the laptop relay in Settings.' : error.message;
+          : error.name === 'TypeError' ? 'CricClubs cannot be reached directly from this browser. Connect the cloud studio in Stream setup.' : error.message;
         last = { ...last, ids: selected, score: last?.score ? { ...last.score, stale: true, error: message } : null, error: message, status: error.status, pollSeconds: 5 };
         onUpdate?.(last); return last;
       } finally { clearTimeout(timeout); if (pending === operation) { pending = null; schedule(); } }
@@ -103,7 +104,7 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
   }
   return {
     get ids() { return ids; }, get snapshot() { return last; },
-    select(value) { const next = validateIds(value.clubId, value.matchId); cancel(); ids = next; binding = ''; last = null; onUpdate?.({ ids, score: null, error: null }); return poll(true); },
+    select(value) { const next = selectedReference(value); cancel(); ids = next; binding = ''; last = null; onUpdate?.({ ids, score: null, error: null }); return poll(true); },
     changeSource() { cancel(); binding = ''; if (last?.score) last = { ...last, revision: undefined, score: { ...last.score, stale: true } }; return poll(true); },
     refresh() { return poll(true); },
     visibilityChanged() { if (!visible()) { cancel(); return Promise.resolve(last); } return poll(true); },

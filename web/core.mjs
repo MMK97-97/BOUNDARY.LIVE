@@ -1,18 +1,8 @@
+import { matchReference } from './cricclubs-reference.mjs';
 export const PROFILES = Object.freeze({ balanced: { bitrate: 8_000_000, fps: 30 }, detail: { bitrate: 14_000_000, fps: 30 } });
 export const SIZES = { '1080': { width: 1920, height: 1080 }, '720': { width: 1280, height: 720 }, '480': { width: 854, height: 480 } };
 export const captureReady = (s, resolution = '1080') => { const wanted = SIZES[resolution] || SIZES['480']; return Number(s?.width) >= wanted.width && Number(s?.height) >= wanted.height && Number(s?.width) >= Number(s?.height); };
-export function parseMatch(input, savedClub) {
-  let clubId = String(savedClub || '').trim(), matchId = String(input || '').trim();
-  if (/^https?:/i.test(matchId)) {
-    const url = new URL(matchId);
-    if (url.protocol !== 'https:' || !(url.hostname === 'cricclubs.com' || url.hostname.endsWith('.cricclubs.com')) || url.username || url.password) throw new Error('Use an HTTPS scorecard URL from cricclubs.com.');
-    clubId = url.searchParams.get('clubId') || clubId;
-    matchId = url.searchParams.get('matchId') || '';
-  }
-  if (!/^[1-9]\d{0,11}$/.test(clubId)) throw new Error('Paste the full CricClubs scorecard URL, or enter your league’s Club ID once.');
-  if (!/^[1-9]\d{0,11}$/.test(matchId)) throw new Error('Enter a numeric CricClubs Match ID.');
-  return { clubId, matchId };
-}
+export function parseMatch(input, savedClub, savedLeague) { return matchReference(input, savedClub, savedLeague); }
 export function relayOrigin(value) {
   const u = new URL(value);
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);

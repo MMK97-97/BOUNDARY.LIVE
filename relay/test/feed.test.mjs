@@ -72,7 +72,7 @@ test('source outages retain and label only the last successful score', async () 
   let offline = false;
   const feed = createFeed({ auto: false, fetchFn: async () => { if (offline) throw new TypeError('offline'); return response(raw()); } });
   await feed.select(ids); offline = true; const failed = await feed.refresh();
-  assert.equal(failed.score.runs, '208'); assert.equal(failed.score.stale, true); assert.match(failed.error, /Connect the laptop relay/);
+  assert.equal(failed.score.runs, '208'); assert.equal(failed.score.stale, true); assert.match(failed.error, /Connect the cloud studio/);
   await feed.select({ clubId: '300', matchId: '987' }); assert.equal(feed.snapshot.score, null); feed.stop();
 });
 

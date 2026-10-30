@@ -177,3 +177,13 @@ test('forged capture profile cannot label 720p as native 1080p or choose an unkn
   }
   const info=await(await fetch(base+'/api/info',{headers:headers(session)})).json();assert.equal(info.busy,false);
 });
+test('match selection resolves TampaCricket and TCL independently of the FWCWL environment',async()=>{
+  for(const ref of [{clubId:'1507',matchId:'3866',league:'TampaCricket'},{clubId:'157',matchId:'6098',league:'TCL'}]){
+    const response=await fetch(base+'/api/match',{method:'POST',headers:headers(session),body:JSON.stringify(ref)});
+    // This HTTP fixture deliberately has an unavailable upstream. Routing must
+    // still select the new identifiers/path and never retain the previous score.
+    assert.equal(response.status,502);const value=await response.json();assert.deepEqual(value.ids,{clubId:ref.clubId,matchId:ref.matchId});assert.equal(value.league,ref.league);assert.equal(value.score,null);
+  }
+  const bad=await fetch(base+'/api/match',{method:'POST',headers:headers(session),body:JSON.stringify({clubId:'157',matchId:'6099',league:'../TCL'})});assert.equal(bad.status,400);
+  const unchanged=await(await fetch(base+'/api/score',{headers:headers(session)})).json();assert.equal(unchanged.ids.matchId,'6098');assert.equal(unchanged.league,'TCL');
+});
