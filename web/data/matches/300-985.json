@@ -1,0 +1,351 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "985",
+  "league": "",
+  "createdAt": 1793334891114,
+  "updatedAt": 1793334891114,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "Game Changers CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "TCC won by 5 Wickets",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "Aviral Jain",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "166",
+        "name": "Game Changers CC",
+        "code": "GCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/c43044e1-e802-44fa-a4f5-438eb24667f9.jpg",
+        "runs": 216,
+        "wickets": 7,
+        "overs": "35",
+        "runRate": "6.17"
+      },
+      "t2": {
+        "id": "171",
+        "name": "Toons CC",
+        "code": "TCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/9ee627ff-b86f-425d-adbe-2728998605f6.jpg",
+        "runs": 220,
+        "wickets": 5,
+        "overs": "27.1",
+        "runRate": "8.10"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "985",
+    "at": 1793334891114,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "Game Changers CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "TCC won by 5 Wickets",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "2",
+    "batKey": "t2",
+    "bowlKey": "t1",
+    "teams": {
+      "t1": {
+        "id": "166",
+        "name": "Game Changers CC",
+        "code": "GCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/c43044e1-e802-44fa-a4f5-438eb24667f9.jpg",
+        "runs": 216,
+        "wickets": 7,
+        "overs": "35",
+        "runRate": "6.17"
+      },
+      "t2": {
+        "id": "171",
+        "name": "Toons CC",
+        "code": "TCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/9ee627ff-b86f-425d-adbe-2728998605f6.jpg",
+        "runs": 220,
+        "wickets": 5,
+        "overs": "27.1",
+        "runRate": "8.10"
+      }
+    },
+    "hasScore": true,
+    "batting": "Toons CC",
+    "bowling": "Game Changers CC",
+    "runs": 220,
+    "wickets": 5,
+    "overs": "27.1",
+    "legal": 163,
+    "runRate": "8.10",
+    "requiredRate": "--.--",
+    "requiredRuns": 0,
+    "remainingBalls": 47,
+    "target": 217,
+    "parScore": 157,
+    "dls": false,
+    "batters": [
+      {
+        "id": "5234472",
+        "name": "Aviral J",
+        "runs": 117,
+        "balls": 74,
+        "fours": 7,
+        "sixes": 7,
+        "out": false,
+        "howOut": "not out"
+      },
+      {
+        "id": "4625341",
+        "name": "Kashish G",
+        "runs": 13,
+        "balls": 10,
+        "fours": 0,
+        "sixes": 2,
+        "out": false,
+        "howOut": "not out"
+      }
+    ],
+    "bowler": {
+      "id": "497566",
+      "name": "Syed I",
+      "overs": "0.1",
+      "maidens": 0,
+      "runs": 4,
+      "wickets": 0,
+      "wides": null,
+      "noBalls": null,
+      "dots": null
+    },
+    "balls": [
+      "4"
+    ],
+    "partnership": {
+      "runs": 39,
+      "balls": 21,
+      "b1": {
+        "id": "5234472",
+        "name": "Aviral J",
+        "runs": 24,
+        "balls": 11
+      },
+      "b2": {
+        "id": "4625341",
+        "name": "Kashish G",
+        "runs": 13,
+        "balls": 10
+      }
+    },
+    "lastOut": {
+      "id": "668527",
+      "name": "Sanjay G",
+      "runs": 5,
+      "balls": 8,
+      "fours": 0,
+      "sixes": 0,
+      "out": true,
+      "howOut": "c Sohaib A b Moeen S"
+    },
+    "comment": "",
+    "fow": "",
+    "mom": "Aviral Jain",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1",
+    "2"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 216,
+      "wickets": 7,
+      "overs": "35",
+      "legal": 210,
+      "runRate": "6.17",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": null,
+      "overs_": {},
+      "commentary": [],
+      "lastComment": "",
+      "last": null,
+      "firstSeenLegal": null
+    },
+    "2": {
+      "key": "2",
+      "batKey": "t2",
+      "bowlKey": "t1",
+      "runs": 220,
+      "wickets": 5,
+      "overs": "27.1",
+      "legal": 163,
+      "runRate": "8.10",
+      "batting": [
+        {
+          "id": "5234472",
+          "name": "Aviral J",
+          "runs": 117,
+          "balls": 74,
+          "fours": 7,
+          "sixes": 7,
+          "out": false,
+          "howOut": "not out",
+          "seen": 1
+        },
+        {
+          "id": "4625341",
+          "name": "Kashish G",
+          "runs": 13,
+          "balls": 10,
+          "fours": 0,
+          "sixes": 2,
+          "out": false,
+          "howOut": "not out",
+          "seen": 2
+        },
+        {
+          "id": "668527",
+          "name": "Sanjay G",
+          "runs": 5,
+          "balls": 8,
+          "fours": 0,
+          "sixes": 0,
+          "out": true,
+          "howOut": "c Sohaib A b Moeen S",
+          "seen": 3
+        }
+      ],
+      "bowling": [
+        {
+          "id": "497566",
+          "name": "Syed I",
+          "overs": "0.1",
+          "maidens": 0,
+          "runs": 4,
+          "wickets": 0,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
+          "seen": 1
+        }
+      ],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 39,
+        "balls": 21,
+        "b1": {
+          "id": "5234472",
+          "name": "Aviral J",
+          "runs": 24,
+          "balls": 11
+        },
+        "b2": {
+          "id": "4625341",
+          "name": "Kashish G",
+          "runs": 13,
+          "balls": 10
+        }
+      },
+      "overs_": {
+        "27": {
+          "n": 28,
+          "start": 216,
+          "runs": 4,
+          "wickets": 0,
+          "balls": [
+            "4"
+          ],
+          "bowler": "Syed I",
+          "complete": false
+        }
+      },
+      "commentary": [
+        {
+          "id": "2:27.0",
+          "sort": 2700,
+          "at": 1793334891114,
+          "over": "27.1",
+          "code": "4",
+          "kind": "four",
+          "runs": 4,
+          "batRuns": 4,
+          "extra": "",
+          "bowler": "Syed I",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        }
+      ],
+      "lastComment": "",
+      "last": {
+        "runs": 220,
+        "wickets": 5,
+        "legal": 163,
+        "overs": "27.1",
+        "balls": [
+          "4"
+        ],
+        "batters": [
+          {
+            "id": "5234472",
+            "name": "Aviral J",
+            "runs": 117,
+            "balls": 74,
+            "fours": 7,
+            "sixes": 7,
+            "out": false,
+            "howOut": "not out"
+          },
+          {
+            "id": "4625341",
+            "name": "Kashish G",
+            "runs": 13,
+            "balls": 10,
+            "fours": 0,
+            "sixes": 2,
+            "out": false,
+            "howOut": "not out"
+          }
+        ],
+        "partnership": {
+          "runs": 39,
+          "balls": 21,
+          "b1": {
+            "id": "5234472",
+            "name": "Aviral J",
+            "runs": 24,
+            "balls": 11
+          },
+          "b2": {
+            "id": "4625341",
+            "name": "Kashish G",
+            "runs": 13,
+            "balls": 10
+          }
+        }
+      },
+      "firstSeenLegal": 163
+    }
+  }
+}

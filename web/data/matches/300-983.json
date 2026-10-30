@@ -1,0 +1,360 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "983",
+  "league": "FWCWL",
+  "createdAt": 1793333609174,
+  "updatedAt": 1793333609314,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Sarasota",
+    "toss": "Sarasota International CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "SIC won by 79 Runs",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "Ameya Patki",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "168",
+        "name": "Sarasota International CC",
+        "code": "SIC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team2.jpg",
+        "runs": 198,
+        "wickets": 10,
+        "overs": "34.4",
+        "runRate": "5.71"
+      },
+      "t2": {
+        "id": "172",
+        "name": "Royal Phoenix CC",
+        "code": "RPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/e352a014-44a0-424a-b823-c21c617135f2.jpg",
+        "runs": 119,
+        "wickets": 10,
+        "overs": "25.1",
+        "runRate": "4.73"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "983",
+    "at": 1793333609314,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Sarasota",
+    "toss": "Sarasota International CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "SIC won by 79 Runs",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "2",
+    "batKey": "t2",
+    "bowlKey": "t1",
+    "teams": {
+      "t1": {
+        "id": "168",
+        "name": "Sarasota International CC",
+        "code": "SIC",
+        "logo": "https://static.cricclubs.com/utilsv2/img/icons/no-image-team2.jpg",
+        "runs": 198,
+        "wickets": 10,
+        "overs": "34.4",
+        "runRate": "5.71"
+      },
+      "t2": {
+        "id": "172",
+        "name": "Royal Phoenix CC",
+        "code": "RPCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/e352a014-44a0-424a-b823-c21c617135f2.jpg",
+        "runs": 119,
+        "wickets": 10,
+        "overs": "25.1",
+        "runRate": "4.73"
+      }
+    },
+    "hasScore": true,
+    "batting": "Royal Phoenix CC",
+    "bowling": "Sarasota International CC",
+    "runs": 119,
+    "wickets": 10,
+    "overs": "25.1",
+    "legal": 151,
+    "runRate": "4.73",
+    "requiredRate": "8.14",
+    "requiredRuns": 80,
+    "remainingBalls": 59,
+    "target": 199,
+    "parScore": 198,
+    "dls": false,
+    "batters": [
+      {
+        "id": "3645512",
+        "name": "Charan B",
+        "runs": 16,
+        "balls": 12,
+        "fours": 3,
+        "sixes": 0,
+        "out": true,
+        "howOut": "c Sai G b Kemar J"
+      },
+      {
+        "id": "296097",
+        "name": "Ameya P",
+        "runs": 0,
+        "balls": 0,
+        "fours": 0,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      }
+    ],
+    "bowler": {
+      "id": "6223153",
+      "name": "Kemar J",
+      "overs": "3.1",
+      "maidens": 0,
+      "runs": 8,
+      "wickets": 2,
+      "wides": null,
+      "noBalls": null,
+      "dots": null
+    },
+    "balls": [
+      "1wd",
+      "W"
+    ],
+    "partnership": {
+      "runs": 1,
+      "balls": 1,
+      "b1": {
+        "id": "3645512",
+        "name": "Charan B",
+        "runs": 0,
+        "balls": 1
+      },
+      "b2": {
+        "id": "296097",
+        "name": "Ameya P",
+        "runs": 0,
+        "balls": 0
+      }
+    },
+    "lastOut": {
+      "id": "3645512",
+      "name": "Charan B",
+      "runs": 16,
+      "balls": 12,
+      "fours": 3,
+      "sixes": 0,
+      "out": true,
+      "howOut": "c Sai G b Kemar J"
+    },
+    "comment": "",
+    "fow": "",
+    "mom": "Ameya Patki",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1",
+    "2"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 198,
+      "wickets": 10,
+      "overs": "34.4",
+      "legal": 208,
+      "runRate": "5.71",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": null,
+      "overs_": {},
+      "commentary": [],
+      "lastComment": "",
+      "last": null,
+      "firstSeenLegal": null
+    },
+    "2": {
+      "key": "2",
+      "batKey": "t2",
+      "bowlKey": "t1",
+      "runs": 119,
+      "wickets": 10,
+      "overs": "25.1",
+      "legal": 151,
+      "runRate": "4.73",
+      "batting": [
+        {
+          "id": "3645512",
+          "name": "Charan B",
+          "runs": 16,
+          "balls": 12,
+          "fours": 3,
+          "sixes": 0,
+          "out": true,
+          "howOut": "c Sai G b Kemar J",
+          "seen": 1
+        },
+        {
+          "id": "296097",
+          "name": "Ameya P",
+          "runs": 0,
+          "balls": 0,
+          "fours": 0,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 2
+        }
+      ],
+      "bowling": [
+        {
+          "id": "6223153",
+          "name": "Kemar J",
+          "overs": "3.1",
+          "maidens": 0,
+          "runs": 8,
+          "wickets": 2,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
+          "seen": 1
+        }
+      ],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 1,
+        "balls": 1,
+        "b1": {
+          "id": "3645512",
+          "name": "Charan B",
+          "runs": 0,
+          "balls": 1
+        },
+        "b2": {
+          "id": "296097",
+          "name": "Ameya P",
+          "runs": 0,
+          "balls": 0
+        }
+      },
+      "overs_": {
+        "25": {
+          "n": 26,
+          "start": 118,
+          "runs": 1,
+          "wickets": 1,
+          "balls": [
+            "1wd",
+            "W"
+          ],
+          "bowler": "Kemar J",
+          "complete": false
+        }
+      },
+      "commentary": [
+        {
+          "id": "2:25.0",
+          "sort": 2500,
+          "at": 1793333609314,
+          "over": "25.1",
+          "code": "1wd",
+          "kind": "extra",
+          "runs": 1,
+          "batRuns": 0,
+          "extra": "wd",
+          "bowler": "Kemar J",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:25.1",
+          "sort": 2501,
+          "at": 1793333609314,
+          "over": "25.1",
+          "code": "W",
+          "kind": "wicket",
+          "runs": 0,
+          "batRuns": 0,
+          "extra": "",
+          "bowler": "Kemar J",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        }
+      ],
+      "lastComment": "",
+      "last": {
+        "runs": 119,
+        "wickets": 10,
+        "legal": 151,
+        "overs": "25.1",
+        "balls": [
+          "1wd",
+          "W"
+        ],
+        "batters": [
+          {
+            "id": "3645512",
+            "name": "Charan B",
+            "runs": 16,
+            "balls": 12,
+            "fours": 3,
+            "sixes": 0,
+            "out": true,
+            "howOut": "c Sai G b Kemar J"
+          },
+          {
+            "id": "296097",
+            "name": "Ameya P",
+            "runs": 0,
+            "balls": 0,
+            "fours": 0,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          }
+        ],
+        "partnership": {
+          "runs": 1,
+          "balls": 1,
+          "b1": {
+            "id": "3645512",
+            "name": "Charan B",
+            "runs": 0,
+            "balls": 1
+          },
+          "b2": {
+            "id": "296097",
+            "name": "Ameya P",
+            "runs": 0,
+            "balls": 0
+          }
+        }
+      },
+      "firstSeenLegal": 151
+    }
+  }
+}

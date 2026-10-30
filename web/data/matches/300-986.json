@@ -1,0 +1,451 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "300",
+  "matchId": "986",
+  "league": "",
+  "createdAt": 1793334890992,
+  "updatedAt": 1793334890992,
+  "polls": 1,
+  "meta": {
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "Royal Bulls CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "ICAT won by 5 Wickets",
+    "status": "complete",
+    "totalOvers": 35,
+    "mom": "Srini K",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "173",
+        "name": "Royal Bulls CC",
+        "code": "RBCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/c8f4260c-4a01-4b80-9e23-7bfc84df7de0.jpg",
+        "runs": 207,
+        "wickets": 9,
+        "overs": "35",
+        "runRate": "5.91"
+      },
+      "t2": {
+        "id": "167",
+        "name": "ICAT",
+        "code": "ICAT",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/3670bea1-83ce-41df-944b-e7334e7bd6f7.jpg",
+        "runs": 208,
+        "wickets": 5,
+        "overs": "30.5",
+        "runRate": "6.75"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "300",
+    "matchId": "986",
+    "at": 1793334890992,
+    "view": 1,
+    "series": "FWCWL 2026-27 Season",
+    "ground": "Rodney",
+    "toss": "Royal Bulls CC WON THE TOSS AND ELECTED TO BAT",
+    "result": "ICAT won by 5 Wickets",
+    "status": "complete",
+    "totalOvers": 35,
+    "superOver": false,
+    "innings": "2",
+    "batKey": "t2",
+    "bowlKey": "t1",
+    "teams": {
+      "t1": {
+        "id": "173",
+        "name": "Royal Bulls CC",
+        "code": "RBCC",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/c8f4260c-4a01-4b80-9e23-7bfc84df7de0.jpg",
+        "runs": 207,
+        "wickets": 9,
+        "overs": "35",
+        "runRate": "5.91"
+      },
+      "t2": {
+        "id": "167",
+        "name": "ICAT",
+        "code": "ICAT",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/3670bea1-83ce-41df-944b-e7334e7bd6f7.jpg",
+        "runs": 208,
+        "wickets": 5,
+        "overs": "30.5",
+        "runRate": "6.75"
+      }
+    },
+    "hasScore": true,
+    "batting": "ICAT",
+    "bowling": "Royal Bulls CC",
+    "runs": 208,
+    "wickets": 5,
+    "overs": "30.5",
+    "legal": 185,
+    "runRate": "6.75",
+    "requiredRate": "0.00",
+    "requiredRuns": 0,
+    "remainingBalls": 25,
+    "target": 208,
+    "parScore": 172,
+    "dls": false,
+    "batters": [
+      {
+        "id": "6163258",
+        "name": "Devalapalli Lakshmi Narasimha K",
+        "runs": 60,
+        "balls": 48,
+        "fours": 5,
+        "sixes": 1,
+        "out": false,
+        "howOut": "not out"
+      },
+      {
+        "id": "514171",
+        "name": "Vinod K",
+        "runs": 25,
+        "balls": 35,
+        "fours": 0,
+        "sixes": 0,
+        "out": false,
+        "howOut": "not out"
+      }
+    ],
+    "bowler": {
+      "id": "3910824",
+      "name": "Kaushal T",
+      "overs": "2.5",
+      "maidens": 0,
+      "runs": 27,
+      "wickets": 0,
+      "wides": null,
+      "noBalls": null,
+      "dots": null
+    },
+    "balls": [
+      "1",
+      "2",
+      ".",
+      "1",
+      "1",
+      "1wd"
+    ],
+    "partnership": {
+      "runs": 88,
+      "balls": 73,
+      "b1": {
+        "id": "6163258",
+        "name": "Devalapalli Lakshmi Narasimha K",
+        "runs": 53,
+        "balls": 38
+      },
+      "b2": {
+        "id": "514171",
+        "name": "Vinod K",
+        "runs": 25,
+        "balls": 35
+      }
+    },
+    "lastOut": {
+      "id": "3688982",
+      "name": "Sriraj K",
+      "runs": 19,
+      "balls": 22,
+      "fours": 1,
+      "sixes": 0,
+      "out": true,
+      "howOut": "b Hemant Kumar D"
+    },
+    "comment": "",
+    "fow": "",
+    "mom": "Srini K",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1",
+    "2"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 207,
+      "wickets": 9,
+      "overs": "35",
+      "legal": 210,
+      "runRate": "5.91",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": null,
+      "overs_": {},
+      "commentary": [],
+      "lastComment": "",
+      "last": null,
+      "firstSeenLegal": null
+    },
+    "2": {
+      "key": "2",
+      "batKey": "t2",
+      "bowlKey": "t1",
+      "runs": 208,
+      "wickets": 5,
+      "overs": "30.5",
+      "legal": 185,
+      "runRate": "6.75",
+      "batting": [
+        {
+          "id": "6163258",
+          "name": "Devalapalli Lakshmi Narasimha K",
+          "runs": 60,
+          "balls": 48,
+          "fours": 5,
+          "sixes": 1,
+          "out": false,
+          "howOut": "not out",
+          "seen": 1
+        },
+        {
+          "id": "514171",
+          "name": "Vinod K",
+          "runs": 25,
+          "balls": 35,
+          "fours": 0,
+          "sixes": 0,
+          "out": false,
+          "howOut": "not out",
+          "seen": 2
+        },
+        {
+          "id": "3688982",
+          "name": "Sriraj K",
+          "runs": 19,
+          "balls": 22,
+          "fours": 1,
+          "sixes": 0,
+          "out": true,
+          "howOut": "b Hemant Kumar D",
+          "seen": 3
+        }
+      ],
+      "bowling": [
+        {
+          "id": "3910824",
+          "name": "Kaushal T",
+          "overs": "2.5",
+          "maidens": 0,
+          "runs": 27,
+          "wickets": 0,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
+          "seen": 1
+        }
+      ],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 88,
+        "balls": 73,
+        "b1": {
+          "id": "6163258",
+          "name": "Devalapalli Lakshmi Narasimha K",
+          "runs": 53,
+          "balls": 38
+        },
+        "b2": {
+          "id": "514171",
+          "name": "Vinod K",
+          "runs": 25,
+          "balls": 35
+        }
+      },
+      "overs_": {
+        "30": {
+          "n": 31,
+          "start": 202,
+          "runs": 6,
+          "wickets": 0,
+          "balls": [
+            "1",
+            "2",
+            ".",
+            "1",
+            "1",
+            "1wd"
+          ],
+          "bowler": "Kaushal T",
+          "complete": false
+        }
+      },
+      "commentary": [
+        {
+          "id": "2:30.0",
+          "sort": 3000,
+          "at": 1793334890992,
+          "over": "30.1",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:30.1",
+          "sort": 3001,
+          "at": 1793334890992,
+          "over": "30.2",
+          "code": "2",
+          "kind": "run",
+          "runs": 2,
+          "batRuns": 2,
+          "extra": "",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:30.2",
+          "sort": 3002,
+          "at": 1793334890992,
+          "over": "30.3",
+          "code": ".",
+          "kind": "dot",
+          "runs": 0,
+          "batRuns": 0,
+          "extra": "",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:30.3",
+          "sort": 3003,
+          "at": 1793334890992,
+          "over": "30.4",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:30.4",
+          "sort": 3004,
+          "at": 1793334890992,
+          "over": "30.5",
+          "code": "1",
+          "kind": "run",
+          "runs": 1,
+          "batRuns": 1,
+          "extra": "",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        },
+        {
+          "id": "2:30.5",
+          "sort": 3005,
+          "at": 1793334890992,
+          "over": "30.6",
+          "code": "1wd",
+          "kind": "extra",
+          "runs": 1,
+          "batRuns": 0,
+          "extra": "wd",
+          "bowler": "Kaushal T",
+          "batter": "",
+          "outName": "",
+          "howOut": "",
+          "source": "derived",
+          "baseline": true
+        }
+      ],
+      "lastComment": "",
+      "last": {
+        "runs": 208,
+        "wickets": 5,
+        "legal": 185,
+        "overs": "30.5",
+        "balls": [
+          "1",
+          "2",
+          ".",
+          "1",
+          "1",
+          "1wd"
+        ],
+        "batters": [
+          {
+            "id": "6163258",
+            "name": "Devalapalli Lakshmi Narasimha K",
+            "runs": 60,
+            "balls": 48,
+            "fours": 5,
+            "sixes": 1,
+            "out": false,
+            "howOut": "not out"
+          },
+          {
+            "id": "514171",
+            "name": "Vinod K",
+            "runs": 25,
+            "balls": 35,
+            "fours": 0,
+            "sixes": 0,
+            "out": false,
+            "howOut": "not out"
+          }
+        ],
+        "partnership": {
+          "runs": 88,
+          "balls": 73,
+          "b1": {
+            "id": "6163258",
+            "name": "Devalapalli Lakshmi Narasimha K",
+            "runs": 53,
+            "balls": 38
+          },
+          "b2": {
+            "id": "514171",
+            "name": "Vinod K",
+            "runs": 25,
+            "balls": 35
+          }
+        }
+      },
+      "firstSeenLegal": 185
+    }
+  }
+}

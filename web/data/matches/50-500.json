@@ -1,0 +1,194 @@
+{
+  "schema": "boundary.match.v2",
+  "clubId": "50",
+  "matchId": "500",
+  "league": "",
+  "createdAt": 1793334891949,
+  "updatedAt": 1793334891949,
+  "polls": 1,
+  "meta": {
+    "series": "2019 Club Format",
+    "ground": "EAGLES",
+    "toss": "Ind WON THE TOSS AND ELECTED TO BAT",
+    "result": "No Result",
+    "status": "complete",
+    "totalOvers": null,
+    "mom": "",
+    "youtube": "iVZJiaFZrQM",
+    "teams": {
+      "t1": {
+        "id": "7",
+        "name": "Ind",
+        "code": "PHX",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/50-teamLogo-7.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      },
+      "t2": {
+        "id": "17",
+        "name": "Pak",
+        "code": "PAK",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/04d6dd2f-360b-4f27-bbcd-648d284c6a69.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      }
+    }
+  },
+  "latest": {
+    "clubId": "50",
+    "matchId": "500",
+    "at": 1793334891949,
+    "view": 1,
+    "series": "2019 Club Format",
+    "ground": "EAGLES",
+    "toss": "Ind WON THE TOSS AND ELECTED TO BAT",
+    "result": "No Result",
+    "status": "complete",
+    "totalOvers": 0,
+    "superOver": false,
+    "innings": "1",
+    "batKey": "t1",
+    "bowlKey": "t2",
+    "teams": {
+      "t1": {
+        "id": "7",
+        "name": "Ind",
+        "code": "PHX",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/50-teamLogo-7.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      },
+      "t2": {
+        "id": "17",
+        "name": "Pak",
+        "code": "PAK",
+        "logo": "https://cricclubs.com/documentsRep/teamLogos/04d6dd2f-360b-4f27-bbcd-648d284c6a69.jpg",
+        "runs": 0,
+        "wickets": 0,
+        "overs": "0",
+        "runRate": "--.--"
+      }
+    },
+    "hasScore": true,
+    "batting": "Ind",
+    "bowling": "Pak",
+    "runs": 0,
+    "wickets": 0,
+    "overs": "0",
+    "legal": 0,
+    "runRate": "--.--",
+    "requiredRate": "--.--",
+    "requiredRuns": null,
+    "remainingBalls": null,
+    "target": null,
+    "parScore": 0,
+    "dls": false,
+    "batters": [],
+    "bowler": null,
+    "balls": [],
+    "partnership": {
+      "runs": 0,
+      "balls": 0,
+      "b1": {
+        "id": "0",
+        "name": "",
+        "runs": 0,
+        "balls": 0
+      },
+      "b2": {
+        "id": "0",
+        "name": "",
+        "runs": 0,
+        "balls": 0
+      }
+    },
+    "lastOut": null,
+    "comment": "",
+    "fow": "",
+    "mom": "",
+    "youtube": "iVZJiaFZrQM"
+  },
+  "order": [
+    "1"
+  ],
+  "innings": {
+    "1": {
+      "key": "1",
+      "batKey": "t1",
+      "bowlKey": "t2",
+      "runs": 0,
+      "wickets": 0,
+      "overs": "0",
+      "legal": 0,
+      "runRate": "--.--",
+      "batting": [],
+      "bowling": [],
+      "exact": {
+        "batting": false,
+        "bowling": false
+      },
+      "fow": [],
+      "partnerships": [],
+      "partnership": {
+        "runs": 0,
+        "balls": 0,
+        "b1": {
+          "id": "0",
+          "name": "",
+          "runs": 0,
+          "balls": 0
+        },
+        "b2": {
+          "id": "0",
+          "name": "",
+          "runs": 0,
+          "balls": 0
+        }
+      },
+      "overs_": {
+        "0": {
+          "n": 1,
+          "start": 0,
+          "runs": 0,
+          "wickets": 0,
+          "balls": [],
+          "bowler": "",
+          "complete": false
+        }
+      },
+      "commentary": [],
+      "lastComment": "",
+      "last": {
+        "runs": 0,
+        "wickets": 0,
+        "legal": 0,
+        "overs": "0",
+        "balls": [],
+        "batters": [],
+        "partnership": {
+          "runs": 0,
+          "balls": 0,
+          "b1": {
+            "id": "0",
+            "name": "",
+            "runs": 0,
+            "balls": 0
+          },
+          "b2": {
+            "id": "0",
+            "name": "",
+            "runs": 0,
+            "balls": 0
+          }
+        }
+      },
+      "firstSeenLegal": 0
+    }
+  }
+}
