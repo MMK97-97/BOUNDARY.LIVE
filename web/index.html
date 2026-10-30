@@ -245,7 +245,7 @@
       <label>Thumbnail</label>
       <div class="thumb-picker">
         <img id="wizardThumbImg" src="./assets/cricket-field.jpg" alt="Stream Thumbnail" class="thumb-preview">
-        <button id="btnUploadThumb" class="btn-ghost-sm">Upload Thumbnail (Optional)</button>
+        <button id="btnUploadThumb" class="btn-ghost-sm">Upload Thumbnail (Optional)</button><input id="thumbFileInput" type="file" accept="image/*" hidden>
       </div>
     </div>
     <div class="bottom-actions">
@@ -267,6 +267,7 @@
     </div>
   </header>
   <div class="mobile-content">
+    <div id="screenScoreInnings" class="chips" role="tablist"></div>
     <div class="screen-team-header">
       <div class="crest-frame-sm"><img id="scoreScreenLogo" src="./assets/logo-icat.png" alt="ICAT"></div>
       <div class="score-screen-title"><strong id="scoreScreenTeamRuns">ICAT 125/3</strong><span id="scoreScreenOvers"> (15.2)</span></div>
@@ -297,7 +298,9 @@
       <span class="vs-badge">VS</span>
       <div class="team-slot"><img id="statsScreenBowlLogo" src="./assets/logo-thunderbolts.png" alt="THUNDERBOLTS"></div>
     </div>
+    <div id="statsScreenTabs" class="segmented small" role="tablist"><button data-tab="overview" class="selected">Overview</button><button data-tab="partnership">Partnership</button><button data-tab="runs">Runs</button><button data-tab="wickets">Wickets</button></div>
     <div id="statsScreenComparison" class="comparison-list"></div>
+    <div id="statsScreenDetail" class="stats-detail-box"></div>
   </div>
 </section>
 
@@ -320,6 +323,7 @@
       <button data-filter="six">6s</button>
       <button data-filter="wicket">Wickets</button>
     </div>
+    <div id="clipReplayBanner" class="clip-replay-banner" hidden><span class="replay-badge">REPLAY</span><p id="replayText"></p><button id="btnCloseReplay" class="btn-ghost-sm">Close Replay</button></div>
     <div id="clipsScreenList" class="clip-list"></div>
   </div>
 </section>

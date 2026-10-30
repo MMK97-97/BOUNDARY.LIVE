@@ -2025,3 +2025,104 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select {
   font-weight: 700;
   color: #94a3b8;
 }
+
+/* Replay banner in Screen 10 */
+.clip-replay-banner {
+  background: rgba(14, 165, 233, 0.2);
+  border: 1px solid var(--blue-glow);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.replay-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.clip-replay-banner p {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Stats Detail Box in Screen 9 */
+.stats-detail-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 180px;
+}
+.not-out {
+  color: #4ade80 !important;
+  font-weight: 700;
+}
+
+/* Score Overlay Theme Styles (Screen 4 selection -> Screen 7 on-air) */
+.score-overlay.style-modern {
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+}
+.score-overlay.style-modern .score-top {
+  background: transparent;
+}
+.score-overlay.style-modern .batting-panel {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(2, 132, 199, 0.8) 100%);
+  border-radius: 10px 0 0 0;
+}
+.score-overlay.style-modern .equation-panel {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  margin: 4px;
+}
+
+.score-overlay.style-minimal {
+  border-radius: 9999px;
+  left: 120px;
+  right: 120px;
+  bottom: 64px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+}
+.score-overlay.style-minimal .score-top {
+  height: 48px;
+  background: #ffffff;
+}
+.score-overlay.style-minimal .score-bottom {
+  display: none;
+}
+
+.score-overlay.style-custom {
+  border: 2px solid #ffd700;
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4);
+}
+.score-overlay.style-custom .batting-panel {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-right: 2px solid #ffd700;
+}
+.score-overlay.style-custom .equation-panel {
+  background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%);
+  color: #000;
+}
+.score-overlay.style-custom .opposition-panel {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-left: 2px solid #ffd700;
+}
+
+.score-overlay.style-detailed {
+  border-radius: 8px;
+}
+.score-overlay.style-detailed .score-bottom {
+  height: 44px;
+  font-size: 12px;
+}
