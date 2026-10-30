@@ -719,8 +719,8 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     // Team 1 (Batting)
     const batTeam = m?.meta.teams[s.batKey] || { name: s.batting || 'ICAT', code: s.batting || 'ICAT' };
     $('overlayTeam').textContent = batTeam.code || batTeam.name || 'ICAT';
-    $('overlayRuns').textContent = `${s.runs ?? 208}/${s.wickets ?? 5}`;
-    $('overlayOvers').textContent = ` (${s.overs || '30.5'})`;
+    $('overlayRuns').textContent = s.runs != null ? `${s.runs}/${s.wickets ?? 0}` : (s.status === 'scheduled' ? 'PRE-MATCH' : '208/5');
+    $('overlayOvers').textContent = s.overs ? ` (${s.overs})` : (s.status === 'scheduled' ? '' : ' (30.5)');
     $('battingLogo').src = getTeamLogoUrl(batTeam);
     $('battingLogo').hidden = false;
     $('battingMono').hidden = true;
@@ -741,6 +741,10 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  6.75';
       $('requiredRate').textContent = s.target ? `TARGET  ${s.target}` : 'CRR  6.75';
       $('overlayDetail').textContent = s.result;
+    } else if (s.status === 'scheduled') {
+      $('overlayRate').textContent = s.totalOvers ? `${s.totalOvers} OVERS` : '35 OVERS';
+      $('requiredRate').textContent = 'LEAGUE';
+      $('overlayDetail').textContent = s.toss || 'Toss scheduled before match';
     } else {
       $('overlayRate').textContent = 'CRR  6.75';
       $('requiredRate').textContent = 'TARGET  208';

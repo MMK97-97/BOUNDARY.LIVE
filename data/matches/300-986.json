@@ -2,14 +2,14 @@
   "schema": "boundary.match.v2",
   "clubId": "300",
   "matchId": "986",
-  "league": "FWCWL",
-  "createdAt": 1793326791938,
-  "updatedAt": 1793326792265,
+  "league": "",
+  "createdAt": 1793334890992,
+  "updatedAt": 1793334890992,
   "polls": 1,
   "meta": {
     "series": "FWCWL 2026-27 Season",
     "ground": "Rodney",
-    "toss": "Royal Bulls CC won the toss and elected to bat",
+    "toss": "Royal Bulls CC WON THE TOSS AND ELECTED TO BAT",
     "result": "ICAT won by 5 Wickets",
     "status": "complete",
     "totalOvers": 35,
@@ -36,42 +36,12 @@
         "overs": "30.5",
         "runRate": "6.75"
       }
-    },
-    "matchType": "League",
-    "venue": "Rodney",
-    "playingXI": {
-      "t1": [
-        "Adithya Selvakumar",
-        "Awais Mehmood",
-        "Israr Khan (All Rounder)",
-        "Keyur Patel (All Rounder)",
-        "Rakib Hassan (All Rounder)",
-        "Srini K (Player of the Match)",
-        "Kaushal T",
-        "Hemant Kumar D",
-        "Srikumar M",
-        "Venkata P",
-        "Ravi S"
-      ],
-      "t2": [
-        "Devalapalli Lakshmi Narasimha K",
-        "Vinod K",
-        "Sriraj K",
-        "A. Rahman",
-        "S. Khan",
-        "R. Sharma",
-        "K. Verma",
-        "M. Khan",
-        "D. Koushik",
-        "B. Patel",
-        "C. Singh"
-      ]
     }
   },
   "latest": {
     "clubId": "300",
     "matchId": "986",
-    "at": 1793326792265,
+    "at": 1793334890992,
     "view": 1,
     "series": "FWCWL 2026-27 Season",
     "ground": "Rodney",
@@ -106,6 +76,8 @@
       }
     },
     "hasScore": true,
+    "batting": "ICAT",
+    "bowling": "Royal Bulls CC",
     "runs": 208,
     "wickets": 5,
     "overs": "30.5",
@@ -203,174 +175,8 @@
       "overs": "35",
       "legal": 210,
       "runRate": "5.91",
-      "batting": [
-        {
-          "id": "101",
-          "name": "Adithya Selvakumar",
-          "runs": 34,
-          "balls": 38,
-          "fours": 4,
-          "sixes": 0,
-          "out": true,
-          "howOut": "c Vinod K b D. Koushik",
-          "seen": 1
-        },
-        {
-          "id": "102",
-          "name": "Awais Mehmood",
-          "runs": 22,
-          "balls": 26,
-          "fours": 3,
-          "sixes": 0,
-          "out": true,
-          "howOut": "b M. Khan",
-          "seen": 2
-        },
-        {
-          "id": "103",
-          "name": "Israr Khan",
-          "runs": 41,
-          "balls": 45,
-          "fours": 3,
-          "sixes": 1,
-          "out": true,
-          "howOut": "c Sriraj K b B. Patel",
-          "seen": 3
-        },
-        {
-          "id": "104",
-          "name": "Keyur Patel",
-          "runs": 18,
-          "balls": 20,
-          "fours": 2,
-          "sixes": 0,
-          "out": true,
-          "howOut": "lbw b M. Khan",
-          "seen": 4
-        },
-        {
-          "id": "105",
-          "name": "Srini K (MoM)",
-          "runs": 58,
-          "balls": 46,
-          "fours": 6,
-          "sixes": 2,
-          "out": true,
-          "howOut": "c & b C. Singh",
-          "seen": 5
-        },
-        {
-          "id": "106",
-          "name": "Rakib Hassan",
-          "runs": 12,
-          "balls": 14,
-          "fours": 1,
-          "sixes": 0,
-          "out": true,
-          "howOut": "run out (Vinod K)",
-          "seen": 6
-        },
-        {
-          "id": "107",
-          "name": "Kaushal T",
-          "runs": 8,
-          "balls": 9,
-          "fours": 1,
-          "sixes": 0,
-          "out": true,
-          "howOut": "b D. Koushik",
-          "seen": 7
-        },
-        {
-          "id": "108",
-          "name": "Hemant Kumar D",
-          "runs": 5,
-          "balls": 6,
-          "fours": 0,
-          "sixes": 0,
-          "out": true,
-          "howOut": "not out",
-          "seen": 8
-        },
-        {
-          "id": "109",
-          "name": "Srikumar M",
-          "runs": 2,
-          "balls": 4,
-          "fours": 0,
-          "sixes": 0,
-          "out": true,
-          "howOut": "b C. Singh",
-          "seen": 9
-        },
-        {
-          "id": "110",
-          "name": "Venkata P",
-          "runs": 1,
-          "balls": 2,
-          "fours": 0,
-          "sixes": 0,
-          "out": false,
-          "howOut": "not out",
-          "seen": 10
-        }
-      ],
-      "bowling": [
-        {
-          "id": "201",
-          "name": "M. Khan",
-          "overs": "7.0",
-          "maidens": 1,
-          "runs": 38,
-          "wickets": 2,
-          "seen": 1
-        },
-        {
-          "id": "202",
-          "name": "D. Koushik",
-          "overs": "7.0",
-          "maidens": 0,
-          "runs": 42,
-          "wickets": 2,
-          "seen": 2
-        },
-        {
-          "id": "203",
-          "name": "B. Patel",
-          "overs": "7.0",
-          "maidens": 0,
-          "runs": 44,
-          "wickets": 1,
-          "seen": 3
-        },
-        {
-          "id": "204",
-          "name": "C. Singh",
-          "overs": "7.0",
-          "maidens": 0,
-          "runs": 46,
-          "wickets": 2,
-          "seen": 4
-        },
-        {
-          "id": "205",
-          "name": "K. Verma",
-          "overs": "4.0",
-          "maidens": 0,
-          "runs": 24,
-          "wickets": 0,
-          "seen": 5
-        },
-        {
-          "id": "206",
-          "name": "R. Sharma",
-          "overs": "3.0",
-          "maidens": 0,
-          "runs": 13,
-          "wickets": 0,
-          "seen": 6
-        }
-      ],
+      "batting": [],
+      "bowling": [],
       "exact": {
         "batting": false,
         "bowling": false
@@ -426,50 +232,6 @@
           "out": true,
           "howOut": "b Hemant Kumar D",
           "seen": 3
-        },
-        {
-          "id": "207",
-          "name": "R. Sharma",
-          "runs": 42,
-          "balls": 28,
-          "fours": 6,
-          "sixes": 1,
-          "out": true,
-          "howOut": "c Rakib Hassan b Israr Khan",
-          "seen": 4
-        },
-        {
-          "id": "208",
-          "name": "K. Verma",
-          "runs": 18,
-          "balls": 12,
-          "fours": 2,
-          "sixes": 1,
-          "out": true,
-          "howOut": "c Keyur Patel b Israr Khan",
-          "seen": 5
-        },
-        {
-          "id": "209",
-          "name": "A. Rahman",
-          "runs": 25,
-          "balls": 20,
-          "fours": 3,
-          "sixes": 0,
-          "out": true,
-          "howOut": "c Awais Mehmood b Keyur Patel",
-          "seen": 6
-        },
-        {
-          "id": "210",
-          "name": "S. Khan",
-          "runs": 12,
-          "balls": 8,
-          "fours": 1,
-          "sixes": 1,
-          "out": true,
-          "howOut": "b Rakib Hassan",
-          "seen": 7
         }
       ],
       "bowling": [
@@ -480,52 +242,10 @@
           "maidens": 0,
           "runs": 27,
           "wickets": 0,
+          "wides": null,
+          "noBalls": null,
+          "dots": null,
           "seen": 1
-        },
-        {
-          "id": "108",
-          "name": "Hemant Kumar D",
-          "overs": "6.0",
-          "maidens": 0,
-          "runs": 32,
-          "wickets": 1,
-          "seen": 2
-        },
-        {
-          "id": "103",
-          "name": "Israr Khan",
-          "overs": "7.0",
-          "maidens": 0,
-          "runs": 41,
-          "wickets": 2,
-          "seen": 3
-        },
-        {
-          "id": "104",
-          "name": "Keyur Patel",
-          "overs": "6.0",
-          "maidens": 0,
-          "runs": 38,
-          "wickets": 1,
-          "seen": 4
-        },
-        {
-          "id": "106",
-          "name": "Rakib Hassan",
-          "overs": "5.0",
-          "maidens": 0,
-          "runs": 34,
-          "wickets": 1,
-          "seen": 5
-        },
-        {
-          "id": "101",
-          "name": "Adithya Selvakumar",
-          "overs": "4.0",
-          "maidens": 0,
-          "runs": 28,
-          "wickets": 0,
-          "seen": 6
         }
       ],
       "exact": {
@@ -572,7 +292,7 @@
         {
           "id": "2:30.0",
           "sort": 3000,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.1",
           "code": "1",
           "kind": "run",
@@ -589,7 +309,7 @@
         {
           "id": "2:30.1",
           "sort": 3001,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.2",
           "code": "2",
           "kind": "run",
@@ -606,7 +326,7 @@
         {
           "id": "2:30.2",
           "sort": 3002,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.3",
           "code": ".",
           "kind": "dot",
@@ -623,7 +343,7 @@
         {
           "id": "2:30.3",
           "sort": 3003,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.4",
           "code": "1",
           "kind": "run",
@@ -640,7 +360,7 @@
         {
           "id": "2:30.4",
           "sort": 3004,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.5",
           "code": "1",
           "kind": "run",
@@ -657,7 +377,7 @@
         {
           "id": "2:30.5",
           "sort": 3005,
-          "at": 1793326792265,
+          "at": 1793334890992,
           "over": "30.6",
           "code": "1wd",
           "kind": "extra",

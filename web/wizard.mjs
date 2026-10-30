@@ -14,11 +14,14 @@ const el = (tag, content, className) => {
 
 export function parseMatchInput(raw, defaultClub = '300') {
   const str = String(raw || '').trim();
-  if (!str) return { clubId: defaultClub, matchId: '986', league: 'FWCWL' };
+  if (!str) return { clubId: defaultClub, matchId: '986', league: 'FWCWL', explicitClub: false };
 
   let clubId = defaultClub;
   let matchId = '';
   let league = 'FWCWL';
+  let explicitClub = false;
+  let t1Name = '';
+  let t2Name = '';
 
   // Extract league from URL if present (e.g. cricclubs.com/FWCWL/...)
   const leagueMatch = /(?:cricclubs\.com\/)([a-zA-Z0-9_-]+)(?:\/|\?|$)/i.exec(str);
@@ -26,9 +29,23 @@ export function parseMatchInput(raw, defaultClub = '300') {
     league = leagueMatch[1];
   }
 
+  // Extract team names from URL if present (e.g. asfd=Royal+Bulls+CC+vs+ICAT or teams=A+vs+B)
+  const vsMatch = /(?:asfd|teams|match|title)=([^&]+)/i.exec(str);
+  if (vsMatch) {
+    const decoded = decodeURIComponent(vsMatch[1].replace(/\+/g, ' '));
+    const parts = decoded.split(/\s+(?:vs\.?|v)\s+/i);
+    if (parts.length >= 2) {
+      t1Name = parts[0].trim();
+      t2Name = parts[1].trim();
+    }
+  }
+
   // Check for clubId in query or path (e.g. clubId=300)
   const clubParam = /(?:[?&]clubId=|\bclub[=/:])([0-9]+)/i.exec(str);
-  if (clubParam) clubId = clubParam[1];
+  if (clubParam) {
+    clubId = clubParam[1];
+    explicitClub = true;
+  }
 
   // Check for matchId in query or path (e.g. matchId=985)
   const matchParam = /(?:[?&]matchId=|\bmatch[=/:])([0-9]+)/i.exec(str);
@@ -38,14 +55,20 @@ export function parseMatchInput(raw, defaultClub = '300') {
     const parts = str.split(/[-_/]/);
     clubId = parts[0];
     matchId = parts[1];
+    explicitClub = true;
   } else if (/^[0-9]+$/.test(str)) {
     matchId = str;
   } else {
-    const digits = str.match(/\d{2,10}/);
-    matchId = digits ? digits[0] : '986';
+    // If user entered "Match 986" or "#986" or similar
+    const cleanDigits = str.replace(/[^0-9]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (cleanDigits.length > 0) {
+      matchId = cleanDigits[0];
+    } else {
+      matchId = '986';
+    }
   }
 
-  return { clubId, matchId, league };
+  return { clubId, matchId, league, explicitClub, t1Name, t2Name };
 }
 
 export function getTeamLogoUrl(team) {
@@ -144,7 +167,8 @@ export function installWizard({ state, feed, notice }) {
       const sName = model.meta?.series || 'FWCWL 2026-27 Season';
       const t1 = model.meta?.teams?.t1?.name || 'Team 1';
       const t2 = model.meta?.teams?.t2?.name || 'Team 2';
-      notice(`Match ${ids.matchId} loaded: ${t1} vs ${t2} (${sName})`, 'success');
+      const statusText = model.meta?.status === 'complete' ? 'Completed' : model.meta?.status === 'live' ? 'Live' : 'Ready to Stream';
+      notice(`Match ${ids.matchId} loaded: ${t1} vs ${t2} (${statusText})`, 'success');
     } catch (e) {
       notice(`Could not fetch CricClubs match data: ${e.message}`, 'error');
     } finally {
@@ -156,6 +180,12 @@ export function installWizard({ state, feed, notice }) {
   }
 
   $('btnFetchMatch')?.addEventListener('click', () => handleFetchMatch());
+  $('wizardMatchInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleFetchMatch();
+    }
+  });
   $('btnViewExample')?.addEventListener('click', () => {
     if ($('wizardMatchInput')) $('wizardMatchInput').value = '986';
     handleFetchMatch('986');
@@ -184,6 +214,7 @@ export function installWizard({ state, feed, notice }) {
 
     if ($('previewVenue')) $('previewVenue').textContent = m?.meta.ground ? `${m.meta.ground}, FL` : 'Rodney, FL';
     if ($('previewFormat')) $('previewFormat').textContent = m?.meta.totalOvers ? `${m.meta.totalOvers} Overs · League Match` : '35 Overs · League Match';
+    if ($('previewToss')) $('previewToss').textContent = m?.meta.toss || 'Toss scheduled before match';
 
     const t1Name = t1.name || 'Royal Bulls CC';
     const t2Name = t2.name || 'ICAT';
