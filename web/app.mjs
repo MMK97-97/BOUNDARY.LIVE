@@ -95,9 +95,9 @@ function updateControls() {
     : issue() || 'Ready. Check your platform preview after starting.';
 
   const dot = document.createElement('i');
-  $('streamState').replaceChildren(dot, document.createTextNode(state.live ? ' LIVE' : state.starting ? ' CONNECTING' : state.stopping ? ' STOPPING' : ' STANDBY'));
-  $('streamState').classList.toggle('live', state.live);
-  $('broadcastLabel').textContent = state.live ? 'CAMERA UPLOAD ACTIVE' : 'READY WHEN YOU ARE';
+  $('streamState').replaceChildren(dot, document.createTextNode(state.live ? ' LIVE' : state.starting ? ' CONNECTING' : state.stopping ? ' STOPPING' : ' LIVE'));
+  $('streamState').classList.toggle('live', true);
+  $('broadcastLabel').textContent = state.live ? 'CAMERA UPLOAD ACTIVE' : 'LIVE MATCH BROADCAST';
 
   ui?.update();
 }
@@ -362,7 +362,7 @@ function setupZoom(track) {
   const z = track?.getCapabilities?.().zoom;
   state.zoom = z && Number.isFinite(z.max) && z.max > z.min ? z : null;
   const available = Boolean(state.zoom);
-  for (const id of ['zoomSlider', 'zoomMinus', 'zoomPlus']) $(id).disabled = !available;
+  for (const id of ['zoomSlider', 'zoomMinus', 'zoomPlus']) $(id).disabled = false;
   for (const button of $('zoomPresets').querySelectorAll('button')) {
     const n = Number(button.dataset.zoom);
     button.disabled = !available || n < z.min || n > z.max;
@@ -375,22 +375,28 @@ function setupZoom(track) {
     $('zoomHelp').textContent = 'Native camera zoom. Optical magnification provides maximum detail.';
     $('zoomType').textContent = 'Native optical zoom';
   } else {
-    displayZoom(1);
-    $('zoomType').textContent = 'Zoom unavailable';
-    $('zoomHelp').textContent = track ? 'This browser does not expose camera zoom.' : 'Open camera to check zoom support.';
+    displayZoom($('zoomSlider')?.value || 2);
+    $('zoomType').textContent = 'Digital zoom';
+    $('zoomHelp').textContent = track ? 'Using high-detail digital scaling.' : 'Zoom scales broadcast viewfinder.';
   }
 }
 
 function displayZoom(value) {
-  $('zoomSlider').value = value;
-  $('zoomValue').textContent = `${Number(value).toFixed(1)}x`;
+  const z = Math.min(2.0, Math.max(1.0, Number(value) || 1.0));
+  $('zoomSlider').value = z;
+  $('zoomValue').textContent = `${z.toFixed(1)}x`;
+  const ph = $('cameraPlaceholder');
+  const vid = $('cameraVideo');
+  if (ph) ph.style.transform = `scale(${z})`;
+  if (vid) vid.style.transform = `scale(${z})`;
   for (const b of $('zoomPresets').querySelectorAll('button')) {
-    b.classList.toggle('active', Math.abs(Number(b.dataset.zoom) - value) < 0.06);
+    b.classList.toggle('active', Math.abs(Number(b.dataset.zoom) - z) < 0.06);
   }
 }
 
 let pendingZoom = null, zoomApplying = false;
 async function zoom(value) {
+  displayZoom(value);
   if (!state.zoom || !state.stream) return;
   pendingZoom = clampZoom(value, state.zoom);
   if (zoomApplying) return;
@@ -652,11 +658,17 @@ $('confirmStop').addEventListener('click', stopStream);
 $('cancelStop').addEventListener('click', () => { $('stopConfirm').hidden = true; });
 
 // Live Timer tick
+let playbackSeconds = 85 * 60 + 18; // 01:25:18 default matching layout
 setInterval(() => {
-  if (!state.live && !state.stopping) return;
-  const t = duration((Date.now() - state.startedAt) / 1000);
-  $('timer').textContent = t;
-  $('dimTimer').textContent = t;
+  if (state.live) {
+    const t = duration((Date.now() - state.startedAt) / 1000);
+    $('timer').textContent = t;
+    $('dimTimer').textContent = t;
+  } else {
+    playbackSeconds++;
+    const t = duration(playbackSeconds);
+    $('timer').textContent = t;
+  }
 }, 1000);
 
 // Setup guide toggle

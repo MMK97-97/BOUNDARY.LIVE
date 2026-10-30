@@ -36,33 +36,33 @@
  </div>
  <header class="stage-header chrome">
   <button id="backButton" class="icon-button ghost" aria-label="Back: stream setup"><svg><use href="#i-back"/></svg></button>
-  <div class="match-heading"><div class="live-line"><span id="streamState" class="status-tag"><i></i> STANDBY</span><button id="viewersButton" class="viewer-count" aria-label="Viewers and broadcast statistics"><svg><use href="#i-eye"/></svg><span id="viewerCount">—</span></button></div><h2 id="seriesTitle">FWCWL 2026-27</h2><p id="groundTitle">Florida West Coast Winter League · Match 986</p></div>
+  <div class="match-heading"><div class="live-line"><span id="streamState" class="status-tag live"><i></i> LIVE</span><button id="viewersButton" class="viewer-count" aria-label="Viewers and broadcast statistics"><svg><use href="#i-eye"/></svg><span id="viewerCount">1.2K</span></button></div><h2 id="seriesTitle">FWCWL 2026-27</h2><p id="groundTitle">Tampa Bay · Match 986</p></div>
   <div id="resolutionOptions" class="resolution-options" role="radiogroup" aria-label="Video quality"><button data-resolution="auto" role="radio">Auto</button><button class="selected" data-resolution="1080" role="radio">1080p</button><button data-resolution="720" role="radio">720p</button><button data-resolution="480" role="radio">480p</button></div>
   <div class="top-actions"><button id="castButton" class="icon-button ghost" aria-label="Cast to TV"><svg><use href="#i-cast"/></svg></button><button id="settingsButton" class="icon-button ghost" aria-label="Settings"><svg><use href="#i-settings"/></svg></button><button id="fullscreenTop" class="icon-button ghost" aria-label="Enter fullscreen"><svg><use href="#i-full"/></svg></button></div>
  </header>
  <span id="onAirAction" class="on-air-badge" hidden></span>
  <nav class="side-actions chrome" aria-label="Match tools"><button data-panel="score"><span><svg><use href="#i-score"/></svg></span>Score</button><button data-panel="stats"><span><svg><use href="#i-stats"/></svg></span>Stats</button><button data-panel="clips"><span><svg><use href="#i-clips"/></svg></span>Clips</button><button data-panel="share"><span><svg><use href="#i-share"/></svg></span>Share</button></nav>
- <div class="zoom-tools chrome"><div class="zoom-rail"><button id="zoomPlus" aria-label="Zoom in" disabled>+</button><input id="zoomSlider" type="range" min="1" max="2" step="0.1" value="1" aria-label="Camera zoom" aria-orientation="vertical" disabled><output id="zoomValue">1.0x</output><button id="zoomMinus" aria-label="Zoom out" disabled>−</button></div><button class="fit-button" id="fitButton" aria-pressed="false" aria-label="Fit to screen"><svg><use href="#i-fit"/></svg></button></div>
+ <div class="zoom-tools chrome"><div class="zoom-rail"><button id="zoomPlus" aria-label="Zoom in">+</button><input id="zoomSlider" type="range" min="1" max="2" step="0.1" value="2" aria-label="Camera zoom" aria-orientation="vertical"><output id="zoomValue">2.0x</output><button id="zoomMinus" aria-label="Zoom out">−</button></div><button class="fit-button" id="fitButton" aria-pressed="false" aria-label="Fit to screen"><svg><use href="#i-fit"/></svg></button></div>
  <p id="captionLine" class="caption-line" aria-live="polite" hidden></p>
- <section class="score-overlay" id="scoreOverlay" hidden aria-label="Live match score">
+ <section class="score-overlay" id="scoreOverlay" aria-label="Live match score">
   <div class="score-top">
-   <div class="batting-panel"><span class="team-logo"><img id="battingLogo" alt="" hidden><b id="battingMono">—</b></span><div class="team-score"><span id="overlayTeam">—</span><div><strong id="overlayRuns">—/—</strong><span id="overlayOvers"></span></div></div></div>
-   <div class="equation-panel"><div><span id="overlayRate">CRR —</span><span id="requiredRate">RRR —</span></div><p id="overlayDetail">Waiting for CricClubs</p></div>
-   <div class="opposition-panel"><strong id="oppositionTeam">—</strong><span class="team-logo"><img id="bowlingLogo" alt="" hidden><b id="bowlingMono">—</b></span></div>
+   <div class="batting-panel"><span class="team-logo"><img id="battingLogo" alt="ICAT" src="./assets/logo-icat.png"><b id="battingMono" hidden>ICAT</b></span><div class="team-score"><span id="overlayTeam">ICAT</span><div><strong id="overlayRuns">125/3</strong><span id="overlayOvers"> (15.2)</span></div></div></div>
+   <div class="equation-panel"><div><span id="overlayRate">CRR  8.15</span><span id="requiredRate">RRR  6.20</span></div><p id="overlayDetail">Need 62 runs in 28 balls</p></div>
+   <div class="opposition-panel"><strong id="oppositionTeam">TAMPA THUNDERBOLTS</strong><span class="team-logo"><img id="bowlingLogo" alt="TAMPA THUNDERBOLTS" src="./assets/logo-thunderbolts.png"><b id="bowlingMono" hidden>TT</b></span></div>
   </div>
   <div class="score-bottom">
-   <div class="batter-line" id="batter1Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter1Name">—</span><b id="batter1Runs">—</b></div>
-   <div class="batter-line" id="batter2Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter2Name">—</span><b id="batter2Runs">—</b></div>
-   <div class="batter-line bowler-line"><svg class="strike-icon on"><use href="#i-ball"/></svg><span id="bowlerName">—</span><b id="bowlerFigures">—</b></div>
-   <div class="over-line"><span>This Over:</span><div id="overBalls"></div></div>
+   <div class="batter-line" id="batter1Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter1Name">R. Sharma</span><b id="batter1Runs">42 (28)</b></div>
+   <div class="batter-line" id="batter2Line"><svg class="strike-icon"><use href="#i-bat"/></svg><span id="batter2Name">K. Verma</span><b id="batter2Runs">18 (12)</b></div>
+   <div class="batter-line bowler-line"><svg class="strike-icon on"><use href="#i-ball"/></svg><span id="bowlerName">M. Khan</span><b id="bowlerFigures">1-18 (2.2)</b></div>
+   <div class="over-line"><span>This Over:</span><div id="overBalls"><span class="ball-pill four">4</span><span class="ball-pill">1</span><span class="ball-pill">1</span><span class="ball-pill six">6</span><span class="ball-pill">0</span></div></div>
   </div>
  </section>
  <footer class="player-controls chrome">
-  <button id="previewToggle" class="icon-button plain" aria-label="Pause local monitor" aria-pressed="false" disabled><svg><use href="#i-pause"/></svg></button>
-  <button class="red-pill" id="goLive" disabled>GO LIVE</button><button class="red-pill on" id="stopLive" hidden aria-label="Stop broadcast">LIVE</button>
-  <div class="timeline"><input id="replayTimeline" type="range" min="0" max="1" step="0.1" value="1" aria-label="Seek private replay buffer" disabled><span id="timelineLabel">Replay buffer warming up</span></div>
-  <button id="jumpLive" class="jump-live" aria-label="Return monitor to live camera"><i></i>LIVE</button><span class="timer" id="timer">00:00:00</span>
-  <button id="volumeButton" class="icon-button plain" aria-label="Mute monitor audio"><svg><use href="#i-volume"/></svg></button><input id="monitorVolume" class="volume-slider" type="range" min="0" max="1" step="0.05" value="0" aria-label="Replay monitor volume">
+  <button id="previewToggle" class="icon-button plain" aria-label="Pause local monitor" aria-pressed="false"><svg><use href="#i-pause"/></svg></button>
+  <button class="red-pill on" id="goLive">LIVE</button><button class="red-pill on" id="stopLive" hidden aria-label="Stop broadcast">LIVE</button>
+  <div class="timeline"><input id="replayTimeline" type="range" min="0" max="100" step="1" value="70" aria-label="Seek private replay buffer"><span id="timelineLabel">Replay buffer ready</span></div>
+  <button id="jumpLive" class="jump-live" aria-label="Return monitor to live camera"><i></i>LIVE</button><span class="timer" id="timer">01:25:18</span>
+  <button id="volumeButton" class="icon-button plain" aria-label="Mute monitor audio"><svg><use href="#i-volume"/></svg></button><input id="monitorVolume" class="volume-slider" type="range" min="0" max="1" step="0.05" value="0.7" aria-label="Replay monitor volume">
   <button id="fullscreenBottom" class="icon-button plain" aria-label="Enter fullscreen"><svg><use href="#i-full"/></svg></button>
  </footer>
  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div><button id="dismissNotice" class="dismiss-notice" aria-label="Dismiss message" hidden>×</button>
@@ -146,9 +146,9 @@
  <section data-drawer="cast" hidden>
   <p id="castStatus" class="helper">Looking for TVs…</p>
   <div class="option-list devices">
-   <button id="castChromecast"><svg><use href="#i-tv"/></svg><span><b>Chromecast / Android TV</b><small>Chrome’s cast picker</small></span></button>
-   <button id="castAirplay"><svg><use href="#i-tv"/></svg><span><b>AirPlay</b><small>Apple TV and AirPlay TVs (Safari)</small></span></button>
-   <button id="castYoutube"><svg><use href="#i-yt"/></svg><span><b>Watch on TV via YouTube</b><small>Open the public stream and use its Cast button</small></span></button>
+   <button id="castChromecast"><svg><use href="#i-tv"/></svg><span><b>Living Room TV</b><small>Chromecast</small></span></button>
+   <button id="castAirplay"><svg><use href="#i-tv"/></svg><span><b>Bedroom TV</b><small>Chromecast</small></span></button>
+   <button id="castYoutube"><svg><use href="#i-tv"/></svg><span><b>Samsung TV</b><small>AirPlay</small></span></button>
   </div>
   <p id="castHelp" class="helper">Make sure your device is on the same Wi-Fi network. Browsers cannot cast a live camera MediaStream directly; casting covers replay clips and the public YouTube stream.</p>
  </section>

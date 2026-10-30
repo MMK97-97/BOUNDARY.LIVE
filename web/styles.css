@@ -3,15 +3,15 @@
   color-scheme: dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --bg-studio: #05080d;
-  --bg-card: #0b111a;
-  --bg-panel: #111a27;
-  --blue: #2563eb;
-  --blue-glow: #1d4ed8;
+  --bg-card: #090e17;
+  --bg-panel: #0f172a;
+  --blue: #1d4ed8;
+  --blue-glow: #2563eb;
   --red: #ef4444;
   --green: #16a34a;
   --orange: #ea580c;
-  --border: rgba(255, 255, 255, 0.12);
-  --border-light: rgba(255, 255, 255, 0.2);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-light: rgba(255, 255, 255, 0.22);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -34,7 +34,7 @@ body {
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 button:disabled, input:disabled, select:disabled { opacity: 0.35; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue-glow); outline-offset: 2px; }
 [hidden] { display: none !important; }
 
 svg {
@@ -62,104 +62,52 @@ svg {
 
 .viewfinder {
   position: absolute;
-  inset: 0 0 62px;
+  inset: 0 0 58px;
   overflow: hidden;
   background: #020408;
 }
 .viewfinder video {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-}
-.studio.fit-fill .viewfinder video {
   object-fit: cover;
 }
+.studio.fit-fill .viewfinder video {
+  object-fit: fill;
+}
 
-/* Standby Pitch Background */
+/* Match Field Backdrop (Live Cricket Match) */
 .camera-placeholder {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(ellipse at 50% 50%, #153828 0%, #0a1b18 60%, #03070d 100%);
+  background: url("./assets/cricket-field.jpg") center center / cover no-repeat, radial-gradient(ellipse at 50% 50%, #153828 0%, #0a1b18 60%, #03070d 100%);
   overflow: hidden;
 }
 .field-lines {
-  position: absolute;
-  width: 85%;
-  height: 75%;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  transform: rotate(-6deg);
+  display: none;
 }
-.field-lines::before {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-}
-.field-lines::after {
-  content: '';
-  position: absolute;
-  left: 47%;
-  top: 30%;
-  width: 6%;
-  height: 40%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  background: rgba(180, 160, 100, 0.15);
-}
-
 .standby-copy {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  padding: 0 20px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-}
-.eyebrow {
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: #38bdf8;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.standby-copy h1 {
-  font-size: clamp(26px, 4.5vw, 48px);
-  font-weight: 800;
-  line-height: 1.1;
-  margin: 12px 0;
-  letter-spacing: -1px;
-}
-.standby-copy p {
-  color: #cbd5e1;
-  font-size: 13px;
-  line-height: 1.6;
-  margin-bottom: 20px;
-}
-.standby-copy > div {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
+  display: none; /* Hide default placeholder text so live match field is prominent */
 }
 
 /* Common Buttons */
 .primary, .secondary, .danger {
-  padding: 0 20px;
+  padding: 0 18px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  min-height: 40px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   transition: all 0.15s ease;
 }
-.primary { background: var(--blue); color: #fff; }
-.primary:hover:not(:disabled) { background: var(--blue-glow); }
-.secondary { background: rgba(30, 41, 59, 0.8); border: 1px solid var(--border); color: #e2e8f0; }
-.secondary:hover:not(:disabled) { background: rgba(51, 65, 85, 0.8); }
+.primary { background: var(--blue-glow); color: #fff; }
+.primary:hover:not(:disabled) { background: #3b82f6; }
+.secondary { background: rgba(30, 41, 59, 0.85); border: 1px solid var(--border); color: #e2e8f0; }
+.secondary:hover:not(:disabled) { background: rgba(51, 65, 85, 0.9); }
 .danger { background: #991b1b; color: #fff; }
 .danger:hover:not(:disabled) { background: #b91c1c; }
 .full { width: 100%; margin-top: 10px; }
@@ -184,7 +132,7 @@ svg {
   background: rgba(30, 41, 59, 0.85);
 }
 .icon-button.plain:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Stage Header (Top Bar) */
@@ -243,7 +191,7 @@ svg {
   gap: 5px;
   background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 12px;
@@ -259,13 +207,15 @@ svg {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 .match-heading p {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #cbd5e1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* Resolution Pills (Auto, 1080p, 720p, 480p) */
@@ -289,9 +239,9 @@ svg {
   transition: all 0.15s;
 }
 .resolution-options button.selected {
-  background: var(--blue);
+  background: var(--blue-glow);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .top-actions {
@@ -327,16 +277,16 @@ svg {
   border-radius: 50%;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   transition: transform 0.15s, background 0.15s;
 }
 .side-actions button:hover > span {
-  background: rgba(30, 41, 59, 0.9);
-  transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(30, 41, 59, 0.95);
+  transform: scale(1.06);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 .side-actions svg { width: 22px; height: 22px; }
 
@@ -356,14 +306,14 @@ svg {
   width: 46px;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 9999px;
   padding: 10px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 .zoom-rail button {
   font-size: 20px;
@@ -378,9 +328,9 @@ svg {
 .zoom-rail input[type="range"] {
   writing-mode: vertical-lr;
   direction: rtl;
-  height: 100px;
+  height: 90px;
   width: 4px;
-  accent-color: var(--blue);
+  accent-color: var(--blue-glow);
   cursor: pointer;
   margin: 4px 0;
 }
@@ -397,23 +347,23 @@ svg {
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   display: grid;
   place-items: center;
   color: #f1f5f9;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   transition: transform 0.15s;
 }
-.fit-button:hover { transform: scale(1.05); }
+.fit-button:hover { transform: scale(1.06); }
 
 /* Captions line above overlay */
 .caption-line {
   position: absolute;
   z-index: 9;
-  bottom: 145px;
+  bottom: 140px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
@@ -435,19 +385,20 @@ svg {
 .score-overlay {
   position: absolute;
   z-index: 10;
-  bottom: 64px;
-  left: 68px;
-  right: 68px;
-  border-radius: 4px;
+  bottom: 60px;
+  left: 70px;
+  right: 70px;
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
 }
 
 .score-top {
   display: grid;
-  grid-template-columns: 36% 28% 36%;
-  height: 64px;
+  grid-template-columns: 38% 24% 38%;
+  height: 60px;
   align-items: stretch;
+  background: #ffffff;
 }
 
 /* Left: Batting Banner (ICAT 125/3) */
@@ -455,9 +406,9 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #072a6b 0%, #1565c0 100%);
-  clip-path: polygon(0 0, 96% 0, 88% 100%, 0 100%);
-  padding: 6px 24px 6px 18px;
+  background: linear-gradient(135deg, #093c8a 0%, #1565c0 100%);
+  clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%);
+  padding: 6px 24px 6px 16px;
 }
 .team-logo {
   width: 44px;
@@ -471,7 +422,7 @@ svg {
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.team-logo img { width: 100%; height: 100%; object-fit: cover; }
+.team-logo img { width: 100%; height: 100%; object-fit: contain; }
 .team-logo b { color: #0f172a; font-size: 14px; font-weight: 800; }
 
 .team-score {
@@ -479,20 +430,20 @@ svg {
   flex-direction: column;
 }
 .team-score #overlayTeam {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.5px;
   color: #e2e8f0;
 }
 .team-score strong {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.5px;
   color: #fff;
 }
 .team-score #overlayOvers {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #bae6fd;
 }
@@ -505,19 +456,19 @@ svg {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 10px;
+  gap: 3px;
+  padding: 4px 12px;
   margin: 0 -2px;
 }
 .equation-panel > div {
   display: flex;
-  gap: 14px;
-  font-size: 12px;
+  gap: 16px;
+  font-size: 13px;
   font-weight: 800;
   color: #1e293b;
 }
 .equation-panel p {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #0f172a;
   text-align: center;
@@ -532,12 +483,12 @@ svg {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  background: linear-gradient(135deg, #240505 0%, #991b1b 50%, #d97706 100%);
-  clip-path: polygon(12% 0, 100% 0, 100% 100%, 0% 100%);
-  padding: 6px 18px 6px 24px;
+  background: linear-gradient(135deg, #180505 0%, #991b1b 50%, #d97706 100%);
+  clip-path: polygon(14% 0, 100% 0, 100% 100%, 0% 100%);
+  padding: 6px 16px 6px 24px;
 }
 .opposition-panel strong {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -548,20 +499,31 @@ svg {
 
 /* Bottom Strip: Batter 1, Batter 2, Bowler, This Over */
 .score-bottom {
-  height: 40px;
-  background: rgba(8, 12, 18, 0.96);
+  height: 38px;
+  background: rgba(8, 12, 18, 0.98);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
-  gap: 16px;
-  font-size: 12px;
+  gap: 12px;
+  font-size: 11.5px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .batter-line {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.batter-line span {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .strike-icon {
@@ -578,8 +540,9 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
   padding-left: 14px;
+  flex-shrink: 0;
 }
 
 .over-line {
@@ -588,12 +551,13 @@ svg {
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #94a3b8;
+  color: #cbd5e1;
+  flex-shrink: 0;
 }
 .over-line > div {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 .ball-pill {
   width: 22px;
@@ -607,7 +571,7 @@ svg {
   background: #334155;
 }
 .ball-pill.four { background: var(--green); }
-.ball-pill.six { background: var(--blue); }
+.ball-pill.six { background: var(--blue-glow); }
 .ball-pill.wicket { background: var(--red); }
 
 /* ========================================================================= */
@@ -619,7 +583,7 @@ svg {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 58px;
   padding: 0 max(20px, var(--safe-left));
   background: rgba(5, 8, 13, 0.95);
   backdrop-filter: blur(10px);
@@ -633,10 +597,13 @@ svg {
   background: var(--red);
   color: #fff;
   border-radius: 4px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .red-pill.on {
   background: var(--red);
@@ -654,16 +621,11 @@ svg {
   height: 4px;
   accent-color: var(--red);
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 2px;
 }
 .timeline span {
-  position: absolute;
-  top: -14px;
-  left: 0;
-  font-size: 9px;
-  color: #64748b;
-  pointer-events: none;
+  display: none; /* Hide label so it doesn't overlap scrubber */
 }
 
 .jump-live {
@@ -679,6 +641,7 @@ svg {
   height: 8px;
   border-radius: 50%;
   background: var(--red);
+  animation: pulse 1.5s infinite;
 }
 
 .timer {
@@ -750,9 +713,9 @@ svg {
   white-space: nowrap;
 }
 .chips button.selected {
-  background: var(--blue);
+  background: var(--blue-glow);
   color: #fff;
-  border-color: var(--blue);
+  border-color: var(--blue-glow);
 }
 
 .segmented {
@@ -773,7 +736,7 @@ svg {
   transition: all 0.15s;
 }
 .segmented button.selected {
-  background: var(--blue);
+  background: var(--blue-glow);
   color: #fff;
 }
 .segmented.small button {
@@ -797,7 +760,7 @@ svg {
   place-items: center;
   overflow: hidden;
 }
-.team-crest { width: 100%; height: 100%; object-fit: cover; }
+.team-crest { width: 100%; height: 100%; object-fit: contain; }
 .team-mono { font-size: 14px; font-weight: 800; color: #38bdf8; }
 .header-info strong { font-size: 17px; font-weight: 800; }
 
@@ -885,18 +848,7 @@ svg {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  object-fit: cover;
-}
-.team-mono-lg {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #1e293b;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 800;
-  color: #38bdf8;
+  object-fit: contain;
 }
 .vs-badge {
   font-size: 14px;
@@ -986,7 +938,7 @@ svg {
 }
 .m-bar {
   width: 100%;
-  background: var(--blue);
+  background: var(--blue-glow);
   border-radius: 2px 2px 0 0;
   min-height: 4px;
 }
@@ -1019,7 +971,7 @@ svg {
   width: 80px;
   height: 50px;
   border-radius: 6px;
-  background: #0f172a;
+  background: url("./assets/cricket-field.jpg") center/cover no-repeat;
   display: grid;
   place-items: center;
   position: relative;
@@ -1031,7 +983,7 @@ svg {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: grid;
   place-items: center;
   color: #fff;
@@ -1059,7 +1011,7 @@ svg {
 .share-thumb {
   width: 100%;
   height: 120px;
-  background: #09121d;
+  background: url("./assets/cricket-field.jpg") center/cover no-repeat;
   border-radius: 6px;
   position: relative;
   display: flex;
@@ -1129,7 +1081,7 @@ svg {
   background: rgba(51, 65, 85, 0.5);
 }
 .option-list input[type="radio"] {
-  accent-color: var(--blue);
+  accent-color: var(--blue-glow);
   width: 18px;
   height: 18px;
 }
@@ -1202,7 +1154,7 @@ svg {
   transition: transform 0.2s;
 }
 .switch-row input[type="checkbox"]:checked {
-  background: var(--blue);
+  background: var(--blue-glow);
 }
 .switch-row input[type="checkbox"]:checked::after {
   transform: translateX(20px);
@@ -1367,7 +1319,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select {
 .stop-confirm > div { display: flex; gap: 10px; }
 .stop-confirm button { flex: 1; }
 
-/* Responsive adjustments for phones in landscape & portrait */
+/* Responsive adjustments */
 @media (max-height: 520px) and (orientation: landscape) {
   .stage-header { top: 8px; gap: 8px; }
   .match-heading h2 { font-size: 14px; }
@@ -1405,4 +1357,39 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select {
   .opposition-panel strong { font-size: 11px; }
   .side-actions { left: 8px; }
   .zoom-tools { right: 8px; }
+}
+
+.option-list.devices button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s;
+}
+.option-list.devices button:hover {
+  background: rgba(30, 41, 59, 0.7);
+}
+.option-list.devices button.selected {
+  border-color: var(--blue-glow);
+  background: rgba(14, 165, 233, 0.15);
+}
+.device-radio {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.option-list.devices button.selected .device-radio {
+  border-color: var(--blue-glow);
+  background: var(--blue-glow);
+  box-shadow: inset 0 0 0 3px #0f172a;
 }
