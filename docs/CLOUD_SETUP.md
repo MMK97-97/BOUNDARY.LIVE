@@ -39,7 +39,7 @@ GOOGLE_CLIENT_SECRET=your-private-client-secret
 YOUTUBE_REDIRECT_URI=https://YOUR-REAL-HOST/youtube-callback.html
 ```
 
-Register that exact callback with Google. Add your Google account as a test user if the OAuth consent app is in Testing. Never upload downloaded credentials, the client secret or `.env` to GitHub. Redeploy/restart after configuration. [YOUTUBE.md](YOUTUBE.md) explains the existing flow; its older local-relay references mean the cloud environment in this deployment.
+Register that exact callback with Google. Add your Google account as a test user if the OAuth consent app is in Testing. Never upload downloaded credentials, the client secret or `.env` to GitHub. Redeploy/restart after configuration. [YOUTUBE.md](YOUTUBE.md) contains the complete Render callback and Google setup steps. Version 1.6.2 derives an empty callback value from the configured service origin; it still must be registered in Google Cloud.
 
 Google login, event title/description/privacy/schedule/audience, automatic key acquisition, preview and publication are implemented. Actual Google/platform credentials were not supplied for end-to-end account testing in this session.
 

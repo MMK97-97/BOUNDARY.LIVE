@@ -1,4 +1,4 @@
-# CricClubs league support — MK97 1.6.1
+# CricClubs league support — MK97 1.6.2
 
 Paste a **full scorecard URL** in Score or the match home panel. MK97 extracts the numeric identifiers and retains the exact validated league path. The cloud reader, live overlay and source panels stay bound to that selection. A bare Match ID still needs its Club ID; match IDs are not globally unique.
 
@@ -36,7 +36,7 @@ The same full HTML parser now receives the correct path for each selected league
 
 ## Deploy this update
 
-Replace the website and server together using the 1.6.1 source ZIP, commit to your repository and manually redeploy the Render service between broadcasts. Preserve your existing private RELAY_TOKEN and other host secrets. The old `CRICCLUBS_CLUB_ID=300` / `CRICCLUBS_LEAGUE=FWCWL` pair can remain: it no longer limits the reader to that club.
+Replace the website and server together using the 1.6.2 source ZIP, commit to your repository and manually redeploy the Render service between broadcasts. Preserve your existing private RELAY_TOKEN and other host secrets. The old `CRICCLUBS_CLUB_ID=300` / `CRICCLUBS_LEAGUE=FWCWL` pair can remain: it no longer limits the reader to that club.
 
 Connect MK97, paste either complete URL and Load. The Club ID and league summary should change automatically. For a live overlay, select a readable active match; the supplied samples are completed and will not generate new balls.
 
@@ -48,3 +48,13 @@ npm run scrape -- --club 157 --match 6098 --out scorecard-output/tcl.json
 ```
 
 These commands attempt one permitted full HTML read; they do not guarantee access. For an unknown league, provide `--league NAME` or `--url FULL_SCORECARD_URL`. The manual Actions workflow already accepts a separate league path; use the table above when supplying its inputs.
+
+## If 1507 or 157 did not load
+
+1. In Score choose **Tampa Cricket · Club 1507**, then enter **Match ID 3866**, or choose **TCL · Club 157**, then enter **Match ID 6098**. A Club ID alone does not select a match. You can also paste the corresponding complete URL above. The league selector fills Club ID; it does not guess Match ID.
+2. Connect the cloud studio in Stream setup. That panel now shows both website and cloud-reader versions. For this update both should be **1.6.2**; a successful Pages deployment does not update the Render server. Deploy the same commit on Render.
+3. Check the persistent error in Score if a read fails. It also appears in the match home card. With a confirmed cloud selection, the live subscription stays attached through an initial source failure and receives recovery without another submission.
+4. If the app says a custom feed is configured, inspect `SCORE_URL_TEMPLATE` on Render. To use the built-in CricClubs reader, remove that custom override and redeploy. Do not post its private header values or tokens. A custom approved feed must return the selected club and match.
+5. Preserve `RELAY_TOKEN`. Leave the legacy FWCWL club/path values as they are. They do not filter supported leagues in this version.
+
+On October 30 both sample ticker reads succeeded again from this development server, and the published Pages build reported 1.6.1. This does not reveal the user's Render deployment or identify the exact cause of their failed attempt. These are completed sample matches: totals should load, but no new balls will appear. Full cards/commentary still require readable complete source data; no source restriction is bypassed.

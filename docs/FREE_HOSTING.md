@@ -1,12 +1,12 @@
 # MK97 — every step to host without a laptop
 
-This guide is for **version 1.6, live streaming only**. Replay, clip capture and footage downloads have been removed.
+This guide is for **version 1.6.2, live streaming only**. Replay, clip capture and footage downloads have been removed.
 
 You can host the interface free. The complete streaming system also needs a long-running video server. The free Render route below is a test deployment; full-match 1080p multistreaming there has not been validated. The always-free VM route is conditional on your provider granting suitable free resources. If it cannot, there is no honest guaranteed fully free substitute for the required compute and bandwidth.
 
 ## Part 1 — put the updated source on GitHub, from your phone
 
-1. Download `MK97_v1.6.1_Multi_League_Live_Only_Source.zip` and extract it using your phone's Files app.
+1. Download `MK97_v1.6.2_YouTube_League_Fixes_Source.zip` and extract it using your phone's Files app.
 2. Open your existing repository: `https://github.com/MMK97-97/BOUNDARY.LIVE`.
 3. Back up any changes you made since the earlier upload. The new package replaces the app and server together. Old replay files must be removed, not left behind.
 4. Upload the extracted **contents inside `MK97`** into the repository root, keeping the folders. Do not upload the ZIP as the app. Use GitHub's web upload where the mobile browser supports it; Request Desktop Site if needed. If your phone cannot select folders, use the file editor to create the directory paths or a browser-based GitHub Codespace to upload/extract the ZIP and review/commit the files. Codespaces has its own quotas: stop it when finished and do not use it as the streaming host.

@@ -1,10 +1,10 @@
-# MK97 1.6.1 validation — October 30, 2026
+# MK97 1.6.2 validation — October 30, 2026
 
 ## Automated checks completed
 
-`npm run check`: **48 JavaScript modules, 230 unique UI IDs**, relative imports and local HTML assets checked.
+`npm run check`: **52 JavaScript modules, 244 unique UI IDs**, relative imports and local HTML assets checked.
 
-`npm test`: **171 passed, 0 failed, 0 skipped**. The full suite completed after removing replay and replacing the media processor. Counts are lower than adding features to 1.5 because obsolete replay tests/implementation were removed.
+`npm test`: **199 passed, 0 failed, 0 skipped**. The full suite completed after the YouTube/league changes. Removed replay behavior remains covered.
 
 | Check | Result and scope |
 | --- | --- |
@@ -19,7 +19,7 @@
 | Destination keys | Session isolation, expiry/logout removal, no secret echo, platform RTMPS allowlists/port restrictions, malformed/oversized values and 409 while the owner streams. |
 | Cloud origin/config | Exact configured HTTPS service origin, no Host-header inference, no wildcard/path/credential origin, secret-free discovery and private config generation without printing/overwriting the token. |
 | Sessions/tickets | Origin-bound expiry/revocation, master token limited to session creation, one-use tickets, HTTP/WS authorization, body/connection limits, CORS and private-file protection. |
-| YouTube | Mock Google authorization/state/PKCE lifecycle, request validation, account/key precedence, idempotent event setup, ambiguous-write handling, stream health, preview/live/end transitions and grant/session cleanup. No real Google account was used. |
+| YouTube | Render callback derivation/mismatch guidance; real HTTP callback routing without an opener; single-use state/PKCE, expiry/cancellation/session isolation; safe failure outcomes; endpoint re-read without duplicate writes; idempotent setup and partial retries; immediate/concurrent/intermediate transitions; late browser response rejection and safe cancellation messages. Google responses are mocked; no real Google account was used. |
 | Deployment files | Render/Compose/Actions YAML parsed locally. Docker is unavailable in this executor, so the image build itself was not run here. The added cloud-container workflow builds/smoke-tests it after the source is pushed to GitHub. |
 
 ## Browser checks
@@ -41,3 +41,13 @@ No cloud account, free VM allocation, deployed Docker instance, Google/platform 
 ## Before match day
 
 Deploy the reviewed source, run the container workflow, check `/health` and Encoder ready, connect the phone and verify the intended account/audience. Rehearse one unlisted/private YouTube output, actual native capture, sound, source freshness and playback. Measure server CPU/RAM/egress and phone temperature/battery. Add other destinations only with sufficient headroom. Check restart/network-loss behavior, milestone/card timing, microphone mute, monitoring and clean shutdown. Verify the provider still permits your source reads and that the chosen hosting resources remain within their free quota.
+
+## Additional 1.6.2 browser checks
+
+On the isolated 390 × 844 phone layout: synthetic Google approval returned through the real cloud callback, the channel connected without a popup message, event/key setup completed, and the selected YouTube destination became ready. A QA-only active-signal control enabled Preview; provider state changed testing → live → complete, and the completed key became unavailable. No external broadcast was made and no actual camera was opened. The mock returns its fixed event title/visibility; Google accepting the operator's real event settings still requires account testing.
+
+Tampa Cricket Club 1507 / Match 3866 and TCL Club 157 / Match 6098 loaded through the authenticated cloud selection and score subscription using captured normalized totals. League presets and full URLs (including formatted-message separators) both selected the correct IDs. An intentionally unsupported fixture match displayed its error inline, then a valid selection recovered and cleared it. The UI stayed open through polling, and Back/Close worked with a setup message visible after moving feedback below the header.
+
+Two actual read-only ticker calls also returned valid totals for those same club/match pairs on October 30. Both are completed matches; neither test proves a live game's timing or full innings/commentary availability. The published Pages build reported 1.6.1, while the user's actual Render address/settings were not available. The exact cause of their reported deployed failure therefore remains unconfirmed.
+
+Browser screenshots are supplied separately from the source. The QA transport, test consent page, preview-only origin/header changes and no-external-output wrapper are excluded from the ZIP.

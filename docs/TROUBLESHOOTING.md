@@ -32,3 +32,10 @@
 | Cast unavailable | Local MediaStream routing is often unsupported. Open the public platform player and use its own Cast/AirPlay control where available. |
 
 Never bypass a browser certificate warning or provider verification screen to make the app appear connected. End platform events separately if a camera/server/network failure leaves a broadcast open.
+
+## YouTube and multi-league setup in 1.6.2
+
+- Read [YOUTUBE.md](YOUTUBE.md) for the exact Render callback and Google OAuth configuration. A Pages callback does not match a studio opened on Render. The YouTube panel displays the URL to register, the channel and any safe provider error.
+- Check website and cloud-reader versions under Stream setup. Updating GitHub Pages does not update Render. Deploy both 1.6.2 components together.
+- Club 1507 uses Match 3866 in the supplied example; Club 157 uses Match 6098. Use both identifiers or a full scorecard URL. See [LEAGUES.md](LEAGUES.md).
+- Source failures are shown inline in Score, with custom-feed configuration advice where relevant. An initially failed cloud read can recover over its existing score subscription.

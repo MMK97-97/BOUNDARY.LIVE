@@ -1,4 +1,4 @@
-# Upgrade to MK97 1.6
+# Upgrade to MK97 1.6.2
 
 Stop the active camera upload and end platform events before updating. Back up your own changes, then replace the complete source, including `web/`, `relay/`, tests, package files, Docker/hosting files and hidden workflows.
 
@@ -13,3 +13,5 @@ Run `npm run check` and `npm test`; the supplied Actions workflows also validate
 The new version does not make blocked CricClubs source pages readable or complete a partial ticker. It does not deploy cloud resources or publish an external platform broadcast by itself.
 
 Version 1.6.1 adds automatic FWCWL, TampaCricket and TCL mappings and retains paths from pasted scorecard URLs. Preserve host secrets and deploy both sides together. Existing FWCWL environment values can remain. See [LEAGUES.md](LEAGUES.md).
+
+Version 1.6.2 fixes the phone YouTube setup and cloud callback. Register your Render app’s exact `/youtube-callback.html` URI in Google Cloud; change an old Pages `YOUTUBE_REDIRECT_URI` if you now open the Render app. Keep the same `RELAY_TOKEN`. The app now shows both web/cloud versions, provides separate league/Match ID selection and retains initial cloud-read failures on a live subscription so they can recover. See [YOUTUBE.md](YOUTUBE.md) and [LEAGUES.md](LEAGUES.md).
