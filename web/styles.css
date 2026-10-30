@@ -1410,6 +1410,22 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select {
   flex-direction: column;
   -webkit-overflow-scrolling: touch;
 }
+
+@media (min-width: 600px) and (min-height: 601px) {
+  body:not(.in-live-studio) {
+    background: #03060c url("./assets/splash-bg.jpg") center/cover no-repeat fixed;
+  }
+  .mobile-screen {
+    max-width: 440px;
+    height: 92vh;
+    max-height: 880px;
+    margin: auto;
+    border-radius: 36px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85), 0 0 0 10px #141c2c, 0 0 0 12px #d4af37;
+    position: fixed;
+    inset: 0;
+  }
+}
 .mobile-screen[hidden] {
   display: none !important;
 }

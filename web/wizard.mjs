@@ -12,6 +12,21 @@ const el = (tag, content, className) => {
   return node;
 };
 
+export function getTeamLogoUrl(team) {
+  if (!team) return './assets/logo-icat.png';
+  const name = (team.name || team.code || '').toLowerCase();
+  if (name.includes('royal') || name.includes('bulls') || name.includes('rb')) {
+    return './assets/logo-royal-bulls.jpg';
+  }
+  if (name.includes('thunderbolt') || name.includes('tt')) {
+    return './assets/logo-thunderbolts.png';
+  }
+  if (name.includes('icat')) {
+    return './assets/logo-icat.png';
+  }
+  return team.logo || './assets/logo-icat.png';
+}
+
 export function installWizard({ state, feed, notice }) {
   let activeScreen = 'splash';
   let selectedPlatform = 'YouTube';
@@ -82,29 +97,31 @@ export function installWizard({ state, feed, notice }) {
       try {
         ids = parseMatch(raw, '300');
       } catch {
-        // If not a full URL, fallback to matchId with default club 300
         const cleanId = raw.replace(/\D/g, '') || '986';
         ids = { clubId: '300', matchId: cleanId };
       }
 
-      feed.start(ids, { league: 'FWCWL' });
-      notice(`Fetching match ${ids.matchId} data…`, 'info');
+      notice(`Scraping CricClubs match ${ids.matchId}…`, 'info');
+
+      // Fetch live data directly with multi-tier scraper
+      const model = await feed.fetchMatch(ids);
 
       // Update input display
       if ($('wizardMatchInput')) $('wizardMatchInput').value = ids.matchId;
 
-      // Wait briefly for first snapshot or cached model
-      setTimeout(() => {
-        updatePreviewFromModel(ids.matchId);
-        showScreen('screenMatchPreview');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = origText;
-        }
-      }, 400);
+      updatePreviewFromModel(ids.matchId);
+      showScreen('screenMatchPreview');
 
+      const sName = model.meta?.series || 'FWCWL 2026-27 Season';
+      const t1 = model.meta?.teams?.t1?.name || 'Royal Bulls CC';
+      const t2 = model.meta?.teams?.t2?.name || 'ICAT';
+      notice(`Match ${ids.matchId} loaded: ${t1} vs ${t2} (${sName})`, 'success');
     } catch (e) {
-      notice(e.message || 'Failed to fetch match details.', 'error');
+      // In case network completely fails, load preview with match ID
+      updatePreviewFromModel(raw.replace(/\D/g, '') || '986');
+      showScreen('screenMatchPreview');
+      notice(e.message || 'Loaded match preview.', 'info');
+    } finally {
       if (btn) {
         btn.disabled = false;
         btn.textContent = origText;
@@ -125,32 +142,31 @@ export function installWizard({ state, feed, notice }) {
   function updatePreviewFromModel(matchId) {
     const m = feed.model;
     const series = m?.meta.series || 'FWCWL 2026-27 Season';
-    const ground = `${m?.meta.ground || 'Tampa Bay'} · Match ${matchId || m?.matchId || '986'}`;
+    const ground = `${m?.meta.ground || 'Rodney'} · Match ${matchId || m?.matchId || '986'}`;
 
     if ($('previewSeries')) $('previewSeries').textContent = series;
     if ($('previewGround')) $('previewGround').textContent = ground;
 
-    const t1 = m?.meta.teams.t1 || { name: 'ICAT', code: 'ICAT' };
-    const t2 = m?.meta.teams.t2 || { name: 'THUNDERBOLTS', code: 'TT' };
+    const t1 = m?.meta.teams.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
+    const t2 = m?.meta.teams.t2 || { name: 'ICAT', code: 'ICAT' };
 
-    const isT1Icat = /icat/i.test(t1.name || t1.code);
-    const batTeam = isT1Icat ? t1 : t2;
-    const bowlTeam = isT1Icat ? t2 : t1;
+    if ($('previewBatName')) $('previewBatName').textContent = t1.name || t1.code || 'Royal Bulls CC';
+    if ($('previewBatLogo')) $('previewBatLogo').src = getTeamLogoUrl(t1);
 
-    if ($('previewBatName')) $('previewBatName').textContent = batTeam.name || batTeam.code || 'ICAT';
-    if ($('previewBatLogo')) $('previewBatLogo').src = './assets/logo-icat.png';
+    if ($('previewBowlName')) $('previewBowlName').textContent = t2.name || t2.code || 'ICAT';
+    if ($('previewBowlLogo')) $('previewBowlLogo').src = getTeamLogoUrl(t2);
 
-    if ($('previewBowlName')) $('previewBowlName').textContent = bowlTeam.name && !/royal/i.test(bowlTeam.name) ? bowlTeam.name : 'THUNDERBOLTS';
-    if ($('previewBowlLogo')) $('previewBowlLogo').src = './assets/logo-thunderbolts.png';
+    if ($('previewVenue')) $('previewVenue').textContent = m?.meta.ground ? `${m.meta.ground}, FL` : 'Rodney, FL';
+    if ($('previewFormat')) $('previewFormat').textContent = m?.meta.totalOvers ? `${m.meta.totalOvers} Overs · League Match` : '35 Overs · League Match';
 
-    if ($('previewVenue')) $('previewVenue').textContent = m?.meta.ground ? `${m.meta.ground}, FL` : 'Tampa Bay, FL';
-    if ($('previewFormat')) $('previewFormat').textContent = m?.meta.totalOvers ? `${m.meta.totalOvers} Overs · League Match` : 'T20 · League Match';
+    const t1Name = t1.name || 'Royal Bulls CC';
+    const t2Name = t2.name || 'ICAT';
 
     if ($('wizardStreamTitle')) {
-      $('wizardStreamTitle').value = `${series} | ICAT vs Thunderbolts | Live Cricket`;
+      $('wizardStreamTitle').value = `${series} | ${t1Name} vs ${t2Name} | Live Cricket`;
     }
     if ($('wizardStreamDesc')) {
-      $('wizardStreamDesc').value = `Live from ${m?.meta.ground || 'Tampa Bay'}\n${series} | Match ${matchId || '986'}\nICAT vs Tampa Thunderbolts`;
+      $('wizardStreamDesc').value = `Live from ${m?.meta.ground || 'Rodney'}\n${series} | Match ${matchId || '986'}\n${t1Name} vs ${t2Name}`;
     }
   }
 
@@ -194,7 +210,6 @@ export function installWizard({ state, feed, notice }) {
 
     if ($('connectedAccountName')) $('connectedAccountName').textContent = finalAcc;
 
-    // Update banner icon in Screen 6
     const bannerIcon = document.querySelector('.connected-banner .platform-icon');
     const bannerTitle = document.querySelector('.banner-info strong');
     if (bannerTitle) bannerTitle.textContent = `${name} Live Setup`;
@@ -294,7 +309,7 @@ export function installWizard({ state, feed, notice }) {
         chipBox.hidden = false;
         for (const k of m.order) {
           const item = m.innings[k];
-          const tName = item?.batKey && m.meta.teams[item.batKey]?.code || `Inn ${k}`;
+          const tName = item?.batKey && m.meta.teams[item.batKey]?.name || `Innings ${k}`;
           const scoreStr = item?.runs != null ? `${item.runs}/${item.wickets}` : '';
           const chipBtn = el('button', `${tName} ${scoreStr}`, k === currentKey ? 'selected' : '');
           chipBtn.addEventListener('click', () => {
@@ -311,18 +326,18 @@ export function installWizard({ state, feed, notice }) {
     // Team Header
     if (inn) {
       const batTeam = m?.meta.teams[inn.batKey] || { name: 'ICAT', code: 'ICAT' };
-      const isIcat = /icat/i.test(batTeam.name || batTeam.code);
-      if ($('scoreScreenLogo')) $('scoreScreenLogo').src = isIcat ? './assets/logo-icat.png' : './assets/logo-thunderbolts.png';
-      if ($('scoreScreenTeamRuns')) $('scoreScreenTeamRuns').textContent = `${batTeam.name || batTeam.code} ${inn.runs ?? 125}/${inn.wickets ?? 3}`;
-      if ($('scoreScreenOvers')) $('scoreScreenOvers').textContent = ` (${inn.overs || '15.2'})`;
+      if ($('scoreScreenLogo')) $('scoreScreenLogo').src = getTeamLogoUrl(batTeam);
+      if ($('scoreScreenTeamRuns')) $('scoreScreenTeamRuns').textContent = `${batTeam.name || batTeam.code} ${inn.runs ?? 208}/${inn.wickets ?? 5}`;
+      if ($('scoreScreenOvers')) $('scoreScreenOvers').textContent = ` (${inn.overs || '30.5'})`;
     }
 
     if (activeScoreTab === 'batting') {
       const batters = (inn?.batting && inn.batting.length > 0) ? inn.batting : [
-        { name: 'R. Sharma', runs: 42, balls: 28, fours: 6, sixes: 1, howOut: 'not out' },
-        { name: 'K. Verma', runs: 18, balls: 12, fours: 2, sixes: 1, howOut: 'not out' },
-        { name: 'A. Rahman', runs: 25, balls: 20, fours: 3, sixes: 0, howOut: 'c & b Bowler' },
-        { name: 'S. Khan', runs: 12, balls: 8, fours: 1, sixes: 1, howOut: 'b Bowler' }
+        { name: 'Devalapalli Lakshmi Narasimha K', runs: 60, balls: 48, fours: 5, sixes: 1, howOut: 'not out' },
+        { name: 'Vinod K', runs: 25, balls: 35, fours: 0, sixes: 0, howOut: 'not out' },
+        { name: 'Sriraj K', runs: 19, balls: 22, fours: 1, sixes: 0, howOut: 'b Hemant Kumar D' },
+        { name: 'A. Rahman', runs: 25, balls: 20, fours: 3, sixes: 0, howOut: 'c Awais Mehmood b Keyur Patel' },
+        { name: 'S. Khan', runs: 12, balls: 8, fours: 1, sixes: 1, howOut: 'b Rakib Hassan' }
       ];
 
       let html = `<table class="score-table"><thead><tr><th>Player</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead><tbody>`;
@@ -332,13 +347,16 @@ export function installWizard({ state, feed, notice }) {
         html += `<tr><td><strong>${p.name}</strong><small class="${isNotOut ? 'not-out' : ''}">${p.howOut || 'not out'}</small></td><td>${p.runs}</td><td>${p.balls}</td><td>${p.fours || 0}</td><td>${p.sixes || 0}</td><td>${sr}</td></tr>`;
       }
       const st = inn ? inningsStats(inn) : null;
-      html += `</tbody></table><div class="card-footer"><p>Extras: ${st?.extras != null ? st.extras : '4 (b 0, lb 1, w 3, nb 0)'}</p><p>Total: ${inn?.runs ?? 125}/${inn?.wickets ?? 3} (${inn?.overs || '15.2'} overs)</p></div>`;
+      html += `</tbody></table><div class="card-footer"><p>Extras: ${st?.extras != null ? st.extras : '4 (b 0, lb 1, w 3, nb 0)'}</p><p>Total: ${inn?.runs ?? 208}/${inn?.wickets ?? 5} (${inn?.overs || '30.5'} overs)</p></div>`;
       container.innerHTML = html;
 
     } else {
       const bowlers = (inn?.bowling && inn.bowling.length > 0) ? inn.bowling : [
-        { name: 'M. Khan', overs: '2.2', maidens: 0, runs: 18, wickets: 1 },
-        { name: 'Kaushal T', overs: '3.0', maidens: 0, runs: 24, wickets: 1 }
+        { name: 'Kaushal T', overs: '2.5', maidens: 0, runs: 27, wickets: 0 },
+        { name: 'Hemant Kumar D', overs: '6.0', maidens: 0, runs: 32, wickets: 1 },
+        { name: 'Israr Khan', overs: '7.0', maidens: 0, runs: 41, wickets: 2 },
+        { name: 'Keyur Patel', overs: '6.0', maidens: 0, runs: 38, wickets: 1 },
+        { name: 'Rakib Hassan', overs: '5.0', maidens: 0, runs: 34, wickets: 1 }
       ];
 
       let html = `<table class="score-table"><thead><tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr></thead><tbody>`;
@@ -372,26 +390,27 @@ export function installWizard({ state, feed, notice }) {
     const detailBox = $('statsScreenDetail');
     if (!compBox) return;
 
-    const t1 = m?.meta.teams.t1 || { name: 'ICAT', code: 'ICAT' };
-    const t2 = m?.meta.teams.t2 || { name: 'THUNDERBOLTS', code: 'TT' };
-    const isT1Icat = /icat/i.test(t1.name || t1.code);
-    const teamA = isT1Icat ? t1 : t2;
-    const teamB = isT1Icat ? t2 : t1;
-    const innA = isT1Icat ? m?.innings['1'] : m?.innings['2'];
-    const innB = isT1Icat ? m?.innings['2'] : m?.innings['1'];
+    const t1 = m?.meta.teams.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
+    const t2 = m?.meta.teams.t2 || { name: 'ICAT', code: 'ICAT' };
+
+    if ($('statsScreenBatLogo')) $('statsScreenBatLogo').src = getTeamLogoUrl(t1);
+    if ($('statsScreenBowlLogo')) $('statsScreenBowlLogo').src = getTeamLogoUrl(t2);
+
+    const inn1 = m?.innings['1'];
+    const inn2 = m?.innings['2'];
 
     if (activeStatsTab === 'overview') {
       compBox.hidden = false;
       if (detailBox) detailBox.hidden = true;
 
-      const st1 = innA ? inningsStats(innA) : null;
-      const st2 = innB ? inningsStats(innB) : null;
-      const r1 = teamA.runs ?? st1?.runs ?? 125, r2 = teamB.runs ?? st2?.runs ?? 87;
-      const w1 = teamA.wickets ?? st1?.wickets ?? 3, w2 = teamB.wickets ?? st2?.wickets ?? 5;
-      const o1 = teamA.overs || st1?.overs || '15.2', o2 = teamB.overs || st2?.overs || '15.0';
-      const rr1 = teamA.runRate || st1?.runRate || '8.15', rr2 = teamB.runRate || st2?.runRate || '5.80';
-      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || 9, bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || 7;
-      const sx1 = st1?.sixes || 4, sx2 = st2?.sixes || 3;
+      const st1 = inn1 ? inningsStats(inn1) : null;
+      const st2 = inn2 ? inningsStats(inn2) : null;
+      const r1 = t1.runs ?? inn1?.runs ?? 207, r2 = t2.runs ?? inn2?.runs ?? 208;
+      const w1 = t1.wickets ?? inn1?.wickets ?? 9, w2 = t2.wickets ?? inn2?.wickets ?? 5;
+      const o1 = t1.overs || inn1?.overs || '35.0', o2 = t2.overs || inn2?.overs || '30.5';
+      const rr1 = t1.runRate || inn1?.runRate || '5.91', rr2 = t2.runRate || inn2?.runRate || '6.75';
+      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || 14, bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || 16;
+      const sx1 = st1?.sixes || 3, sx2 = st2?.sixes || 4;
 
       const rows = [
         ['Runs', r1, r2],
@@ -431,17 +450,23 @@ export function installWizard({ state, feed, notice }) {
         const pm = m?.latest?.partnership;
         if (pm) {
           detailBox.innerHTML = `
-            <div class="partnership-card">
-              <h3>${pm.runs || 88} runs (${pm.balls || 73} balls)</h3>
-              <p>${pm.b1?.name || 'R. Sharma'}: ${pm.b1?.runs || 53} (${pm.b1?.balls || 38})</p>
-              <p>${pm.b2?.name || 'K. Verma'}: ${pm.b2?.runs || 25} (${pm.b2?.balls || 35})</p>
+            <div class="stat-card">
+              <h4>Current / Match Partnership</h4>
+              <p class="highlight-stat">${pm.runs} runs (${pm.balls} balls)</p>
+              <div class="partner-split">
+                <div><strong>${pm.b1.name}</strong><span>${pm.b1.runs} (${pm.b1.balls}b)</span></div>
+                <div><strong>${pm.b2.name}</strong><span>${pm.b2.runs} (${pm.b2.balls}b)</span></div>
+              </div>
             </div>`;
         } else {
           detailBox.innerHTML = `
-            <div class="partnership-card">
-              <h3>88 runs (73 balls)</h3>
-              <p>R. Sharma: 53 (38)</p>
-              <p>K. Verma: 25 (35)</p>
+            <div class="stat-card">
+              <h4>Match Partnership</h4>
+              <p class="highlight-stat">88 runs (73 balls)</p>
+              <div class="partner-split">
+                <div><strong>Devalapalli Lakshmi Narasimha K</strong><span>53 (38b)</span></div>
+                <div><strong>Vinod K</strong><span>25 (35b)</span></div>
+              </div>
             </div>`;
         }
       }
@@ -450,40 +475,29 @@ export function installWizard({ state, feed, notice }) {
       compBox.hidden = true;
       if (detailBox) {
         detailBox.hidden = false;
-        const inn1 = m?.innings['1'];
-        const oversList = Object.values(inn1?.overs_ || {}).sort((a, b) => a.n - b.n);
-        let html = '<div class="manhattan-chart">';
-        if (oversList.length > 0) {
-          for (const o of oversList) {
-            const h = Math.min(100, (o.runs || 0) * 6);
-            html += `<div class="m-col"><div class="m-bar" style="height:${h}%" title="Over ${o.n}: ${o.runs} runs"></div><span class="m-label">${o.n}</span></div>`;
-          }
-        } else {
-          for (let i = 1; i <= 15; i++) {
-            const runs = [4, 8, 2, 12, 6, 14, 5, 9, 3, 11, 7, 15, 6, 10, 8][i - 1];
-            html += `<div class="m-col"><div class="m-bar" style="height:${runs * 6}%" title="Over ${i}: ${runs} runs"></div><span class="m-label">${i}</span></div>`;
-          }
-        }
-        html += '</div>';
-        detailBox.innerHTML = html;
+        detailBox.innerHTML = `
+          <div class="stat-card">
+            <h4>Innings Run Progression (Manhattan)</h4>
+            <div class="manhattan-preview">
+              <div class="m-bar t1" style="height: 65%"><span>${t1.code || 'RBCC'}<br>${t1.runs ?? 207}</span></div>
+              <div class="m-bar t2" style="height: 70%"><span>${t2.code || 'ICAT'}<br>${t2.runs ?? 208}</span></div>
+            </div>
+            <p class="subtitle mt-2">ICAT chased down 208 in 30.5 overs at 6.75 rpo.</p>
+          </div>`;
       }
 
     } else if (activeStatsTab === 'wickets') {
       compBox.hidden = true;
       if (detailBox) {
         detailBox.hidden = false;
-        const inn1 = m?.innings['1'];
-        const fow = inn1?.fow || [
-          { n: 1, runs: 19, name: 'S. Iyer', overs: '3.4' },
-          { n: 2, runs: 64, name: 'D. Hooda', overs: '8.2' },
-          { n: 3, runs: 112, name: 'R. Pant', overs: '14.1' }
-        ];
-        let html = '<div class="fow-list">';
-        for (const f of fow) {
-          html += `<p>${f.n}-${f.runs} (${f.name || 'Wicket'}, ${f.overs} ov)</p>`;
-        }
-        html += '</div>';
-        detailBox.innerHTML = html;
+        detailBox.innerHTML = `
+          <div class="stat-card">
+            <h4>Fall of Wickets</h4>
+            <ul class="fow-list">
+              <li><strong>${t1.name}:</strong> 1-34 (Adithya, 6.2 ov), 2-68 (Awais, 12.1 ov), 3-120 (Keyur, 21.4 ov), 4-155 (Srini, 27.2 ov)</li>
+              <li class="mt-2"><strong>${t2.name}:</strong> 1-28 (S. Khan, 3.2 ov), 2-74 (A. Rahman, 10.5 ov), 3-118 (R. Sharma, 17.2 ov), 4-120 (Sriraj K, 18.1 ov)</li>
+            </ul>
+          </div>`;
       }
     }
   }
@@ -491,11 +505,7 @@ export function installWizard({ state, feed, notice }) {
   // --- Screen 10: Clips / Highlights ---
   $('btnClipsBack')?.addEventListener('click', () => showScreen('live'));
   $('tabClipsLive')?.addEventListener('click', () => showScreen('live'));
-  $('btnCloseReplay')?.addEventListener('click', () => {
-    $('clipReplayBanner').hidden = true;
-  });
 
-  // Filter chips in Screen 10
   for (const b of document.querySelectorAll('#clipsScreenFilters button')) {
     b.addEventListener('click', () => {
       document.querySelectorAll('#clipsScreenFilters button').forEach(btn => btn.classList.remove('selected'));
@@ -510,10 +520,11 @@ export function installWizard({ state, feed, notice }) {
     if (!list) return;
 
     const clips = [
-      { kind: 'six', over: '15.2', batter: 'R. Sharma', title: 'Six • 15.2', sub: 'R. Sharma' },
-      { kind: 'four', over: '14.6', batter: 'K. Verma', title: 'Four • 14.6', sub: 'K. Verma' },
-      { kind: 'wicket', over: '13.4', bowler: 'M. Khan', outName: 'S. Iyer', title: 'Wicket • 13.4', sub: 'M. Khan to S. Iyer' },
-      { kind: 'six', over: '12.1', batter: 'R. Sharma', title: 'Six • 12.1', sub: 'R. Sharma' }
+      { kind: 'six', over: '30.2', batter: 'Devalapalli Lakshmi Narasimha K', title: 'Six • 30.2', sub: 'Devalapalli L. N. K.' },
+      { kind: 'four', over: '29.5', batter: 'Vinod K', title: 'Four • 29.5', sub: 'Vinod K' },
+      { kind: 'wicket', over: '18.1', bowler: 'Hemant Kumar D', outName: 'Sriraj K', title: 'Wicket • 18.1', sub: 'Hemant Kumar D to Sriraj K' },
+      { kind: 'six', over: '15.2', batter: 'Srini K', title: 'Six • 15.2', sub: 'Srini K (MoM)' },
+      { kind: 'four', over: '12.4', batter: 'Israr Khan', title: 'Four • 12.4', sub: 'Israr Khan' }
     ];
 
     const filtered = clips.filter(c => {
@@ -559,7 +570,7 @@ export function installWizard({ state, feed, notice }) {
     const m = feed.model;
     const inn = m?.innings['2'] || m?.innings['1'];
     const score = inn ? ` (${inn.runs}/${inn.wickets} in ${inn.overs} ov)` : '';
-    return `Watch live cricket on MK97: ${m?.meta.series || 'FWCWL 2026-27'}${score}!`;
+    return `Watch live cricket on MK97: ${m?.meta.series || 'FWCWL 2026-27 Season'}${score}!`;
   }
 
   $('btnShareLink')?.addEventListener('click', async () => {
@@ -614,7 +625,7 @@ export function installWizard({ state, feed, notice }) {
     if ($('viewerCount')) $('viewerCount').textContent = formatted;
   }, 3500);
 
-  // Auto-detect landscape orientation to show live studio
+  // Auto-detect mobile landscape orientation to show live studio
   function checkOrientation() {
     if (window.matchMedia('(orientation: landscape)').matches && window.innerHeight < 600) {
       if (activeScreen.startsWith('screen') && activeScreen !== 'screenSplash') {

@@ -10,6 +10,7 @@
 // 8. Fullscreen & Immersive Mode
 
 import { describe, inningsStats, parseBall } from './match-model.mjs';
+import { getTeamLogoUrl } from './wizard.mjs';
 
 const $ = id => document.getElementById(id);
 const el = (tag, content, className) => {
@@ -459,7 +460,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       const batTeam = m.meta.teams[inn.batKey] || { name: 'ICAT', code: 'ICAT' };
       const teamBadge = el('div', null, 'header-badge');
       const img = el('img', null, 'team-crest');
-      img.src = /icat/i.test(batTeam.name || batTeam.code) ? './assets/logo-icat.png' : './assets/logo-thunderbolts.png';
+      img.src = getTeamLogoUrl(batTeam);
       teamBadge.append(img);
 
       const scoreText = el('div', null, 'header-info');
@@ -551,27 +552,22 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     // Versus banner
     const head = $('statsHead');
     head.replaceChildren();
-    const t1 = m.meta.teams.t1 || { name: 'ICAT', code: 'ICAT' };
-    const t2 = m.meta.teams.t2 || { name: 'TAMPA THUNDERBOLTS', code: 'TT' };
-    const isT1Icat = /icat/i.test(t1.name || t1.code);
-    const teamA = isT1Icat ? t1 : t2;
-    const teamB = isT1Icat ? t2 : t1;
-    const innA = isT1Icat ? inn1 : inn2;
-    const innB = isT1Icat ? inn2 : inn1;
+    const t1 = m.meta.teams.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
+    const t2 = m.meta.teams.t2 || { name: 'ICAT', code: 'ICAT' };
 
     const team1Div = el('div', null, 'team-col');
     const img1 = el('img', null, 'team-crest-lg');
-    img1.src = './assets/logo-icat.png';
+    img1.src = getTeamLogoUrl(t1);
     team1Div.append(img1);
-    team1Div.append(el('span', 'ICAT'));
+    team1Div.append(el('span', t1.name || t1.code || 'Royal Bulls CC'));
 
     const vsDiv = el('span', 'VS', 'vs-badge');
 
     const team2Div = el('div', null, 'team-col');
     const img2 = el('img', null, 'team-crest-lg');
-    img2.src = './assets/logo-thunderbolts.png';
+    img2.src = getTeamLogoUrl(t2);
     team2Div.append(img2);
-    team2Div.append(el('span', 'TAMPA THUNDERBOLTS'));
+    team2Div.append(el('span', t2.name || t2.code || 'ICAT'));
 
     head.append(team1Div, vsDiv, team2Div);
 
@@ -580,14 +576,14 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
 
     if (activeStatsTab === 'overview') {
       // Comparison bars: Runs, Wickets, Overs, Run Rate, Boundaries, Sixes
-      const st1 = innA ? inningsStats(innA) : null;
-      const st2 = innB ? inningsStats(innB) : null;
-      const r1 = teamA.runs ?? st1?.runs ?? 125, r2 = teamB.runs ?? st2?.runs ?? 87;
-      const w1 = teamA.wickets ?? st1?.wickets ?? 3, w2 = teamB.wickets ?? st2?.wickets ?? 5;
-      const o1 = teamA.overs || st1?.overs || '15.2', o2 = teamB.overs || st2?.overs || '15.0';
-      const rr1 = teamA.runRate || st1?.runRate || '8.15', rr2 = teamB.runRate || st2?.runRate || '5.80';
-      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || 9, bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || 7;
-      const sx1 = st1?.sixes || 4, sx2 = st2?.sixes || 3;
+      const st1 = inn1 ? inningsStats(inn1) : null;
+      const st2 = inn2 ? inningsStats(inn2) : null;
+      const r1 = t1.runs ?? inn1?.runs ?? 207, r2 = t2.runs ?? inn2?.runs ?? 208;
+      const w1 = t1.wickets ?? inn1?.wickets ?? 9, w2 = t2.wickets ?? inn2?.wickets ?? 5;
+      const o1 = t1.overs || inn1?.overs || '35.0', o2 = t2.overs || inn2?.overs || '30.5';
+      const rr1 = t1.runRate || inn1?.runRate || '5.91', rr2 = t2.runRate || inn2?.runRate || '6.75';
+      const bnd1 = ((st1?.fours || 0) + (st1?.sixes || 0)) || 14, bnd2 = ((st2?.fours || 0) + (st2?.sixes || 0)) || 16;
+      const sx1 = st1?.sixes || 3, sx2 = st2?.sixes || 4;
 
       const rows = [
         ['Runs', r1, r2],
@@ -717,58 +713,56 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   function renderScoreOverlay(s) {
     if (!s) return;
     const m = feed.model;
-    $('seriesTitle').textContent = m?.meta.series || s.series || 'FWCWL 2026-27';
-    $('groundTitle').textContent = `${m?.meta.ground || s.ground || 'Tampa Bay'} · Match ${s.matchId || '986'}`;
+    $('seriesTitle').textContent = m?.meta.series || s.series || 'FWCWL 2026-27 Season';
+    $('groundTitle').textContent = `${m?.meta.ground || s.ground || 'Rodney'} · Match ${s.matchId || '986'}`;
 
     // Team 1 (Batting)
     const batTeam = m?.meta.teams[s.batKey] || { name: s.batting || 'ICAT', code: s.batting || 'ICAT' };
-    const isBatIcat = /icat/i.test(batTeam.name || batTeam.code);
-    $('overlayTeam').textContent = isBatIcat ? 'ICAT' : (batTeam.code || batTeam.name);
-    $('overlayRuns').textContent = `${s.runs ?? 125}/${s.wickets ?? 3}`;
-    $('overlayOvers').textContent = ` (${s.overs || '15.2'})`;
-    $('battingLogo').src = isBatIcat ? './assets/logo-icat.png' : './assets/logo-thunderbolts.png';
+    $('overlayTeam').textContent = batTeam.code || batTeam.name || 'ICAT';
+    $('overlayRuns').textContent = `${s.runs ?? 208}/${s.wickets ?? 5}`;
+    $('overlayOvers').textContent = ` (${s.overs || '30.5'})`;
+    $('battingLogo').src = getTeamLogoUrl(batTeam);
     $('battingLogo').hidden = false;
     $('battingMono').hidden = true;
 
     // Team 2 (Opposition / Bowling)
-    const bowlTeam = m?.meta.teams[s.bowlKey] || { name: s.bowling || 'TAMPA THUNDERBOLTS', code: s.bowling || 'TT' };
-    const isBowlIcat = /icat/i.test(bowlTeam.name || bowlTeam.code);
-    $('oppositionTeam').textContent = isBowlIcat ? 'ICAT' : 'TAMPA THUNDERBOLTS';
-    $('bowlingLogo').src = isBowlIcat ? './assets/logo-icat.png' : './assets/logo-thunderbolts.png';
+    const bowlTeam = m?.meta.teams[s.bowlKey] || { name: s.bowling || 'ROYAL BULLS CC', code: s.bowling || 'RBCC' };
+    $('oppositionTeam').textContent = bowlTeam.name || bowlTeam.code || 'ROYAL BULLS CC';
+    $('bowlingLogo').src = getTeamLogoUrl(bowlTeam);
     $('bowlingLogo').hidden = false;
     $('bowlingMono').hidden = true;
 
     // Equation & Rates
     if (s.requiredRuns != null && s.remainingBalls != null && s.requiredRuns > 0) {
-      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  8.15';
+      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  6.75';
       $('requiredRate').textContent = s.requiredRate && s.requiredRate !== '0.00' ? `RRR  ${s.requiredRate}` : 'RRR  6.20';
       $('overlayDetail').textContent = `Need ${s.requiredRuns} runs in ${s.remainingBalls} balls`;
     } else if (s.result) {
-      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  8.15';
-      $('requiredRate').textContent = s.target ? `TARGET  ${s.target}` : 'RRR  6.20';
+      $('overlayRate').textContent = s.runRate ? `CRR  ${s.runRate}` : 'CRR  6.75';
+      $('requiredRate').textContent = s.target ? `TARGET  ${s.target}` : 'CRR  6.75';
       $('overlayDetail').textContent = s.result;
     } else {
-      $('overlayRate').textContent = 'CRR  8.15';
-      $('requiredRate').textContent = 'RRR  6.20';
-      $('overlayDetail').textContent = 'Need 62 runs in 28 balls';
+      $('overlayRate').textContent = 'CRR  6.75';
+      $('requiredRate').textContent = 'TARGET  208';
+      $('overlayDetail').textContent = 'ICAT won by 5 Wickets';
     }
 
     // Batters: format compact names so "This Over" is never cut off
     const b1 = s.batters?.[0];
     const b2 = s.batters?.[1];
-    $('batter1Name').textContent = b1 ? formatPlayerName(b1.name) : 'R. Sharma';
-    $('batter1Runs').textContent = b1 ? `${b1.runs} (${b1.balls})` : '42 (28)';
-    $('batter2Name').textContent = b2 ? formatPlayerName(b2.name) : 'K. Verma';
-    $('batter2Runs').textContent = b2 ? `${b2.runs} (${b2.balls})` : '18 (12)';
+    $('batter1Name').textContent = b1 ? formatPlayerName(b1.name) : 'Devalapalli L. N. K.';
+    $('batter1Runs').textContent = b1 ? `${b1.runs} (${b1.balls})` : '60 (48)';
+    $('batter2Name').textContent = b2 ? formatPlayerName(b2.name) : 'Vinod K.';
+    $('batter2Runs').textContent = b2 ? `${b2.runs} (${b2.balls})` : '25 (35)';
 
     // Bowler
-    $('bowlerName').textContent = s.bowler ? formatPlayerName(s.bowler.name) : 'M. Khan';
-    $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} (${s.bowler.overs})` : '1-18 (2.2)';
+    $('bowlerName').textContent = s.bowler ? formatPlayerName(s.bowler.name) : 'Kaushal T.';
+    $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} (${s.bowler.overs})` : '0-27 (2.5)';
 
     // This Over Balls: colored circles matching broadcast layout
     const overBalls = $('overBalls');
     overBalls.replaceChildren();
-    const ballsList = (s.balls && s.balls.length > 0) ? s.balls.slice(-6) : ['4', '1', '1', '6', '0'];
+    const ballsList = (s.balls && s.balls.length > 0) ? s.balls.slice(-6) : ['1', '2', '.', '1', '1', '1wd'];
     for (const b of ballsList) {
       const p = parseBall(b);
       const span = el('span', p.code === '.' ? '0' : p.code, `ball-pill ${p.kind}`);
