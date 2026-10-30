@@ -25,8 +25,13 @@ const origins = new Set((process.env.ALLOWED_ORIGINS || `http://localhost:${port
   .split(',').map(s => s.trim()).filter(Boolean));
 const auth = value => constantTimeEquals(value, token);
 const sessions = new SessionStore();
-const originOf = req => req.headers.origin || 'non-browser';
-const allowedOrigin = req => !req.headers.origin || origins.has(req.headers.origin);
+// Same-origin browser GETs can omit Origin. The explicit client-origin header
+// keeps their bearer session bound to the same allowed origin as the POST that
+// created it. A browser-supplied Origin always takes precedence and must agree.
+const originOf = req => req.headers.origin || req.headers['x-mk97-origin'] || 'non-browser';
+const allowedOrigin = req => (!req.headers.origin || origins.has(req.headers.origin)) &&
+  (!req.headers['x-mk97-origin'] || origins.has(req.headers['x-mk97-origin'])) &&
+  (!req.headers.origin || !req.headers['x-mk97-origin'] || req.headers.origin === req.headers['x-mk97-origin']);
 const destinations = destinationConfig(process.env);
 const youtube = new YouTubeService({ env: process.env, validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
 const destinationFor = owner => ({ ...destinations, youtube: youtube.destination(owner) || destinations.youtube });
@@ -74,7 +79,7 @@ const server = http.createServer(async (req, res) => {
   if (!allowedOrigin(req)) return json(res, 403, { error: 'Origin not allowed. Add your GitHub Pages origin to ALLOWED_ORIGINS.' });
   if (req.headers.origin) { res.setHeader('Access-Control-Allow-Origin', req.headers.origin); res.setHeader('Vary', 'Origin'); }
   if (req.headers.origin && req.headers['access-control-request-private-network'] === 'true') res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-MK97-Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   let url;
@@ -96,7 +101,7 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.4.0', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
+        name: 'MK97 relay', version: '1.4.1', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
           mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),

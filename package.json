@@ -1,6 +1,6 @@
 {
   "name": "mk97-live",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Mobile cricket broadcast studio with a self-hosted streaming relay",
   "type": "module",

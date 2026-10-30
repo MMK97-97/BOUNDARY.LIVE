@@ -63,7 +63,7 @@ async function api(path, options = {}, authToken = state.session) {
   try {
     response = await fetch(state.relay + path, { ...requestOptions, cache: 'no-store', credentials: 'omit',
       redirect: 'error', signal: AbortSignal.timeout(Math.max(1000, Math.min(60000, timeoutMs))),
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}`, ...(options.headers || {}) } });
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}`, 'X-MK97-Origin': location.origin, ...(options.headers || {}) } });
   } catch { throw new Error('Relay unreachable. Check its HTTPS address, internet connection and ALLOWED_ORIGINS setting.'); }
   let data; try { data = await response.json(); } catch { throw new Error('The address did not return a MK97 relay response.'); }
   if (!response.ok) {
@@ -159,7 +159,7 @@ async function loadSelectedMatch(input, club) {
   try {
     const result = await feed.select(ids);
     if (!result?.score) throw new Error(result?.error || 'No score data was returned.');
-    notice(`Match ${ids.matchId} loaded from ${result.score.source}.`, 'success'); return result;
+    notice(''); return result;
   } finally { state.scoreLoading = false; updateControls(); }
 }
 $('matchForm').addEventListener('submit', async event => {

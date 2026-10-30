@@ -39,6 +39,17 @@ test('authenticated info has security headers and never exposes stream keys', as
 test('unknown origins are rejected even with a valid session', async () => {
   const r = await fetch(base + '/api/info', { headers: { ...headers(session), Origin: 'https://evil.example' } }); assert.equal(r.status, 403);
 });
+test('same-origin GETs use the explicit allowed client origin without losing their session', async () => {
+  const r = await fetch(base + '/api/info', { headers: { Authorization: `Bearer ${session}`, 'X-MK97-Origin': origin } });
+  assert.equal(r.status, 200); assert.equal((await r.json()).name, 'MK97 relay');
+});
+test('the client origin cannot override or contradict a browser Origin', async () => {
+  for (const extra of [
+    { Origin: 'https://evil.example', 'X-MK97-Origin': origin },
+    { Origin: origin, 'X-MK97-Origin': 'https://evil.example' },
+    { 'X-MK97-Origin': 'https://evil.example' }
+  ]) assert.equal((await fetch(base + '/api/info', { headers: { Authorization: `Bearer ${session}`, ...extra } })).status, 403);
+});
 test('YouTube routes require relay authorization and cannot inject arbitrary OAuth state', async () => {
   for (const route of ['/api/youtube/status', '/api/youtube/auth/start', '/api/youtube/setup']) {
     const r = await fetch(base + route, { method: route.endsWith('status') ? 'GET' : 'POST', headers: { Origin: origin }, body: route.endsWith('status') ? undefined : '{}' }); assert.equal(r.status, 401);

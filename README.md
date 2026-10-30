@@ -9,6 +9,8 @@ Updating the uploaded repository? Follow [docs/UPGRADE.md](docs/UPGRADE.md) to r
 
 **New in 1.4: [CricClubs HTML scraper](docs/SCRAPER.md).** It reads supported server-rendered innings tables, extras, dismissals, fall of wickets and source commentary. The relay enriches the ticker in the background when source identities/totals agree. A CLI and a manual GitHub Actions workflow save whitelisted scorecard JSON. Verification pages, robots restrictions and unsupported layouts remain explicit failures; full match 986 HTML access has not been verified.
 
+**1.4.1 browser fixes:** the match-loaded success notification is removed. Same-origin website/relay sessions now keep their origin binding when browsers omit the Origin header on GET requests. Update both `web/` and the laptop relay, then restart the relay. See [browser-test results](docs/BROWSER_TEST.md).
+
 ## What is included
 
 - Landscape studio matching the supplied layout: full camera view, quality pill, left tool rail, native zoom, blue/white/orange scorebar and replay transport controls. See [every control](docs/CONTROLS.md).
