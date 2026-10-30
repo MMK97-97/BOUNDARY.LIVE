@@ -1,0 +1,46 @@
+name: Scrape CricClubs scorecard (manual)
+run-name: "CricClubs scorecard · club ${{ inputs.club_id }} / match ${{ inputs.match_id }}"
+on:
+  workflow_dispatch:
+    inputs:
+      match_id:
+        description: 'Numeric CricClubs Match ID'
+        required: true
+      club_id:
+        description: 'Numeric CricClubs Club ID'
+        required: true
+        default: '300'
+      league:
+        description: 'League path in the scorecard URL'
+        required: true
+        default: FWCWL
+permissions:
+  contents: read
+concurrency:
+  group: mk97-scorecard-scrape
+  cancel-in-progress: false
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Read public HTML scorecard once
+        env:
+          MK97_MATCH: ${{ inputs.match_id }}
+          MK97_CLUB: ${{ inputs.club_id }}
+          MK97_LEAGUE: ${{ inputs.league }}
+        run: node scripts/scrape-cricclubs.mjs --match "$MK97_MATCH" --club "$MK97_CLUB" --league "$MK97_LEAGUE" --out scorecard-output/scorecard.json
+      - name: Keep whitelisted scorecard artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mk97-cricclubs-scorecard
+          path: scorecard-output/scorecard.json
+          retention-days: 7
+          if-no-files-found: error
