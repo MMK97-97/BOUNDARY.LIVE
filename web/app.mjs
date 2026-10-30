@@ -213,6 +213,7 @@ const feed = createFeed({
     wizard?.renderScorecardScreen();
     wizard?.renderStatsScreen();
     wizard?.renderClipsScreen();
+    wizard?.updatePreviewFromModel?.();
     updateControls();
   },
   onStatus(st) {

@@ -95,17 +95,26 @@
     </div>
     <div class="matchup-card">
       <div class="team-slot">
-        <div class="crest-frame"><img id="previewBatLogo" src="./assets/logo-icat.png" alt="ICAT"></div>
+        <div class="crest-frame"><img id="previewBatLogo" src="./assets/logo-icat.png" alt="Team 1"></div>
         <span id="previewBatName">ICAT</span>
+        <strong id="previewBatScore" class="preview-team-score">208/5 (30.5)</strong>
       </div>
-      <div class="vs-glow">VS</div>
+      <div class="vs-center-col">
+        <div class="vs-glow">VS</div>
+        <span id="previewMatchStatusBadge" class="match-status-badge live">● LIVE</span>
+      </div>
       <div class="team-slot">
-        <div class="crest-frame"><img id="previewBowlLogo" src="./assets/logo-thunderbolts.png" alt="THUNDERBOLTS"></div>
-        <span id="previewBowlName">THUNDERBOLTS</span>
+        <div class="crest-frame"><img id="previewBowlLogo" src="./assets/logo-royal-bulls.jpg" alt="Team 2"></div>
+        <span id="previewBowlName">ROYAL BULLS CC</span>
+        <strong id="previewBowlScore" class="preview-team-score">207 all out (34.2)</strong>
       </div>
     </div>
+    <div id="previewResultCard" class="result-highlight-card">
+      <span class="result-icon">🏆</span>
+      <strong id="previewResultText">ICAT won by 5 Wickets</strong>
+    </div>
     <div class="metadata-stack">
-      <div class="meta-item"><svg><use href="#i-cal"/></svg><span>Sat, Apr 26, 2026</span></div>
+      <div class="meta-item"><svg><use href="#i-cal"/></svg><span id="previewDate">Sat, Apr 26, 2026</span></div>
       <div class="meta-item"><svg><use href="#i-pin"/></svg><span id="previewVenue">Rodney, FL</span></div>
       <div class="meta-item"><svg><use href="#i-trophy"/></svg><span id="previewFormat">35 Overs · League Match</span></div>
       <div class="meta-item"><svg><use href="#i-mark"/></svg><span id="previewToss">Royal Bulls CC won the toss and elected to bat</span></div>
@@ -130,74 +139,214 @@
       <h2>Choose Scoreboard Overlay</h2>
       <p class="subtitle">Select a live score overlay for your stream.</p>
     </div>
+
+    <!-- Live Interactive Broadcast Viewfinder Preview of Fetched Match -->
+    <div class="overlay-stage-card" id="overlayStageCard">
+      <div class="stage-top-bar">
+        <span class="live-status-pill"><i></i> LIVE ON-AIR PREVIEW</span>
+        <span id="overlayActiveThemeLabel" class="overlay-style-pill">GOLD CHAMPIONSHIP</span>
+      </div>
+      <div class="stage-viewfinder-box">
+        <div class="stage-pitch-backdrop"></div>
+        <!-- Live Scaled Overlay Stage Viewfinder -->
+        <div id="stageOverlayView" class="stage-overlay-view style-gold">
+          <div class="stage-crest">MK97</div>
+          <div class="stage-main-deck">
+            <div class="stage-wing left">
+              <div class="stage-crest-frame">
+                <img id="stageBatLogo" alt="Team 1" src="./assets/logo-icat.png">
+              </div>
+              <div class="stage-team-meta">
+                <span class="stage-label" id="stageBatLabel">TEAM 1</span>
+                <strong class="stage-code" id="stageBatCode">ICAT</strong>
+              </div>
+              <div class="stage-batters">
+                <div class="stage-b-row"><span class="caret">▶</span><span id="stageB1Name">ROHIT</span> <strong id="stageB1Runs">45</strong> <small id="stageB1Balls">28</small></div>
+                <div class="stage-b-row"><span class="caret"></span><span id="stageB2Name">KOHLI</span> <strong id="stageB2Runs">32</strong> <small id="stageB2Balls">24</small></div>
+              </div>
+            </div>
+            <div class="stage-center-pod">
+              <strong id="stageScorePod" class="stage-gold-score">123-2</strong>
+              <div class="stage-overs-row">
+                <span id="stageOversPod" class="stage-overs">14.3 OVERS</span>
+                <span id="stageStatusPill" class="stage-status-pill">P POWERPLAY</span>
+              </div>
+            </div>
+            <div class="stage-wing right">
+              <div class="stage-bowler">
+                <div class="stage-bw-info"><span class="label">BOWLER</span> <span id="stageBowlerName">RASHID</span> <strong id="stageBowlerFigs">0-24 2.3</strong></div>
+                <div class="stage-balls-row">
+                  <span class="label">THIS OVER</span>
+                  <div id="stageOverBalls" class="stage-over-balls">
+                    <span class="ball-pill">1</span><span class="ball-pill">1</span><span class="ball-pill dot">0</span><span class="ball-pill four">4</span><span class="ball-pill dot">0</span><span class="ball-pill">1</span>
+                  </div>
+                </div>
+              </div>
+              <div class="stage-team-meta right">
+                <span class="stage-label" id="stageBowlLabel">TEAM 2</span>
+                <strong class="stage-code" id="stageBowlCode">AFG</strong>
+              </div>
+              <div class="stage-crest-frame">
+                <img id="stageBowlLogo" alt="Team 2" src="./assets/logo-royal-bulls.jpg">
+              </div>
+            </div>
+          </div>
+          <div class="stage-ticker-ribbon">
+            <div class="stage-metric left">
+              <span>CRR <strong id="stageCrr">8.48</strong></span>
+              <span>|</span>
+              <span>PROJECTED <strong id="stageProj">169</strong></span>
+            </div>
+            <div class="stage-center-tab" id="stageEquationTab">NEED 24 OFF 12</div>
+            <div class="stage-metric right">
+              <span>REQ RR <strong id="stageRrr">12.00</strong></span>
+              <span>|</span>
+              <span>TARGET <strong id="stageTarget">147</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="overlay-options">
       <!-- 1. Gold Championship (Reference Pic 2 - Master Broadcast) -->
       <div class="overlay-card active" data-style="gold">
         <div class="overlay-card-header">
-          <div class="overlay-thumb-frame">
-            <img src="./assets/overlay-gold-elite.png" alt="Gold Championship Overlay" class="overlay-thumb-img">
-            <div class="thumb-badge gold">GOLD MASTER · PIC 2</div>
+          <div class="mini-live-pod gold-pod">
+            <div class="mlp-deck">
+              <div class="mlp-team left">
+                <img class="mlp-logo card-t1-logo" src="./assets/logo-icat.png" alt="">
+                <strong class="card-t1-code">ICAT</strong>
+              </div>
+              <div class="mlp-center">
+                <div class="mlp-mk">MK97</div>
+                <strong class="mlp-score card-score-pod">123-2</strong>
+                <span class="mlp-overs card-overs-pod">14.3 OVERS</span>
+              </div>
+              <div class="mlp-team right">
+                <strong class="card-t2-code">AFG</strong>
+                <img class="mlp-logo card-t2-logo" src="./assets/logo-royal-bulls.jpg" alt="">
+              </div>
+            </div>
+            <div class="mlp-ticker">
+              <span class="mlp-crr">CRR <b class="card-crr">8.48</b></span>
+              <span class="mlp-tab card-equation-tab">NEED 24 OFF 12</span>
+              <span class="mlp-target">TARGET <b class="card-target">147</b></span>
+            </div>
           </div>
           <span class="radio-circle checked"></span>
         </div>
         <div class="overlay-card-meta">
           <strong>Gold Championship (Master Broadcast)</strong>
-          <span class="overlay-tag">Black &amp; Gold metallic wings, center score pod &amp; live equation ribbon</span>
+          <span class="overlay-tag">Pic 2 Reference · Black &amp; Gold metallic wings, center score pod &amp; live equation ribbon</span>
         </div>
       </div>
 
       <!-- 2. Royal Shield (Reference Pic 3 - Blue & Crimson) -->
       <div class="overlay-card" data-style="royal">
         <div class="overlay-card-header">
-          <div class="overlay-thumb-frame">
-            <img src="./assets/overlay-royal-shield.png" alt="Royal Shield Overlay" class="overlay-thumb-img">
-            <div class="thumb-badge royal">ROYAL SHIELD · PIC 3</div>
+          <div class="mini-live-pod royal-pod">
+            <div class="mlp-deck">
+              <div class="mlp-shield left">
+                <img class="mlp-logo card-t1-logo" src="./assets/logo-icat.png" alt="">
+                <strong class="card-t1-code">ICAT</strong>
+              </div>
+              <div class="mlp-center">
+                <div class="mlp-mk">MK97</div>
+                <strong class="mlp-score card-score-pod">162-3</strong>
+                <span class="mlp-overs card-overs-pod">17.4 OVERS</span>
+              </div>
+              <div class="mlp-shield right">
+                <strong class="card-t2-code">RBCC</strong>
+                <img class="mlp-logo card-t2-logo" src="./assets/logo-royal-bulls.jpg" alt="">
+              </div>
+            </div>
+            <div class="mlp-ticker royal-bar">
+              <span class="mlp-target">TARGET <b class="card-target">198</b></span>
+              <span class="mlp-tab card-equation-tab">NEED 36 OFF 14</span>
+              <span class="mlp-rrr">REQ <b class="card-rrr">15.43</b></span>
+            </div>
           </div>
           <span class="radio-circle"></span>
         </div>
         <div class="overlay-card-meta">
           <strong>Royal Shield (Blue &amp; Crimson)</strong>
-          <span class="overlay-tag">Dual heraldic team shields with live target &amp; ball tracker</span>
+          <span class="overlay-tag">Pic 3 Reference · Dual heraldic team shields with live target &amp; ball tracker</span>
         </div>
       </div>
 
       <!-- 3. Dual Innings Match Center (Reference Pic 4) -->
       <div class="overlay-card" data-style="dual">
         <div class="overlay-card-header">
-          <div class="overlay-thumb-frame">
-            <img src="./assets/overlay-dual-center.png" alt="Dual Innings Match Center" class="overlay-thumb-img">
-            <div class="thumb-badge dual">MATCH CENTER · PIC 4</div>
+          <div class="mini-live-pod dual-pod">
+            <div class="dual-row">
+              <div class="dual-team-badge">
+                <img class="mlp-logo-xs card-t1-logo" src="./assets/logo-icat.png" alt="">
+                <strong class="card-t1-code">ICAT</strong>
+                <span class="dual-score-txt card-t1-score">182-4</span>
+                <small class="card-t1-ov">(18.2 ov)</small>
+              </div>
+              <div class="dual-team-badge">
+                <img class="mlp-logo-xs card-t2-logo" src="./assets/logo-royal-bulls.jpg" alt="">
+                <strong class="card-t2-code">RBCC</strong>
+                <span class="dual-score-txt card-t2-score">145-7</span>
+                <small class="card-t2-ov">(20.0 ov)</small>
+              </div>
+            </div>
+            <div class="mlp-ticker dual-bar">
+              <span class="mlp-tab card-equation-tab">NEED 24 OFF 10</span>
+              <span class="mlp-rrr">REQ <b class="card-rrr">67.20</b></span>
+            </div>
           </div>
           <span class="radio-circle"></span>
         </div>
         <div class="overlay-card-meta">
           <strong>Dual Innings Match Center</strong>
-          <span class="overlay-tag">Both innings displayed simultaneously with dedicated player boxes</span>
+          <span class="overlay-tag">Pic 4 Reference · Both innings displayed simultaneously with dedicated player boxes</span>
         </div>
       </div>
 
       <!-- 4. Cyber Neon (Reference Pic 5 - Electric Premier) -->
       <div class="overlay-card" data-style="cyber">
         <div class="overlay-card-header">
-          <div class="overlay-thumb-frame">
-            <img src="./assets/overlay-cyber-neon.png" alt="Cyber Neon Overlay" class="overlay-thumb-img">
-            <div class="thumb-badge cyber">CYBER NEON · PIC 5</div>
+          <div class="mini-live-pod cyber-pod">
+            <div class="mlp-deck">
+              <div class="mlp-team left">
+                <img class="mlp-logo card-t1-logo" src="./assets/logo-icat.png" alt="">
+                <span class="cyber-team-name card-t1-name">ICAT</span>
+              </div>
+              <div class="mlp-center cyber-glow">
+                <strong class="mlp-score card-score-slash">152/3</strong>
+                <span class="mlp-overs card-overs-pod">16.4 OVERS</span>
+              </div>
+              <div class="mlp-team right">
+                <span class="cyber-team-name card-t2-name">ROYAL BULLS</span>
+                <img class="mlp-logo card-t2-logo" src="./assets/logo-royal-bulls.jpg" alt="">
+              </div>
+            </div>
+            <div class="mlp-ticker cyber-bar">
+              <span class="mlp-crr">CRR <b class="card-crr">9.12</b></span>
+              <span class="mlp-tab card-equation-tab">NEED 31 OFF 20</span>
+              <span class="cyber-badge">● LIVE</span>
+            </div>
           </div>
           <span class="radio-circle"></span>
         </div>
         <div class="overlay-card-meta">
           <strong>Cyber Neon (Premier League)</strong>
-          <span class="overlay-tag">Electric cyan &amp; royal blue curved aesthetic with glowing neon telemetry</span>
+          <span class="overlay-tag">Pic 5 Reference · Electric cyan &amp; royal blue curved aesthetic with glowing neon telemetry</span>
         </div>
       </div>
 
       <!-- 5. Clean Broadcast (Pic 1 default) -->
       <div class="overlay-card" data-style="clean">
         <div class="overlay-card-header">
-          <div class="preview-mini-banner">
-            <span class="p-bat">ICAT <b>125/3</b> <small>(15.2)</small></span>
-            <span class="p-eq">CRR 8.15</span>
-            <span class="p-bowl">THUNDERBOLTS</span>
+          <div class="mini-live-pod clean-pod">
+            <div class="clean-split-banner">
+              <span class="p-bat"><strong class="card-t1-code">ICAT</strong> <b class="card-score-slash">125/3</b> <small class="card-overs-pod">(15.2)</small></span>
+              <span class="p-eq">CRR <b class="card-crr">8.15</b></span>
+              <span class="p-bowl"><strong class="card-t2-code">THUNDERBOLTS</strong></span>
+            </div>
           </div>
           <span class="radio-circle"></span>
         </div>

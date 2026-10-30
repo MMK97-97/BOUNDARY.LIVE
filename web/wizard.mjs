@@ -122,6 +122,8 @@ export function installWizard({ state, feed, notice }) {
       target.scrollTop = 0;
     }
     document.body.classList.toggle('in-live-studio', name === 'live' || name === 'studio');
+    if (name === 'screenMatchPreview') updatePreviewFromModel();
+    if (name === 'screenOverlaySelect') updatePreviewFromModel();
     if (name === 'screenScorecard') renderScorecardScreen();
     if (name === 'screenStats') renderStatsScreen();
     if (name === 'screenClips') renderClipsScreen();
@@ -193,37 +195,151 @@ export function installWizard({ state, feed, notice }) {
 
   // --- Screen 3: Match Details Preview ---
   $('btnBackToMatchId')?.addEventListener('click', () => showScreen('screenMatchId'));
-  $('btnContinueToOverlay')?.addEventListener('click', () => showScreen('screenOverlaySelect'));
+  $('btnContinueToOverlay')?.addEventListener('click', () => {
+    updatePreviewFromModel();
+    showScreen('screenOverlaySelect');
+  });
+
+  const THEME_NAMES = {
+    gold: 'GOLD CHAMPIONSHIP',
+    royal: 'ROYAL SHIELD',
+    dual: 'DUAL INNINGS MATCH CENTER',
+    cyber: 'CYBER NEON',
+    clean: 'CLEAN BROADCAST'
+  };
 
   function updatePreviewFromModel(matchId) {
     const m = feed.model;
-    const series = m?.meta.series || 'FWCWL 2026-27 Season';
-    const ground = `${m?.meta.ground || 'Rodney'} · Match ${matchId || m?.matchId || '986'}`;
+    const series = m?.meta?.series || 'FWCWL 2026-27 Season';
+    const ground = `${m?.meta?.ground || 'Rodney'} · Match ${matchId || m?.matchId || '986'}`;
 
+    // Team objects
+    const t1 = m?.meta?.teams?.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
+    const t2 = m?.meta?.teams?.t2 || { name: 'ICAT', code: 'ICAT' };
+
+    const t1Name = t1.name || 'Royal Bulls CC';
+    const t1Code = t1.code || t1Name.slice(0, 4).toUpperCase();
+    const t1Logo = getTeamLogoUrl(t1);
+
+    const t2Name = t2.name || 'ICAT';
+    const t2Code = t2.code || t2Name.slice(0, 4).toUpperCase();
+    const t2Logo = getTeamLogoUrl(t2);
+
+    const lat = m?.latest || {};
+    const runs = lat.runs != null ? lat.runs : (t1.runs != null ? t1.runs : 123);
+    const wkts = lat.wickets != null ? lat.wickets : (t1.wickets != null ? t1.wickets : 2);
+    const overs = lat.overs || t1.overs || '14.3';
+    const crr = lat.runRate || t1.runRate || '8.48';
+    const rrr = (lat.requiredRate && lat.requiredRate !== '0.00') ? lat.requiredRate : '12.00';
+    const target = lat.target || (t2.runs ? t2.runs + 1 : 147);
+    const reqRuns = lat.requiredRuns != null ? lat.requiredRuns : (target > runs ? target - runs : 24);
+    const remBalls = lat.remainingBalls != null ? lat.remainingBalls : 12;
+
+    const equation = (reqRuns != null && remBalls != null && reqRuns > 0)
+      ? `NEED ${reqRuns} OFF ${remBalls}`
+      : (lat.result ? lat.result.toUpperCase() : (m?.meta?.result ? m.meta.result.toUpperCase() : 'NEED 24 OFF 12'));
+
+    // Batters & Bowler
+    const b1 = lat.batters?.[0] || { name: 'Rohit', runs: 45, balls: 28 };
+    const b2 = lat.batters?.[1] || { name: 'Kohli', runs: 32, balls: 24 };
+    const bw = lat.bowler || { name: 'Rashid', wickets: 0, runs: 24, overs: '2.3' };
+
+    // --- SCREEN 3: MATCH DETAILS PREVIEW ---
     if ($('previewSeries')) $('previewSeries').textContent = series;
     if ($('previewGround')) $('previewGround').textContent = ground;
 
-    const t1 = m?.meta.teams.t1 || { name: 'Royal Bulls CC', code: 'RBCC' };
-    const t2 = m?.meta.teams.t2 || { name: 'ICAT', code: 'ICAT' };
+    if ($('previewBatName')) $('previewBatName').textContent = t1Name;
+    if ($('previewBatLogo')) $('previewBatLogo').src = t1Logo;
+    if ($('previewBatScore')) {
+      $('previewBatScore').textContent = t1.runs != null ? `${t1.runs}/${t1.wickets ?? 0} (${t1.overs || '0.0'} ov)` : 'Score pending';
+    }
 
-    if ($('previewBatName')) $('previewBatName').textContent = t1.name || t1.code || 'Royal Bulls CC';
-    if ($('previewBatLogo')) $('previewBatLogo').src = getTeamLogoUrl(t1);
+    if ($('previewBowlName')) $('previewBowlName').textContent = t2Name;
+    if ($('previewBowlLogo')) $('previewBowlLogo').src = t2Logo;
+    if ($('previewBowlScore')) {
+      $('previewBowlScore').textContent = t2.runs != null ? `${t2.runs}/${t2.wickets ?? 0} (${t2.overs || '0.0'} ov)` : 'Score pending';
+    }
 
-    if ($('previewBowlName')) $('previewBowlName').textContent = t2.name || t2.code || 'ICAT';
-    if ($('previewBowlLogo')) $('previewBowlLogo').src = getTeamLogoUrl(t2);
+    if ($('previewMatchStatusBadge')) {
+      const isComplete = lat.status === 'complete' || m?.meta?.status === 'complete';
+      const isSched = lat.status === 'scheduled' || m?.meta?.status === 'scheduled';
+      $('previewMatchStatusBadge').textContent = isComplete ? 'COMPLETED' : isSched ? 'UPCOMING' : '● LIVE';
+      $('previewMatchStatusBadge').className = `match-status-badge ${isComplete ? 'complete' : isSched ? 'scheduled' : 'live'}`;
+    }
 
-    if ($('previewVenue')) $('previewVenue').textContent = m?.meta.ground ? `${m.meta.ground}, FL` : 'Rodney, FL';
-    if ($('previewFormat')) $('previewFormat').textContent = m?.meta.totalOvers ? `${m.meta.totalOvers} Overs · League Match` : '35 Overs · League Match';
-    if ($('previewToss')) $('previewToss').textContent = m?.meta.toss || 'Toss scheduled before match';
+    if ($('previewResultCard')) {
+      const resText = lat.result || m?.meta?.result;
+      if (resText) {
+        if ($('previewResultText')) $('previewResultText').textContent = resText;
+        $('previewResultCard').hidden = false;
+      } else if (reqRuns && remBalls) {
+        if ($('previewResultText')) $('previewResultText').textContent = `Need ${reqRuns} runs in ${remBalls} balls`;
+        $('previewResultCard').hidden = false;
+      } else {
+        $('previewResultCard').hidden = true;
+      }
+    }
 
-    const t1Name = t1.name || 'Royal Bulls CC';
-    const t2Name = t2.name || 'ICAT';
+    if ($('previewDate')) $('previewDate').textContent = 'Sat, Apr 26, 2026';
+    if ($('previewVenue')) $('previewVenue').textContent = m?.meta?.ground ? `${m.meta.ground}, FL` : 'Rodney, FL';
+    if ($('previewFormat')) $('previewFormat').textContent = m?.meta?.totalOvers ? `${m.meta.totalOvers} Overs · League Match` : '35 Overs · League Match';
+    if ($('previewToss')) $('previewToss').textContent = m?.meta?.toss || 'Toss scheduled before match';
 
+    // --- SCREEN 4: TOP LIVE VIEWFINDER PREVIEW ---
+    if ($('stageBatLogo')) $('stageBatLogo').src = t1Logo;
+    if ($('stageBatCode')) $('stageBatCode').textContent = t1Code;
+    if ($('stageBowlLogo')) $('stageBowlLogo').src = t2Logo;
+    if ($('stageBowlCode')) $('stageBowlCode').textContent = t2Code;
+    if ($('stageScorePod')) $('stageScorePod').textContent = `${runs}-${wkts}`;
+    if ($('stageOversPod')) $('stageOversPod').textContent = `${overs} OVERS`;
+    if ($('stageStatusPill')) {
+      $('stageStatusPill').textContent = lat.status === 'complete' ? 'COMPLETED' : lat.status === 'scheduled' ? 'UPCOMING' : (parseFloat(overs) <= 6.0 ? 'P POWERPLAY' : '● LIVE');
+    }
+    if ($('stageB1Name')) $('stageB1Name').textContent = b1.name ? b1.name.slice(0, 14) : 'BATTER 1';
+    if ($('stageB1Runs')) $('stageB1Runs').textContent = b1.runs ?? 0;
+    if ($('stageB1Balls')) $('stageB1Balls').textContent = b1.balls ?? 0;
+
+    if ($('stageB2Name')) $('stageB2Name').textContent = b2.name ? b2.name.slice(0, 14) : 'BATTER 2';
+    if ($('stageB2Runs')) $('stageB2Runs').textContent = b2.runs ?? 0;
+    if ($('stageB2Balls')) $('stageB2Balls').textContent = b2.balls ?? 0;
+
+    if ($('stageBowlerName')) $('stageBowlerName').textContent = bw.name ? bw.name.slice(0, 14) : 'BOWLER';
+    if ($('stageBowlerFigs')) $('stageBowlerFigs').textContent = `${bw.wickets ?? 0}-${bw.runs ?? 0} ${bw.overs || ''}`;
+
+    if ($('stageCrr')) $('stageCrr').textContent = crr;
+    if ($('stageProj')) $('stageProj').textContent = Math.round((parseFloat(crr) || 8.0) * (m?.meta?.totalOvers || 20));
+    if ($('stageEquationTab')) $('stageEquationTab').textContent = equation;
+    if ($('stageRrr')) $('stageRrr').textContent = rrr;
+    if ($('stageTarget')) $('stageTarget').textContent = target;
+
+    // --- SCREEN 4: UPDATE ALL 5 CARDS IN OVERLAY-OPTIONS ---
+    document.querySelectorAll('.card-t1-logo').forEach(img => { img.src = t1Logo; });
+    document.querySelectorAll('.card-t2-logo').forEach(img => { img.src = t2Logo; });
+    document.querySelectorAll('.card-t1-code').forEach(el => { el.textContent = t1Code; });
+    document.querySelectorAll('.card-t2-code').forEach(el => { el.textContent = t2Code; });
+    document.querySelectorAll('.card-t1-name').forEach(el => { el.textContent = t1Name; });
+    document.querySelectorAll('.card-t2-name').forEach(el => { el.textContent = t2Name; });
+
+    document.querySelectorAll('.card-score-pod').forEach(el => { el.textContent = `${runs}-${wkts}`; });
+    document.querySelectorAll('.card-score-slash').forEach(el => { el.textContent = `${runs}/${wkts}`; });
+    document.querySelectorAll('.card-overs-pod').forEach(el => { el.textContent = `${overs} OVERS`; });
+
+    document.querySelectorAll('.card-t1-score').forEach(el => { el.textContent = t1.runs != null ? `${t1.runs}-${t1.wickets ?? 0}` : `${runs}-${wkts}`; });
+    document.querySelectorAll('.card-t1-ov').forEach(el => { el.textContent = t1.overs ? `(${t1.overs} ov)` : `(${overs} ov)`; });
+    document.querySelectorAll('.card-t2-score').forEach(el => { el.textContent = t2.runs != null ? `${t2.runs}-${t2.wickets ?? 0}` : '145-7'; });
+    document.querySelectorAll('.card-t2-ov').forEach(el => { el.textContent = t2.overs ? `(${t2.overs} ov)` : '(20.0 ov)'; });
+
+    document.querySelectorAll('.card-crr').forEach(el => { el.textContent = crr; });
+    document.querySelectorAll('.card-rrr').forEach(el => { el.textContent = rrr; });
+    document.querySelectorAll('.card-target').forEach(el => { el.textContent = target; });
+    document.querySelectorAll('.card-equation-tab').forEach(el => { el.textContent = equation; });
+
+    // Stream Setup fields
     if ($('wizardStreamTitle')) {
       $('wizardStreamTitle').value = `${series} | ${t1Name} vs ${t2Name} | Live Cricket`;
     }
     if ($('wizardStreamDesc')) {
-      $('wizardStreamDesc').value = `Live from ${m?.meta.ground || 'Rodney'}\n${series} | Match ${matchId || '986'}\n${t1Name} vs ${t2Name}`;
+      $('wizardStreamDesc').value = `Live from ${m?.meta?.ground || 'Rodney'}\n${series} | Match ${matchId || '986'}\n${t1Name} vs ${t2Name}`;
     }
   }
 
@@ -237,6 +353,14 @@ export function installWizard({ state, feed, notice }) {
     if (overlay) {
       overlay.classList.remove('style-clean', 'style-modern', 'style-minimal', 'style-detailed', 'style-custom', 'style-gold', 'style-royal', 'style-dual', 'style-cyber');
       overlay.classList.add(`style-${style}`);
+    }
+    const stageView = $('stageOverlayView');
+    if (stageView) {
+      stageView.classList.remove('style-clean', 'style-modern', 'style-minimal', 'style-detailed', 'style-custom', 'style-gold', 'style-royal', 'style-dual', 'style-cyber');
+      stageView.classList.add(`style-${style}`);
+    }
+    if ($('overlayActiveThemeLabel')) {
+      $('overlayActiveThemeLabel').textContent = THEME_NAMES[style] || 'GOLD CHAMPIONSHIP';
     }
     try {
       localStorage.setItem('boundary.overlay_style', style);
