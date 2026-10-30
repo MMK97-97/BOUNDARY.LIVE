@@ -1,6 +1,7 @@
 import { PROFILES, SIZES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, preflight } from './core.mjs';
 import { createFeed, archiveBase } from './feed.mjs';
 import { installStudio } from './studio.mjs';
+import { installWizard } from './wizard.mjs';
 
 let ui = null;
 const $ = id => document.getElementById(id);
@@ -209,6 +210,9 @@ const feed = createFeed({
     ui?.renderScoreDrawer();
     ui?.renderStatsDrawer();
     ui?.renderClipsDrawer();
+    wizard?.renderScorecardScreen();
+    wizard?.renderStatsScreen();
+    wizard?.renderClipsScreen();
     updateControls();
   },
   onStatus(st) {
@@ -664,10 +668,12 @@ setInterval(() => {
     const t = duration((Date.now() - state.startedAt) / 1000);
     $('timer').textContent = t;
     $('dimTimer').textContent = t;
+    if ($('shareScreenTimer')) $('shareScreenTimer').textContent = t;
   } else {
     playbackSeconds++;
     const t = duration(playbackSeconds);
     $('timer').textContent = t;
+    if ($('shareScreenTimer')) $('shareScreenTimer').textContent = t;
   }
 }, 1000);
 
@@ -680,7 +686,10 @@ $('guideToggle').addEventListener('click', () => toggleGuide($('guide').hidden))
 $('closeGuide').addEventListener('click', () => toggleGuide(false));
 
 // Initialize UI
-ui = installStudio({
+let wizard = null;
+  wizard = installWizard({ state, feed, notice });
+
+  ui = installStudio({
   state,
   api,
   notice,

@@ -27,7 +27,345 @@
 <symbol id="i-bat" viewBox="0 0 24 24"><path d="m14 4 6 6-9 9-3-3-2 2-2-2 2-2-3-3Z"/></symbol>
 <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M6 6.5c3 3 3 8 0 11M18 6.5c-3 3-3 8 0 11"/></symbol>
 <symbol id="i-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 1v6m0 10v6M1 12h6m10 0h6"/></symbol>
+
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2m12 6h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2M6 3h12v7a6 6 0 0 1-12 0V3Zm3 14v4m6-4v4m-8 0h10"/></symbol>
+<symbol id="i-twitch" viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h4l5-5V2Zm-10 9H9V7h2v4Zm5 0h-2V7h2v4Z"/></symbol>
 </defs></svg>
+
+<!-- ========================================================================= -->
+<!-- Screen 1: Splash Screen                                                  -->
+<!-- ========================================================================= -->
+<section id="screenSplash" class="mobile-screen screen-splash" aria-label="MK97 Cricket Live Streaming Splash">
+  <div class="splash-card">
+    <div class="splash-logo-wrap">
+      <img src="./assets/logo-mk97.svg" alt="MK97 Cricket Live Streaming" class="splash-hero-logo">
+    </div>
+    <button id="btnSplashEnter" class="btn-gold-pulse">START STREAMING</button>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 2: Enter CricClubs Match ID                                       -->
+<!-- ========================================================================= -->
+<section id="screenMatchId" class="mobile-screen" hidden aria-label="Get Match Data">
+  <header class="mobile-header">
+    <div class="header-placeholder"></div>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <button id="btnSettingsMatchId" class="icon-button ghost header-right" aria-label="Settings"><svg><use href="#i-settings"/></svg></button>
+  </header>
+  <div class="mobile-content">
+    <div class="header-card text-center">
+      <h2>Get Match Data</h2>
+      <p class="subtitle">Enter CricClubs Match ID to fetch live scores, teams and match details.</p>
+    </div>
+    <div class="input-card">
+      <div class="search-input-wrap">
+        <svg class="input-icon"><use href="#i-link"/></svg>
+        <input id="wizardMatchInput" type="text" value="986" placeholder="Enter CricClubs Match ID" aria-label="CricClubs Match ID">
+      </div>
+      <button id="btnFetchMatch" class="btn-gold">Fetch Match</button>
+    </div>
+    <div class="guide-box">
+      <h3>How to find Match ID?</h3>
+      <ol>
+        <li><span class="step-num">1</span> Open the match page on CricClubs</li>
+        <li><span class="step-num">2</span> Copy the Match ID from the URL</li>
+        <li><span class="step-num">3</span> Paste it here and click Fetch</li>
+      </ol>
+      <button id="btnViewExample" class="link-gold">View Example →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 3: Match Details Preview                                          -->
+<!-- ========================================================================= -->
+<section id="screenMatchPreview" class="mobile-screen" hidden aria-label="Match Details Preview">
+  <header class="mobile-header">
+    <button id="btnBackToMatchId" class="icon-button ghost header-left" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="header-placeholder"></div>
+  </header>
+  <div class="mobile-content">
+    <div class="header-card text-center">
+      <h2 id="previewSeries">FWCWL 2026-27</h2>
+      <p id="previewGround" class="subtitle">Tampa Bay · Match 986</p>
+    </div>
+    <div class="matchup-card">
+      <div class="team-slot">
+        <div class="crest-frame"><img id="previewBatLogo" src="./assets/logo-icat.png" alt="ICAT"></div>
+        <span id="previewBatName">ICAT</span>
+      </div>
+      <div class="vs-glow">VS</div>
+      <div class="team-slot">
+        <div class="crest-frame"><img id="previewBowlLogo" src="./assets/logo-thunderbolts.png" alt="THUNDERBOLTS"></div>
+        <span id="previewBowlName">THUNDERBOLTS</span>
+      </div>
+    </div>
+    <div class="metadata-stack">
+      <div class="meta-item"><svg><use href="#i-cal"/></svg><span>Sat, Apr 26, 2026</span></div>
+      <div class="meta-item"><svg><use href="#i-pin"/></svg><span id="previewVenue">Tampa Bay, FL</span></div>
+      <div class="meta-item"><svg><use href="#i-trophy"/></svg><span id="previewFormat">T20 · League Match</span></div>
+    </div>
+    <div class="bottom-actions">
+      <button id="btnContinueToOverlay" class="btn-gold">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 4: Choose Scoreboard Overlay                                      -->
+<!-- ========================================================================= -->
+<section id="screenOverlaySelect" class="mobile-screen" hidden aria-label="Choose Scoreboard Overlay">
+  <header class="mobile-header">
+    <button id="btnBackToPreview" class="icon-button ghost header-left" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="header-placeholder"></div>
+  </header>
+  <div class="mobile-content">
+    <div class="header-card">
+      <h2>Choose Scoreboard Overlay</h2>
+      <p class="subtitle">Select a live score overlay for your stream.</p>
+    </div>
+    <div class="overlay-options">
+      <div class="overlay-card active" data-style="clean">
+        <div class="overlay-card-header">
+          <div class="preview-mini-banner">
+            <span class="p-bat">ICAT <b>125/3</b> <small>(15.2)</small></span>
+            <span class="p-eq">CRR 8.15</span>
+            <span class="p-bowl">THUNDERBOLTS</span>
+          </div>
+          <span class="radio-circle checked"></span>
+        </div>
+        <span class="overlay-tag">Clean &amp; Professional</span>
+      </div>
+      <div class="overlay-card" data-style="modern">
+        <div class="overlay-card-header">
+          <div class="preview-mini-bar modern-bar"><strong>MODERN</strong><small>Dynamic Style</small></div>
+          <span class="radio-circle"></span>
+        </div>
+      </div>
+      <div class="overlay-card" data-style="minimal">
+        <div class="overlay-card-header">
+          <div class="preview-mini-bar minimal-bar"><strong>MINIMAL</strong><small>Simple &amp; Clean</small></div>
+          <span class="radio-circle"></span>
+        </div>
+      </div>
+      <div class="overlay-card" data-style="detailed">
+        <div class="overlay-card-header">
+          <div class="preview-mini-bar detailed-bar"><strong>DETAILED</strong><small>Full Match Stats</small></div>
+          <span class="radio-circle"></span>
+        </div>
+      </div>
+      <div class="overlay-card" data-style="custom">
+        <div class="overlay-card-header">
+          <div class="preview-mini-bar custom-bar"><strong>CUSTOM</strong><small>Your Branding</small></div>
+          <span class="radio-circle"></span>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-actions">
+      <button id="btnNextToPlatform" class="btn-gold">Next</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 5: Choose Streaming Platform                                      -->
+<!-- ========================================================================= -->
+<section id="screenPlatformSelect" class="mobile-screen" hidden aria-label="Choose Streaming Platform">
+  <header class="mobile-header">
+    <button id="btnBackToOverlay" class="icon-button ghost header-left" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="header-placeholder"></div>
+  </header>
+  <div class="mobile-content">
+    <div class="header-card">
+      <h2>Choose Streaming Platform</h2>
+      <p class="subtitle">Login and connect your account to go live.</p>
+    </div>
+    <div class="platform-list">
+      <div class="platform-item">
+        <div class="platform-icon yt"><svg><use href="#i-yt"/></svg></div>
+        <div class="platform-info"><strong>YouTube</strong><small>Stream to your YouTube channel</small></div>
+        <button id="btnConnectYoutube" class="btn-gold-sm">Connect</button>
+      </div>
+      <div class="platform-item">
+        <div class="platform-icon fb">f</div>
+        <div class="platform-info"><strong>Facebook Live</strong><small>Stream to your Facebook page</small></div>
+        <button id="btnConnectFacebook" class="btn-gold-sm">Connect</button>
+      </div>
+      <div class="platform-item">
+        <div class="platform-icon tw"><svg><use href="#i-twitch"/></svg></div>
+        <div class="platform-info"><strong>Twitch</strong><small>Stream to your Twitch channel</small></div>
+        <button id="btnConnectTwitch" class="btn-gold-sm">Connect</button>
+      </div>
+      <div class="platform-item">
+        <div class="platform-icon rtmp"><svg><use href="#i-link"/></svg></div>
+        <div class="platform-info"><strong>Custom RTMP</strong><small>Use your own RTMP details</small></div>
+        <button id="btnConnectRtmp" class="btn-gold-sm">Connect</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 6: Stream Setup                                                   -->
+<!-- ========================================================================= -->
+<section id="screenStreamSetup" class="mobile-screen" hidden aria-label="Stream Setup">
+  <header class="mobile-header">
+    <button id="btnBackToPlatform" class="icon-button ghost header-left" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="header-placeholder"></div>
+  </header>
+  <div class="mobile-content">
+    <div class="connected-banner">
+      <div class="platform-icon yt"><svg><use href="#i-yt"/></svg></div>
+      <div class="banner-info">
+        <strong>YouTube Live Setup</strong>
+        <p><i class="dot-green"></i> Connected: <span id="connectedAccountName">MK97 Cricket</span></p>
+      </div>
+      <button id="btnChangePlatform" class="btn-ghost-sm">Change</button>
+    </div>
+    <div class="form-group">
+      <label for="wizardStreamTitle">Stream Title</label>
+      <input id="wizardStreamTitle" type="text" value="FWCWL 2026-27 | ICAT vs Thunderbolts | Live Cricket">
+    </div>
+    <div class="form-group">
+      <label for="wizardStreamDesc">Stream Description</label>
+      <textarea id="wizardStreamDesc" rows="3">Live from Tampa Bay&#10;FWCWL 2026-27 | Match 986&#10;ICAT vs Tampa Thunderbolts</textarea>
+    </div>
+    <div class="form-group">
+      <label for="wizardPrivacy">Privacy</label>
+      <select id="wizardPrivacy"><option selected>Public</option><option>Unlisted</option><option>Private</option></select>
+    </div>
+    <div class="form-group">
+      <label>Thumbnail</label>
+      <div class="thumb-picker">
+        <img id="wizardThumbImg" src="./assets/cricket-field.jpg" alt="Stream Thumbnail" class="thumb-preview">
+        <button id="btnUploadThumb" class="btn-ghost-sm">Upload Thumbnail (Optional)</button>
+      </div>
+    </div>
+    <div class="bottom-actions">
+      <button id="btnGoLiveWizard" class="btn-gold">Go Live</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 8: Scorecard (Live)                                               -->
+<!-- ========================================================================= -->
+<section id="screenScorecard" class="mobile-screen" hidden aria-label="Scorecard">
+  <header class="mobile-header">
+    <button id="btnScorecardBack" class="icon-button ghost header-left" aria-label="Back to stream"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="pill-tabs-header">
+      <button id="tabScoreLive" class="pill-tab">Live</button>
+      <button id="tabScoreScorecard" class="pill-tab active">Scorecard</button>
+    </div>
+  </header>
+  <div class="mobile-content">
+    <div class="screen-team-header">
+      <div class="crest-frame-sm"><img id="scoreScreenLogo" src="./assets/logo-icat.png" alt="ICAT"></div>
+      <div class="score-screen-title"><strong id="scoreScreenTeamRuns">ICAT 125/3</strong><span id="scoreScreenOvers"> (15.2)</span></div>
+    </div>
+    <div class="segmented-bar">
+      <button id="btnTabBatting" class="seg-btn active">Batting</button>
+      <button id="btnTabBowling" class="seg-btn">Bowling</button>
+    </div>
+    <div id="scorecardTableContainer" class="score-card-box"></div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 9: Match Stats                                                    -->
+<!-- ========================================================================= -->
+<section id="screenStats" class="mobile-screen" hidden aria-label="Match Stats">
+  <header class="mobile-header">
+    <button id="btnStatsBack" class="icon-button ghost header-left" aria-label="Back to stream"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="pill-tabs-header">
+      <button id="tabStatsLive" class="pill-tab">Live</button>
+      <button id="tabStatsStats" class="pill-tab active">Stats</button>
+    </div>
+  </header>
+  <div class="mobile-content">
+    <div class="stats-screen-vs">
+      <div class="team-slot"><img id="statsScreenBatLogo" src="./assets/logo-icat.png" alt="ICAT"></div>
+      <span class="vs-badge">VS</span>
+      <div class="team-slot"><img id="statsScreenBowlLogo" src="./assets/logo-thunderbolts.png" alt="THUNDERBOLTS"></div>
+    </div>
+    <div id="statsScreenComparison" class="comparison-list"></div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 10: Clips / Highlights                                            -->
+<!-- ========================================================================= -->
+<section id="screenClips" class="mobile-screen" hidden aria-label="Clips Highlights">
+  <header class="mobile-header">
+    <button id="btnClipsBack" class="icon-button ghost header-left" aria-label="Back to stream"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="pill-tabs-header">
+      <button id="tabClipsLive" class="pill-tab">Live</button>
+      <button id="tabClipsClips" class="pill-tab active">Clips</button>
+    </div>
+  </header>
+  <div class="mobile-content">
+    <div id="clipsScreenFilters" class="chips">
+      <button data-filter="all" class="selected">All</button>
+      <button data-filter="four">4s</button>
+      <button data-filter="six">6s</button>
+      <button data-filter="wicket">Wickets</button>
+    </div>
+    <div id="clipsScreenList" class="clip-list"></div>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- Screen 11: Share & Stream Info                                           -->
+<!-- ========================================================================= -->
+<section id="screenShare" class="mobile-screen" hidden aria-label="Share Stream Info">
+  <header class="mobile-header">
+    <button id="btnShareBack" class="icon-button ghost header-left" aria-label="Back to stream"><svg><use href="#i-back"/></svg></button>
+    <img src="./assets/logo-mk97.svg" alt="MK97" class="nav-logo">
+    <div class="pill-tabs-header">
+      <button id="tabShareLive" class="pill-tab">Live</button>
+      <button id="tabShareShare" class="pill-tab active">Share</button>
+    </div>
+  </header>
+  <div class="mobile-content">
+    <div class="header-card text-center">
+      <h2>Share Live Stream</h2>
+    </div>
+    <div class="share-grid">
+      <button id="btnShareLink"><span class="sq link"><svg><use href="#i-link"/></svg></span>Copy Link</button>
+      <button id="btnShareWa"><span class="sq wa"><svg><use href="#i-chat"/></svg></span>WhatsApp</button>
+      <button id="btnShareFb"><span class="sq fb">f</span>Facebook</button>
+      <button id="btnShareTw"><span class="sq x">𝕏</span>X</button>
+      <button id="btnShareIg"><span class="sq ig"><svg><use href="#i-insta"/></svg></span>Instagram</button>
+      <button id="btnShareYt"><span class="sq yt"><svg><use href="#i-yt"/></svg></span>YouTube</button>
+      <button id="btnShareEm"><span class="sq em"><svg><use href="#i-mail"/></svg></span>Email</button>
+      <button id="btnShareMore"><span class="sq more"><svg><use href="#i-more"/></svg></span>More</button>
+    </div>
+    <div class="stream-info-card">
+      <h3>Stream information</h3>
+      <div class="stream-info-metrics">
+        <div class="metric-box">
+          <span class="live-pulse-badge"><i></i> LIVE</span>
+          <strong id="shareScreenTimer">01:25:18</strong>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Viewers</span>
+          <strong id="shareScreenViewers">1.2K</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <main id="studio" class="studio">
  <div class="viewfinder" id="viewfinder"><video id="cameraVideo" autoplay playsinline muted aria-label="Local camera and replay monitor" hidden></video>
  <div class="camera-placeholder" id="cameraPlaceholder"><div class="field-lines" aria-hidden="true"></div><div class="standby-copy"><span class="eyebrow">BOUNDARY / CRICKET STUDIO</span><h1>Your ground.<br>Your broadcast.</h1><p>Live CricClubs scorecard, commentary &amp; stats load automatically.<br>Open your camera to frame the pitch.</p><div><button id="openCamera" class="primary">Open camera</button><button id="quickSetup" class="secondary">Set up stream</button></div></div></div>
