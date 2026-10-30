@@ -1,17 +1,22 @@
 import { clean, validateIds, normalizeScore } from '../../web/score-data.mjs';
+import { enrichCricClubsScore } from './cricclubs-parser.mjs';
 export { clean, validateIds, normalizeScore, scoreLines } from '../../web/score-data.mjs';
 export class ScoreService {
-  constructor({ template, headerName, headerValue, pollSeconds = 5, fetchFn = fetch }) {
+  constructor({ template, headerName, headerValue, pollSeconds = 5, fetchFn = fetch, scorecardScraper = null, scorecardClubId = '300', scorecardLeague = 'FWCWL' } = {}) {
     this.template = template || 'https://cricclubs.com/liveScoreOverlayData.do?clubId={clubId}&matchId={matchId}';
     this.headerName = headerName; this.headerValue = headerValue;
     this.pollMs = Math.max(5, Number(pollSeconds) || 5) * 1000;
     this.fetchFn = fetchFn; this.ids = null; this.score = null; this.inflight = null; this.error = null;
     this.lastAttempt = 0; this.generation = 0;
+    this.scorecardScraper = template ? null : scorecardScraper;
+    this.scorecardClubId = String(scorecardClubId); this.scorecardLeague = scorecardLeague;
+    this.scorecardDocument = null; this.scorecardTask = null;
   }
   select(clubId, matchId) {
     const ids = validateIds(clubId, matchId);
     if (!this.ids || this.ids.clubId !== ids.clubId || this.ids.matchId !== ids.matchId) {
       this.ids = ids; this.score = null; this.error = null; this.lastAttempt = 0; this.inflight = null; this.generation++;
+      this.scorecardDocument = null; this.scorecardTask = null;
     }
   }
   async refresh() {
@@ -38,7 +43,12 @@ export class ScoreService {
         }
         const raw = JSON.parse(Buffer.concat(chunks).toString().replace(/^\uFEFF/, ''));
         const next = normalizeScore(raw, ids);
-        if (generation === this.generation) { this.score = next; this.error = null; }
+        if (generation === this.generation) {
+          this.score = next; this.error = null;
+          // HTML scraping runs independently; a slow or blocked scorecard must
+          // not hold up live totals, camera upload or the encoder.
+          this.enrich(ids, generation);
+        }
       } catch (error) {
         if (generation === this.generation) {
           this.error = error.name === 'TimeoutError' ? 'Score feed timed out; keeping the last score.'
@@ -51,6 +61,32 @@ export class ScoreService {
     })();
     this.inflight = operation;
     try { return await operation; } finally { if (this.inflight === operation) this.inflight = null; }
+  }
+  enrich(ids, generation) {
+    if (!this.scorecardScraper) return;
+    if (ids.clubId !== this.scorecardClubId) {
+      this.score.scorecard = { state: 'unavailable', message: 'Set CRICCLUBS_CLUB_ID and CRICCLUBS_LEAGUE on the relay for this league.' }; return;
+    }
+    if (this.scorecardDocument && Date.now() - this.scorecardDocument.fetchedAt < 120000) {
+      try { this.score = enrichCricClubsScore(this.score, this.scorecardDocument); } catch { this.scorecardDocument = null; }
+    }
+    if (!this.score.scorecard) this.score.scorecard = { state: 'loading', message: 'Reading full innings tables on the relay.' };
+    if (this.scorecardTask) return;
+    const task = (async () => {
+      try {
+        const document = await this.scorecardScraper.scrape({ ...ids, league: this.scorecardLeague });
+        if (generation !== this.generation || !this.score) return;
+        this.score = enrichCricClubsScore(this.score, document); this.scorecardDocument = document;
+      } catch (error) {
+        if (generation !== this.generation || !this.score) return;
+        if (error.code === 'COOLDOWN' && this.scorecardDocument) return;
+        this.scorecardDocument = null;
+        this.score = { ...this.score, scorecard: { state: ['ACCESS_BLOCKED', 'ROBOTS_DENIED'].includes(error.code) ? 'blocked' : error.code === 'RATE_LIMITED' ? 'rate_limited' : 'unavailable',
+          code: clean(error.code, 40), message: clean(error.message, 220) } };
+      }
+    })();
+    this.scorecardTask = task;
+    task.finally(() => { if (this.scorecardTask === task) this.scorecardTask = null; });
   }
   snapshot() {
     return {

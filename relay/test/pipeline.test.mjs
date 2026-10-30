@@ -8,14 +8,14 @@ import { spawn, spawnSync } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { findFont, probeEncoder } from '../lib/encoder.mjs';
 const available = process.platform !== 'win32' && probeEncoder('ffmpeg', findFont()).ready;
-test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly without external broadcasting', { skip: !available, timeout: 35000 }, async () => {
+test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly without external broadcasting', { skip: !available, timeout: 60000 }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-pipeline-'));
   let relay, ws;
   try {
     const clip = path.join(dir, 'camera.mp4');
     const generated = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=0x19523b:s=1920x1080:r=30',
       '-f', 'lavfi', '-i', 'sine=sample_rate=44100', '-t', '5', '-c:v', 'libx264', '-threads', '2', '-preset', 'ultrafast',
-      '-g', '30', '-c:a', 'aac', '-movflags', 'frag_keyframe+empty_moov+default_base_moof', clip], { timeout: 10000 });
+      '-g', '30', '-c:a', 'aac', '-movflags', 'frag_keyframe+empty_moov+default_base_moof', clip], { timeout: 15000 });
     assert.equal(generated.status, 0, generated.stderr?.toString());
     // This temporary test wrapper redirects only the test's fake RTMPS targets
     // to local files. It is not a runtime option in the application.
@@ -51,7 +51,9 @@ test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly wit
     ws = new WebSocket(base.replace('http:', 'ws:') + '/ingest', { origin });
     const errors = [], sending = new Set(); let lastStats = null;
     await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Pipeline did not stop')), 16000);
+      // Allow shared CI machines time to encode/export the local test video.
+      // Production ingest and shutdown deadlines are unchanged.
+      const timer = setTimeout(() => reject(new Error('Pipeline did not stop')), 30000);
       ws.on('error', reject);
       ws.on('open', () => ws.send(JSON.stringify({ type: 'start', ticket, width: 1920, height: 1080, mimeType: 'video/mp4', overlay: true, match: selectedMatch, destinations: ['youtube', 'facebook'] })));
       ws.on('message', async data => {

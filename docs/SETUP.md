@@ -163,7 +163,7 @@ The site is preset to **Club ID 300**. Tap **Score**, enter **986** and press **
 https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300
 ```
 
-The relay reads CricClubs' JSON overlay data over HTTPS and converts only score fields into a safe internal format. It is a server-side data reader; it does not iframe a scorecard page. There is no public CORS-proxy dependency, no CricClubs password/token extraction, and no changing CricClubs' overlay control panel.
+The relay reads CricClubs' JSON overlay data over HTTPS and converts only score fields into a safe internal format. Version 1.4 also includes a background HTML scorecard reader, enabled for FWCWL / Club 300. It parses supported public innings tables only when robots rules/page access permit and matches them to ticker totals before enrichment. Keep `CRICCLUBS_CLUB_ID` and `CRICCLUBS_LEAGUE` aligned in `relay/.env` for another league. See [SCRAPER.md](SCRAPER.md) for CLI commands and the manual Actions workflow. There is no public CORS-proxy dependency, no CricClubs password/token extraction, and no changing CricClubs' overlay control panel. The blocked match 986 full HTML has not been successfully scraped in this environment.
 
 For this completed match, the score should show ICAT 208/5, 30.5 overs, and the win over Royal Bulls CC. For a current match in the same league, change only the Match ID. Other leagues need their own Club ID or full scorecard URL. The relay polls every five seconds by default, with its two-second scheduler adding up to two seconds of polling jitter; it cannot update faster than the scorer provides data. No historic replays or milestone graphics play when loading 986.
 

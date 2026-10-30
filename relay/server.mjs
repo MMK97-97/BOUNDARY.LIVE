@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ScoreService, scoreLines, validateIds } from './lib/score.mjs';
+import { CricClubsScraper } from './lib/cricclubs.mjs';
 import { DESTINATIONS, destinationConfig, findFont, probeEncoder, ingestArgs, outputArgs } from './lib/encoder.mjs';
 import { constantTimeEquals, SessionStore } from './lib/security.mjs';
 import { automationOptions } from './lib/events.mjs';
@@ -32,7 +33,9 @@ const destinationFor = owner => ({ ...destinations, youtube: youtube.destination
 const font = findFont(process.env.FONT_FILE), binary = process.env.FFMPEG_PATH || 'ffmpeg';
 const encoder = probeEncoder(binary, font);
 const scores = new ScoreService({ template: process.env.SCORE_URL_TEMPLATE, headerName: process.env.SCORE_HEADER_NAME,
-  headerValue: process.env.SCORE_HEADER_VALUE, pollSeconds: process.env.SCORE_POLL_SECONDS });
+  headerValue: process.env.SCORE_HEADER_VALUE, pollSeconds: process.env.SCORE_POLL_SECONDS,
+  scorecardScraper: process.env.CRICCLUBS_SCORECARD_ENABLED === 'false' ? null : new CricClubsScraper(),
+  scorecardClubId: process.env.CRICCLUBS_CLUB_ID || '300', scorecardLeague: process.env.CRICCLUBS_LEAGUE || 'FWCWL' });
 let active = null;
 const attempts = new Map();
 const failures = new Map();
@@ -93,7 +96,7 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.3.0', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
+        name: 'MK97 relay', version: '1.4.0', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
           mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),

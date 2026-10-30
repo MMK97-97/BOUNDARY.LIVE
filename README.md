@@ -7,6 +7,8 @@ Updating the uploaded repository? Follow [docs/UPGRADE.md](docs/UPGRADE.md) to r
 
 **Match IDs are dynamic.** Enter any accessible match in the selected club; 986 is an explicit example, not a fallback. Browser validation also loaded Match 985 / Club 300: Game Changers CC 216/7 (35), Toons CC 220/5 (27.1), TCC won by 5 Wickets. For another league, change the Club ID or paste its full CricClubs URL.
 
+**New in 1.4: [CricClubs HTML scraper](docs/SCRAPER.md).** It reads supported server-rendered innings tables, extras, dismissals, fall of wickets and source commentary. The relay enriches the ticker in the background when source identities/totals agree. A CLI and a manual GitHub Actions workflow save whitelisted scorecard JSON. Verification pages, robots restrictions and unsupported layouts remain explicit failures; full match 986 HTML access has not been verified.
+
 ## What is included
 
 - Landscape studio matching the supplied layout: full camera view, quality pill, left tool rail, native zoom, blue/white/orange scorebar and replay transport controls. See [every control](docs/CONTROLS.md).
@@ -14,6 +16,7 @@ Updating the uploaded repository? Follow [docs/UPGRADE.md](docs/UPGRADE.md) to r
 - Native rear-camera capture at **1920 × 1080, up to 30 fps** by default. Explicit 720p/480p and Auto choices use the actual supported resolution; they are never labelled native 1080p.
 - Camera-provided zoom presets and a precision slider, when the browser exposes zoom. Camera/lens selection before streaming.
 - CricClubs score retrieval before connecting a relay, using the public read endpoint where browser CORS/network access permits. After connection, the phone reads the same relay snapshot used by the encoder. Both paths share one validator. **FWCWL Club ID 300** is preset; Match IDs and full CricClubs scorecard URLs work.
+- Background full-scorecard HTML extraction on the relay, with bounded caching, robots.txt checks, request deduplication, and validation of player runs/overs against innings totals. It stops on provider access restrictions. Different leagues need their matching relay league-path/Club-ID settings.
 - Score, replay and celebration graphics burned into the outgoing video on your laptop. The phone sends one native camera stream without drawing 1080p graphics on a canvas.
 - Automatic eight-second replay for a confirmed batter four or six; private clip preview, on-air replay and MP4 download. A bounded laptop RAM buffer keeps video and its original audio together.
 - Team celebrations at 50/100/150/200/250/300/350 and player celebrations at 50/100/150/200. Each runs for **60 frames = two seconds** at 30 fps.
@@ -79,6 +82,9 @@ Tests run without broadcasting to your platform accounts. FFmpeg-dependent tests
 | `web/` | Build-free, dependency-free mobile website |
 | `relay/server.mjs` | Authenticated HTTP API, WebSocket upload and process lifecycle |
 | `relay/lib/score.mjs` | CricClubs normalization, caching and stale handling |
+| `relay/lib/cricclubs.mjs` | Read-only HTML scraper, robots checks and bounded requests/cache |
+| `relay/lib/cricclubs-parser.mjs` | Scorecard table extraction, reconciliation and safe ticker enrichment |
+| `scripts/scrape-cricclubs.mjs` | One-match CLI with saved-HTML development mode |
 | `relay/lib/encoder.mjs` | FFmpeg composition, landscape encoding and per-platform forwarding |
 | `relay/lib/program.mjs` | Continuous program output, private replay, source audio and clip export |
 | `relay/lib/events.mjs` | Boundary, milestone and over detection with baseline/deduplication |
@@ -90,6 +96,7 @@ Tests run without broadcasting to your platform accounts. FFmpeg-dependent tests
 | `.github/workflows/pages.yml` | Publishes only `web/` |
 | `docs/SETUP.md` | Complete setup instructions |
 | `docs/CRICCLUBS.md` | Score feed behavior and approved JSON contract |
+| `docs/SCRAPER.md` | Scraper commands, integration, supported layouts and verification limits |
 | `docs/CONTROLS.md` | Button-by-button operation of the supplied layout |
 | `docs/AUTOMATION.md` | Replay calibration, exact graphic duration and feed limits |
 | `docs/YOUTUBE.md` | Website sign-in and broadcast setup |

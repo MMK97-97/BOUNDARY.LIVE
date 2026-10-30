@@ -137,7 +137,13 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       for (const row of [...(s?.commentary || [])].reverse()) { const item = el('article', null, 'commentary-row'); if (row.over) item.append(el('strong', row.over)); item.append(el('p', row.text)); root.append(item); }
       if (!s?.commentary?.length) root.append(el('p', 'Commentary is not supplied by this CricClubs feed. No ball commentary is generated from score changes.', 'source-empty'));
     }
-    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Full card confirmed by feed.' : 'Supplied records only; full innings card not confirmed.'} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
+    const detail = selected || options.find(c => c.id === s?.innings);
+    if (scoreTab === 'batting' && detail) {
+      if (detail.extras?.text) root.append(el('p', detail.extras.text, 'helper'));
+      if (detail.didNotBat?.length) root.append(el('p', 'Did not bat: ' + detail.didNotBat.join(', '), 'helper'));
+      for (const text of detail.fallOfWickets || []) root.append(el('p', 'Fall of wickets: ' + text, 'helper'));
+    }
+    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? 'Connect the relay for full scorecard reading.' : '')} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
     const stats = $('statsTables'); stats.replaceChildren();
     if (!s) return stats.append(el('p', 'Load a match to see source statistics.', 'source-empty'));
     const teams = s.teams?.length ? s.teams : [{ code: s.batting, name: s.batting, runs: s.runs, wickets: s.wickets, overs: s.overs }];

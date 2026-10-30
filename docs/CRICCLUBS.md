@@ -21,7 +21,7 @@ On October 29, 2026, the read-only score-data endpoint returned Royal Bulls CC 2
 https://cricclubs.com/liveScoreOverlayData.do?clubId=300&matchId=986
 ```
 
-4. Both paths use `web/score-data.mjs` to extract teams, totals, wickets, overs, rates, result, batter/bowler records, source commentary, partnership and supplied innings cards. Raw player emails/profile metadata are not forwarded.
+4. Both paths use `web/score-data.mjs` to extract teams, totals, wickets, overs, rates, result, batter/bowler records, source commentary, partnership and supplied innings cards. Raw player emails/profile metadata are not forwarded. In 1.4, the relay also starts the [HTML scorecard reader](SCRAPER.md) in the background for its configured league. It attaches parsed innings only when identities and totals match the ticker; blocked or unsupported HTML leaves the ticker available with a source-note warning.
 5. It chooses the batting innings from explicit innings flags, including the separate super-over flags. Missing fields fail validation rather than becoming invented zeros.
 6. The laptop refreshes every five seconds by default (up to two seconds of scheduler jitter). The phone refreshes one source every five seconds while visible; idle hidden pages pause scheduled reads. The program renderer uses the relay's normalized score fields for graphics. Changing a match cancels the previous browser generation; older responses cannot replace the new selection. The relay also blocks match changes during camera upload.
 
@@ -42,7 +42,7 @@ The MK97 browser loaded match 986 directly during validation. Separate Node requ
 
 The mobile Score panel has Batting, Bowling and Commentary tabs. Stats has Overview, Partnership, Runs and Wickets. Team totals, returned player values, toss, player of the match and current partnership are read from the selected source response. Strike rate/economy show a dash if the source does not supply them; no substitute player records or ball text are generated.
 
-The validated match 986 response includes a partnership of **88 runs / 73 balls** and player contribution fields. These are forwarded as supplied, rather than recomputing the provider's partnership total. Its `comments` field is empty. Its public full-scorecard HTML page returned a verification screen to this build environment. This version reads the available public JSON; it does not claim to extract a full innings card or commentary from that blocked HTML page.
+The validated match 986 response includes a partnership of **88 runs / 73 balls** and player contribution fields. These are forwarded as supplied, rather than recomputing the provider's partnership total. Its `comments` field is empty. Its public full-scorecard HTML page returned a verification screen to this build environment. Version 1.4 includes a server-rendered HTML parser and reader, tested with an explicitly synthetic layout fixture. It does not claim to have retrieved the blocked match's complete innings. See [SCRAPER.md](SCRAPER.md) for commands, configuration, exact extraction scope and failure codes.
 
 An authorized provider can supply full cards and commentary using the existing HTTPS feed adapter. Optional canonical fields are:
 

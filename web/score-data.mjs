@@ -28,7 +28,10 @@ function sourceBowler(p) { return normalBowler({ id: p.playerID ?? p.id, name: p
   maidens: p.maidens, runs: p.runs, wickets: p.wickets, economy: p.economy }); }
 function inningsCard(p) { return { id: clean(p.id, 8), team: clean(p.team, 100), bowling: clean(p.bowling, 100),
   runs: clean(p.runs, 6), wickets: clean(p.wickets, 3), overs: clean(p.overs, 6),
-  batting: rows(p.batting).map(normalPlayer), bowlers: rows(p.bowlers).map(normalBowler), complete: p.complete === true }; }
+  batting: rows(p.batting).map(normalPlayer), bowlers: rows(p.bowlers).map(normalBowler), complete: p.complete === true,
+  extras: p.extras && typeof p.extras === 'object' ? Object.fromEntries(['total', 'byes', 'legByes', 'wides', 'noBalls', 'penalty', 'text'].map(k => [k, clean(p.extras[k], k === 'text' ? 300 : 6)])) : null,
+  fallOfWickets: (Array.isArray(p.fallOfWickets) ? p.fallOfWickets : []).slice(0, 20).map(v => clean(v, 1000)),
+  didNotBat: (Array.isArray(p.didNotBat) ? p.didNotBat : []).slice(0, 15).map(v => clean(v, 120)) }; }
 function partnership(raw) {
   if (!raw || typeof raw !== 'object' || raw.runs == null || raw.balls == null) return null;
   return { runs: clean(raw.runs, 6), balls: clean(raw.balls, 6), batters: (Array.isArray(raw.batters) ? raw.batters : []).slice(0, 2).map(p => ({ name: clean(p?.name, 40), runs: clean(p?.runs, 5), balls: clean(p?.balls, 5) })) };
