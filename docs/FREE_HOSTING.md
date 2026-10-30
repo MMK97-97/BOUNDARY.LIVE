@@ -6,7 +6,7 @@ You can host the interface free. The complete streaming system also needs a long
 
 ## Part 1 — put the updated source on GitHub, from your phone
 
-1. Download `MK97_v1.6_Phone_Cloud_Live_Only_Source.zip` and extract it using your phone's Files app.
+1. Download `MK97_v1.6.1_Multi_League_Live_Only_Source.zip` and extract it using your phone's Files app.
 2. Open your existing repository: `https://github.com/MMK97-97/BOUNDARY.LIVE`.
 3. Back up any changes you made since the earlier upload. The new package replaces the app and server together. Old replay files must be removed, not left behind.
 4. Upload the extracted **contents inside `MK97`** into the repository root, keeping the folders. Do not upload the ZIP as the app. Use GitHub's web upload where the mobile browser supports it; Request Desktop Site if needed. If your phone cannot select folders, use the file editor to create the directory paths or a browser-based GitHub Codespace to upload/extract the ZIP and review/commit the files. Codespaces has its own quotas: stop it when finished and do not use it as the streaming host.

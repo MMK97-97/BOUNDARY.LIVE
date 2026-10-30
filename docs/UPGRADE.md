@@ -11,3 +11,5 @@ Keep private environment secrets on the host. Add the exact `PUBLIC_URL` on gene
 Run `npm run check` and `npm test`; the supplied Actions workflows also validate source, media and the Docker runtime. Redeploy the server after replacing code. Reconnect the phone after restart and verify actual encoder readiness, selected match, audio and platform preview before a live match. A repository web upload does not automatically include hidden workflow files; check `.github/workflows/` explicitly.
 
 The new version does not make blocked CricClubs source pages readable or complete a partial ticker. It does not deploy cloud resources or publish an external platform broadcast by itself.
+
+Version 1.6.1 adds automatic FWCWL, TampaCricket and TCL mappings and retains paths from pasted scorecard URLs. Preserve host secrets and deploy both sides together. Existing FWCWL environment values can remain. See [LEAGUES.md](LEAGUES.md).

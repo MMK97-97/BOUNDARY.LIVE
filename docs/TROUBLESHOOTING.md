@@ -21,7 +21,7 @@
 | Free server restarts or encoding falls behind | Check CPU/RAM and provider limits. Try one output/lower resolution for testing. A plan incapable of real-time 1080p is not a suitable free 1080p host. Do not add keep-alives to evade quotas. |
 | Score delayed | Last verified data is over 30 seconds old or a read failed. Check server/provider access and correct Match ID/Club ID. Last values stay clearly labelled delayed. |
 | Wrong/old match data | Enter the correct Club ID or full scorecard URL. Each selection resets old source data; there is no 986 fallback. Stop the active stream before changing matches. |
-| Full batting/bowling card incomplete | The public ticker contains limited players. Full HTML may be blocked, unsupported or contradictory. Check CRICCLUBS_CLUB_ID/CRICCLUBS_LEAGUE and source note. The app does not bypass verification or invent missing rows. |
+| Full batting/bowling card incomplete | The public ticker contains limited players. Full HTML may be blocked, unsupported or contradictory. Paste the full scorecard URL and check the source note. Built-in league mappings do not require host-setting changes. The app does not bypass verification or invent missing rows. |
 | Commentary empty | The accessible source supplied no commentary. Score changes are not rewritten as fictional ball commentary. |
 | Match-loaded success message | Removed in 1.4.1 and still absent in 1.6. Errors and other actionable notices remain dismissible. |
 | Microphone muted unexpectedly | Check both the bottom speaker button and Camera & sound → Mic. Local preview is always muted to prevent acoustic feedback. |

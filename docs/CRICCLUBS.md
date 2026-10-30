@@ -1,6 +1,10 @@
 # CricClubs score data
 
-## The exact match requested
+## Supported league selection
+
+Paste the full scorecard URL to retain its league path and extract Club ID/Match ID. Built-in bare-ID mappings include `300 → FWCWL`, `1507 → TampaCricket` and `157 → TCL`; the selected club is always required because match IDs are not global. Unknown leagues work from their full URL, subject to source access. See [LEAGUES.md](LEAGUES.md). The legacy environment pair adds/overrides one mapping without disabling the others.
+
+## Original FWCWL example
 
 - League: Florida West Coast Winter League.
 - CricClubs path: `FWCWL`.
@@ -13,15 +17,15 @@ On October 29, 2026, the read-only score-data endpoint returned Royal Bulls CC 2
 
 ## What happens when you press Load
 
-1. The browser uses the selected/saved Club ID (default 300) and numeric Match ID, or extracts both from a CricClubs URL.
+1. The browser uses the selected/saved Club ID (default 300) and numeric Match ID, or extracts both IDs and the league path from a full CricClubs scorecard URL.
 2. Before relay connection, the browser requests the public endpoint directly without credentials. A CORS/network refusal shows a visible error, with no public proxy fallback.
-3. After relay connection, it sends those two IDs to your authenticated relay over HTTPS, then reads the relay's normalized snapshot. The relay reads:
+3. After relay connection, it sends those IDs plus the extracted league path when available to your authenticated relay over HTTPS, then reads the relay's normalized snapshot. The relay reads:
 
 ```text
 https://cricclubs.com/liveScoreOverlayData.do?clubId=300&matchId=986
 ```
 
-4. Both paths use `web/score-data.mjs` to extract teams, totals, wickets, overs, rates, result, batter/bowler records, source commentary, partnership and supplied innings cards. Raw player emails/profile metadata are not forwarded. In 1.4, the relay also starts the [HTML scorecard reader](SCRAPER.md) in the background for its configured league. It attaches parsed innings only when identities and totals match the ticker; blocked or unsupported HTML leaves the ticker available with a source-note warning.
+4. Both paths use `web/score-data.mjs` to extract teams, totals, wickets, overs, rates, result, batter/bowler records, source commentary, partnership and supplied innings cards. Raw player emails/profile metadata are not forwarded. In 1.4, the relay also starts the [HTML scorecard reader](SCRAPER.md) in the background for the selected league path, obtained from the full URL, built-in club mapping or optional legacy configuration. It attaches parsed innings only when identities and totals match the ticker; blocked or unsupported HTML leaves the ticker available with a source-note warning.
 5. It chooses the batting innings from explicit innings flags, including the separate super-over flags. Missing fields fail validation rather than becoming invented zeros.
 6. The server refreshes every five seconds by default, scheduled from each source deadline. In 1.5, each completed source read immediately updates the broadcast renderer and an authenticated live connection to the phone. Unchanged data sends a small freshness message. A broken/unavailable live connection falls back to authenticated five-second refreshes; direct browser mode also polls. Idle hidden pages pause their connection/reads and refresh when visible again. Changing a match cancels the previous browser generation; older revisions cannot replace newer data. The relay blocks match changes during camera upload. See [LIVE_SCORES.md](LIVE_SCORES.md) for latency, security and deployment details.
 
