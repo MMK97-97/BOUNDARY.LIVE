@@ -7,6 +7,7 @@ All automation is enabled by default. Enable or change it in **Settings → Broa
 | Trigger observed after connection | Outgoing program |
 | --- | --- |
 | Confirmed batter four or six | An eight-second ball clip, approximately four seconds before and four seconds after the estimated/marked delivery, with REPLAY label and original audio. |
+| One unambiguous wicket observed | Captures a private wicket clip in the same buffer. It does not interrupt the program automatically; Preview/On air is controlled in Clips. |
 | Team crosses 50, 100, 150, 200, 250, 300 or 350 | A team celebration graphic for exactly 60 program frames: two seconds at 30 fps. |
 | Player crosses 50, 100, 150 or 200 | A player celebration graphic for exactly 60 program frames. |
 | A new completed over is observed | Batting scorecard for 60 frames, immediately followed by bowling scorecard for 60 frames. |

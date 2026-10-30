@@ -10,11 +10,12 @@ before(async () => {
   relay = spawn(process.execPath, [fileURLToPath(new URL('../server.mjs', import.meta.url))], {
     env: { ...process.env, PORT: '0', HOST: '127.0.0.1', RELAY_TOKEN: secret, ALLOWED_ORIGINS: origin,
       YOUTUBE_SERVER: 'rtmps://a.rtmps.youtube.com/live2', YOUTUBE_KEY: 'test-only-no-broadcast',
+      SCORE_URL_TEMPLATE: 'http://invalid.test/{matchId}',
       FACEBOOK_SERVER: '', FACEBOOK_KEY: '', INSTAGRAM_SERVER: '', INSTAGRAM_KEY: '' }, stdio: ['ignore', 'pipe', 'pipe']
   });
   base = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Relay startup timeout')), 12000);
-    relay.stdout.on('data', c => { const m = c.toString().match(/Boundary relay: (http:\/\/[^\s]+)/); if (m) { clearTimeout(timer); resolve(m[1]); } });
+    relay.stdout.on('data', c => { const m = c.toString().match(/MK97 relay: (http:\/\/[^\s]+)/); if (m) { clearTimeout(timer); resolve(m[1]); } });
     relay.once('exit', code => { clearTimeout(timer); reject(new Error(`Relay exited ${code}`)); });
   });
   const response = await fetch(base + '/api/session', { method: 'POST', headers: headers(secret), body: '{}' });
@@ -37,6 +38,14 @@ test('authenticated info has security headers and never exposes stream keys', as
 });
 test('unknown origins are rejected even with a valid session', async () => {
   const r = await fetch(base + '/api/info', { headers: { ...headers(session), Origin: 'https://evil.example' } }); assert.equal(r.status, 403);
+});
+test('YouTube routes require relay authorization and cannot inject arbitrary OAuth state', async () => {
+  for (const route of ['/api/youtube/status', '/api/youtube/auth/start', '/api/youtube/setup']) {
+    const r = await fetch(base + route, { method: route.endsWith('status') ? 'GET' : 'POST', headers: { Origin: origin }, body: route.endsWith('status') ? undefined : '{}' }); assert.equal(r.status, 401);
+  }
+  const configured = await fetch(base + '/api/youtube/status', { headers: headers(session) }); const state = await configured.json(); assert.equal(state.connected, false);
+  const bad = await fetch(base + '/api/youtube/auth/complete', { method: 'POST', headers: headers(session), body: JSON.stringify({ state: 'attacker', code: 'stolen' }) }); assert.equal(bad.status, 401);
+  const callback = await fetch(base + '/youtube-callback.html'); assert.equal(callback.status, 200); assert.equal(callback.headers.get('referrer-policy'), 'no-referrer');
 });
 test('clip APIs require an authenticated active broadcast and reject arbitrary file paths', async () => {
   for (const route of ['/api/automation', '/api/clips/0000000000000000.mp4']) {
@@ -76,7 +85,21 @@ test('WebSocket authentication rejects invalid tickets without starting FFmpeg',
 test('stream tickets are consumed once even when camera validation fails', async () => {
   const r = await fetch(base + '/api/ticket', { method: 'POST', headers: headers(session), body: '{}' }); const { ticket } = await r.json();
   const message = { type: 'start', ticket, destinations: ['youtube'], mimeType: 'video/mp4', width: 1280, height: 720, overlay: false };
-  assert.match(await wsError(message), /1920|FFmpeg not found/); assert.match(await wsError(message), /ticket/);
+  assert.match(await wsError(message), /1920/); assert.match(await wsError(message), /ticket/);
+});
+test('new match IDs replace the selected relay IDs even when source access fails', async () => {
+  for (const matchId of ['986', '987']) {
+    const response = await fetch(base + '/api/match', { method: 'POST', headers: headers(session), body: JSON.stringify({ clubId: '300', matchId }) });
+    assert.equal(response.status, 502); const value = await response.json(); assert.equal(value.ids.matchId, matchId); assert.equal(value.score, null);
+  }
+  const latest = await (await fetch(base + '/api/score', { headers: headers(session) })).json();
+  assert.deepEqual(latest.ids, { clubId: '300', matchId: '987' });
+});
+test('stream startup rejects a score overlay for a different selected match', async () => {
+  const r = await fetch(base + '/api/ticket', { method: 'POST', headers: headers(session), body: '{}' }); const { ticket } = await r.json();
+  const message = { type: 'start', ticket, destinations: ['youtube'], mimeType: 'video/mp4', width: 1920, height: 1080, overlay: true, match: { clubId: '300', matchId: '986' } };
+  assert.match(await wsError(message), /selected Match ID changed/);
+  const info = await (await fetch(base + '/api/info', { headers: headers(session) })).json(); assert.equal(info.busy, false);
 });
 test('session logout revokes further access', async () => {
   const r = await fetch(base + '/api/session', { method: 'POST', headers: headers(secret), body: '{}' }); const s = (await r.json()).sessionToken;

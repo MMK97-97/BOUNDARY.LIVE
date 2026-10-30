@@ -40,6 +40,28 @@
     "bowlerName": "Kaushal T",
     "bowlerOvers": "2.5",
     "bowlerRuns": "27",
-    "bowlerWickets": "0"
-  }
+    "bowlerWickets": "0",
+    "batsman1ID": 6163258,
+    "batsman1Fours": "5",
+    "batsman1Sixers": "1",
+    "batsman2ID": 514171,
+    "batsman2Fours": "0",
+    "batsman2Sixers": "0",
+    "bowlerID": 3910824,
+    "bowlerMaidens": "0",
+    "groundName": "Rodney",
+    "toss": "Royal Bulls CC WON THE TOSS AND ELECTED TO BAT",
+    "manOfTheMatch": "Srini K",
+    "currentPartnershipMap": {
+      "partnershipTotalRuns": "88",
+      "partnershipTotalBalls": "73",
+      "partnershipBatsman1Name": "Devalapalli Lakshmi Narasimha K",
+      "partnershipBatsman1ContributionRuns": "53",
+      "partnershipBatsman1ContributionBalls": "38",
+      "partnershipBatsman2Name": "Vinod K",
+      "partnershipBatsman2ContributionRuns": "25",
+      "partnershipBatsman2ContributionBalls": "35"
+    }
+  },
+  "comments": ""
 }

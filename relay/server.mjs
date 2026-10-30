@@ -5,11 +5,12 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { WebSocketServer, WebSocket } from 'ws';
-import { ScoreService, scoreLines } from './lib/score.mjs';
+import { ScoreService, scoreLines, validateIds } from './lib/score.mjs';
 import { DESTINATIONS, destinationConfig, findFont, probeEncoder, ingestArgs, outputArgs } from './lib/encoder.mjs';
 import { constantTimeEquals, SessionStore } from './lib/security.mjs';
 import { automationOptions } from './lib/events.mjs';
 import { BroadcastProgram } from './lib/program.mjs';
+import { YouTubeService } from './lib/youtube.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -26,6 +27,8 @@ const sessions = new SessionStore();
 const originOf = req => req.headers.origin || 'non-browser';
 const allowedOrigin = req => !req.headers.origin || origins.has(req.headers.origin);
 const destinations = destinationConfig(process.env);
+const youtube = new YouTubeService({ env: process.env, validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
+const destinationFor = owner => ({ ...destinations, youtube: youtube.destination(owner) || destinations.youtube });
 const font = findFont(process.env.FONT_FILE), binary = process.env.FFMPEG_PATH || 'ffmpeg';
 const encoder = probeEncoder(binary, font);
 const scores = new ScoreService({ template: process.env.SCORE_URL_TEMPLATE, headerName: process.env.SCORE_HEADER_NAME,
@@ -49,9 +52,9 @@ function rateLimited(req) {
 }
 const contentTypes = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.md': 'text/plain' };
-async function body(req) {
+async function body(req, limit = 4096) {
   let size = 0; const chunks = [];
-  for await (const c of req) { size += c.length; if (size > 4096) throw new Error('Request too large.'); chunks.push(c); }
+  for await (const c of req) { size += c.length; if (size > limit) throw new Error('Request too large.'); chunks.push(c); }
   return JSON.parse(Buffer.concat(chunks).toString() || '{}');
 }
 function json(res, status, payload) {
@@ -73,7 +76,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch { return json(res, 400, { error: 'Invalid URL.' }); }
-  if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'Boundary relay' });
+  if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
     const bearer = req.headers.authorization?.replace(/^Bearer /, '');
@@ -90,11 +93,33 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
     try {
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'Boundary relay', version: '1.1.0', encoder, busy: Boolean(active),
-        destinations: DESTINATIONS.map(id => ({ id, configured: destinations[id].configured, error: destinations[id].error,
+        name: 'MK97 relay', version: '1.3.0', encoder, busy: Boolean(active), youtube: youtube.status(authenticated.id),
+        destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
+          mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
         pollSeconds: scores.pollMs / 1000
       });
+      if (url.pathname.startsWith('/api/youtube/')) {
+        const owner = authenticated.id;
+        const stopEditing = () => { if (active?.sessionId === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
+        if (req.method === 'GET' && url.pathname === '/api/youtube/status') return json(res, 200, await youtube.refresh(owner));
+        if (req.method === 'POST' && url.pathname === '/api/youtube/auth/start') { stopEditing(); return json(res, 201, youtube.start(owner, originOf(req))); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/auth/cancel') { stopEditing(); return json(res, 200, youtube.cancelAuth(owner)); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/auth/complete') { stopEditing(); return json(res, 200, await youtube.complete(owner, originOf(req), await body(req, 8192))); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/setup') { stopEditing(); return json(res, 201, await youtube.prepare(owner, await body(req, 16384))); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); await youtube.refresh(owner, true); return json(res, 200, youtube.resetSetup(owner)); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/disconnect') { stopEditing(); return json(res, 200, await youtube.disconnect(owner)); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/transition') {
+          const value = await body(req), result = await youtube.transition(owner, value.state);
+          if (value.state === 'complete' && active?.sessionId === owner) {
+            const out = active.outputs.get('youtube');
+            if (out) { out.failed = true; out.process.stdin.end(); const closeOutput = setTimeout(() => { if (out.process.exitCode === null) out.process.kill(); }, 2000); closeOutput.unref(); send(active.ws, { type: 'destination', id: 'youtube', state: 'ended', message: 'YouTube broadcast ended.' }); }
+            if ([...active.outputs.values()].every(o => o.failed)) finish(active, true);
+          }
+          return json(res, 200, result);
+        }
+        return json(res, 404, { error: 'Unknown YouTube endpoint.' });
+      }
       if (req.method === 'GET' && url.pathname === '/api/score') return json(res, 200, scores.snapshot());
       if (req.method === 'GET' && url.pathname === '/api/automation') return json(res, 200, active?.sessionId === authenticated.id && active.program ? active.program.snapshot() : { bufferSeconds: 0, clips: [], cards: null, current: null });
       if (req.method === 'POST' && url.pathname === '/api/clip/select') {
@@ -102,9 +127,13 @@ const server = http.createServer(async (req, res) => {
         const value = await body(req), clip = active.program.selectClip(Number(value.behind ?? 0));
         return json(res, 201, { id: clip.id, duration: clip.frames.length / 30 });
       }
-      const clipRoute = url.pathname.match(/^\/api\/clips\/([a-f0-9]{16})\.mp4$/);
+      const clipRoute = url.pathname.match(/^\/api\/clips\/([a-f0-9]{16})\.(mp4|jpg)$/);
       if (req.method === 'GET' && clipRoute) {
         if (!active || active.sessionId !== authenticated.id || !active.program) return json(res, 409, { error: 'The clip buffer is not active.' });
+        if (clipRoute[2] === 'jpg') {
+          const clip = active.program.clips.get(clipRoute[1]); if (!clip?.frames?.length) return json(res, 404, { error: 'Clip expired.' });
+          res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }); return res.end(clip.frames[Math.floor(clip.frames.length / 2)].jpeg);
+        }
         if (active.exporting) return json(res, 429, { error: 'One clip is already being prepared. Try again shortly.' });
         const owner = active, { child, feed } = owner.program.exportClip(clipRoute[1]); owner.exporting = true; owner.exportChild = child;
         res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store', 'Content-Disposition': 'inline; filename="boundary-replay.mp4"' });
@@ -114,6 +143,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (req.method === 'POST' && url.pathname === '/api/ticket') return json(res, 201, { ticket: sessions.ticket(authenticated.id, originOf(req)) });
       if (req.method === 'POST' && url.pathname === '/api/logout') {
+        youtube.forget(authenticated.id);
         sessions.revoke(authenticated.id);
         if (active?.sessionId === authenticated.id) finish(active, false);
         return json(res, 200, { ok: true });
@@ -121,12 +151,13 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && url.pathname === '/api/match') {
         if (active && active.sessionId !== authenticated.id) return json(res, 409, { error: 'Another device owns the active stream.' });
         const data = await body(req);
+        if (active && (String(data.clubId) !== scores.ids?.clubId || String(data.matchId) !== scores.ids?.matchId)) return json(res, 409, { error: 'Stop the active camera upload before changing matches.' });
         scores.select(data.clubId, data.matchId);
         const result = await scores.refresh(); updateOverlay();
         return json(res, result.score ? 200 : 502, result);
       }
       return json(res, 404, { error: 'Unknown endpoint.' });
-    } catch (e) { return json(res, 400, { error: e.message.slice(0, 180) }); }
+    } catch (e) { return json(res, Number.isInteger(e.status) && e.status >= 400 && e.status <= 599 ? e.status : 400, { error: e.message.slice(0, 240) }); }
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed.' });
   try {
@@ -152,8 +183,10 @@ function writeText(dir, name, text) {
 }
 function updateOverlay() {
   if (!active || active.ending || !fs.existsSync(active.dir)) return false;
-  if (active.program) { active.program.setScore(scores.snapshot().score); return true; }
-  const [main, detail] = scoreLines(scores.snapshot().score);
+  const selected = active.match, current = scores.snapshot();
+  const score = selected && selected.clubId === current.ids?.clubId && selected.matchId === current.ids?.matchId ? current.score : null;
+  if (active.program) { active.program.setScore(score); return true; }
+  const [main, detail] = scoreLines(score);
   try {
     writeText(active.dir, 'score-main.txt', main); writeText(active.dir, 'score-detail.txt', detail);
     if (active.overlayWarning) send(active.ws, { type: 'warning', message: 'Score overlay updates recovered.' });
@@ -173,14 +206,20 @@ function run(ws, message, identity) {
   if (!encoder.ready) throw new Error(encoder.error);
   if (!Array.isArray(message.destinations) || !message.destinations.length || message.destinations.length > 3) throw new Error('Select at least one destination.');
   const chosen = [...new Set(message.destinations)];
-  if (chosen.some(id => !DESTINATIONS.includes(id) || !destinations[id].configured)) throw new Error('A selected destination has no valid stream key on the relay.');
+  const resolved = destinationFor(identity.id);
+  if (chosen.some(id => !DESTINATIONS.includes(id) || !resolved[id].configured)) throw new Error('A selected destination has no valid live setup or stream key on the relay.');
   if (!/^video\/(webm|mp4)(;|$)/i.test(message.mimeType || '')) throw new Error('Unsupported browser recording container.');
   const width = Number(message.width), height = Number(message.height);
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 854 || height < 480 || width < height || width > 4096 || height > 2160) throw new Error('Use a landscape camera providing the selected resolution (1920 × 1080 for 1080p). Rotate the phone and reopen the camera.');
   if (!message.resolution && (width < 1920 || height < 1080)) throw new Error('Use a landscape camera providing at least 1920 × 1080.');
+  const selected = message.match ? validateIds(message.match.clubId, message.match.matchId) : null;
+  if (selected) {
+    if (selected.clubId !== scores.ids?.clubId || selected.matchId !== scores.ids?.matchId) throw new Error('The selected Match ID changed on the relay. Reload your match before streaming.');
+  }
+  if (message.overlay !== false && !selected) throw new Error('Reload your selected Match ID before starting the score overlay.');
   if (message.overlay !== false && !scores.snapshot().score) throw new Error('Connect a valid score feed, or turn off the score overlay before streaming.');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-live-'));
-  const session = { ws, dir, sessionId: identity.id, main: null, outputs: new Map(), ending: false, bytes: 0, windowBytes: 0, windowAt: Date.now(), lastInput: Date.now(), started: Date.now(), frames: 0, timer: null };
+  const session = { ws, dir, match: selected, sessionId: identity.id, main: null, outputs: new Map(), ending: false, bytes: 0, windowBytes: 0, windowAt: Date.now(), lastInput: Date.now(), started: Date.now(), frames: 0, timer: null };
   active = session;
   if (!updateOverlay()) {
     active = null; fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {});
@@ -196,7 +235,7 @@ function run(ws, message, identity) {
   if (options.replay || options.milestones || options.cards || outputHeight < 1080) {
     session.program = new BroadcastProgram({ binary, font, dir, mimeType: message.mimeType, options,
       bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000, width: outputHeight === 1080 ? 1920 : outputHeight === 720 ? 1280 : 854, height: outputHeight,
-      score: scores.snapshot().score, overlay: message.overlay !== false, preset });
+      score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset });
     main = session.program.encoder; session.main = session.program.camera;
     session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
     session.program.on('warning', message => send(ws, { type: 'warning', message }));
@@ -214,13 +253,15 @@ function run(ws, message, identity) {
     }
   };
   for (const id of chosen) {
-    const proc = spawn(binary, outputArgs(destinations[id], process.env), { cwd: dir, windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] });
+    const proc = spawn(binary, outputArgs(resolved[id], process.env), { cwd: dir, windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] });
     const out = { process: proc, failed: false, sending: false, error: '' };
     session.outputs.set(id, out);
     proc.stdin.on('error', () => {});
     proc.stderr.on('data', c => {
       out.error = (out.error + c.toString()).slice(-3000);
-      if (!out.sending && /frame=\s*[1-9]/.test(out.error)) { out.sending = true; send(ws, { type: 'destination', id, state: 'sending', message: 'Packets sent; confirm Go Live in the platform.' }); }
+      // Stream-copy writers can omit frame=. Positive output media time also
+      // confirms progress, without falsely reporting a healthy copy as idle.
+      if (!out.sending && /(?:frame=\s*[1-9]|out_time_(?:us|ms)=[1-9]\d*)/.test(out.error)) { out.sending = true; send(ws, { type: 'destination', id, state: 'sending', message: 'Packets sent; confirm publication in the platform preview.' }); }
     });
     proc.on('error', () => failOutput(id, 'Unable to start the platform relay process.'));
     proc.on('close', () => { if (!session.ending) failOutput(id, friendlyFailure(out.error)); });
@@ -325,6 +366,7 @@ wss.on('connection', (ws, req) => {
 });
 const scoreTimer = setInterval(async () => {
   sessions.prune();
+  youtube.prune();
   if (!active && !sessions.sessions.size) return;
   if (!scores.ids) return;
   await scores.refresh(); updateOverlay();
@@ -339,7 +381,7 @@ const heartbeat = setInterval(() => {
 heartbeat.unref();
 wss.on('connection', ws => { ws.alive = true; ws.on('pong', () => { ws.alive = true; }); });
 server.listen(port, host, () => {
-  console.log(`Boundary relay: http://${host}:${server.address().port}`);
+  console.log(`MK97 relay: http://${host}:${server.address().port}`);
   console.log(`Encoder: ${encoder.ready ? 'ready' : encoder.error}`);
   console.log(`Configured outputs: ${DESTINATIONS.filter(id => destinations[id].configured).join(', ') || 'none — edit relay/.env'}`);
 });

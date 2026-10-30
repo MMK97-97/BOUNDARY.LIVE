@@ -1,5 +1,14 @@
 node_modules/
-.env
 relay/.env
+relay/runtime/
+*.log
+*.webm
+*.mp4
+*.flv
 .DS_Store
-Thumbs.db
+.openai/
+
+# Google OAuth downloads and local grants must never be committed.
+client_secret*.json
+credentials*.json
+tokens*.json

@@ -1,10 +1,12 @@
 import { Resvg } from '@resvg/resvg-js';
+import { readFileSync } from 'node:fs';
 import { scoreLines } from './score.mjs';
+const brandLogo = 'data:image/png;base64,' + readFileSync(new URL('../../web/assets/mk97.png', import.meta.url)).toString('base64');
 export const xml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 const text = (value, x, y, size = 32, color = '#fff', extra = '') => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${extra}>${xml(value)}</text>`;
 const short = (v, n = 28) => String(v || '').length > n ? String(v).slice(0, n - 1) + '…' : String(v || '');
 export function graphicSvg(score, event = null, replay = false, showScore = true) {
-  let g = '';
+  let g = `<image href="${brandLogo}" x="1760" y="35" width="110" height="104" preserveAspectRatio="xMidYMid meet" opacity="0.94"/>`;
   if (showScore && score) {
     const [, detail] = scoreLines(score);
     const status = score.stale || Date.now() - score.fetchedAt > 30000 ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';

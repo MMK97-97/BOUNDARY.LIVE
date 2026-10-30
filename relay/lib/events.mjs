@@ -9,6 +9,7 @@ const identity = p => String(p.id || p.name || '').trim();
 const countKnown = v => /^\d+$/.test(String(v ?? ''));
 const inningsKey = s => `${s.clubId}:${s.matchId}:${s.innings || s.batting}`;
 export function automationOptions(value = {}, env = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) value = {};
   const number = (v, fallback, min, max) => Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : fallback;
   return {
     replay: value.replay !== false, milestones: value.milestones !== false, cards: value.cards !== false,
@@ -66,6 +67,7 @@ export class CricketEvents {
       });
       const boundary = hits.length === 1 && balls - oldBalls <= 1 && delta >= hits[0].runs && delta <= hits[0].runs + 2 ? hits[0] : null;
       if (boundary) once(`ball:${deliveryId}`, { type: 'boundary', ...boundary, deliveryId, timing: 'calibrated' });
+      else if (Number(score.wickets) - Number(old.wickets) === 1 && balls - oldBalls <= 1) once(`wicket:${deliveryId}`, { type: 'wicket', name: '', timing: 'calibrated' });
       else result.push({ type: 'delivery', id: `${this.key}:${deliveryId}` });
     }
     // Crossings include 49→53 and 99→105. Score corrections cannot replay a milestone.

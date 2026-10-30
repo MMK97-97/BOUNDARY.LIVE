@@ -1,4 +1,5 @@
-name: Publish mobile studio
+name: Deploy MK97 Cricket Studio
+run-name: "MK97 · ${{ github.event.head_commit.message || github.event_name }}"
 on:
   push:
     branches: [main]
@@ -12,6 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   validate:
+    name: Validate MK97 source and streaming pipeline
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -31,6 +33,7 @@ jobs:
           npm run check
           npm test
   deploy:
+    name: Publish MK97 website
     needs: validate
     environment:
       name: github-pages
@@ -38,18 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Fetch archived matches from data branch
+      - name: Record deployed version
         run: |
-          mkdir -p web/data/matches
-          git fetch origin data:data || true
-          if git rev-parse --verify data >/dev/null 2>&1; then
-            git checkout data -- matches/ || true
-            if [ -d "matches" ]; then
-              cp -r matches/* web/data/matches/ || true
-            fi
-          fi
-          # Also run initial scraper if data folder is empty
-          node scripts/archive-match.mjs --out web/data/matches --iterations 1 || true
+          node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("package.json")); fs.writeFileSync("web/build.json",JSON.stringify({name:"MK97",version:p.version,commit:process.env.GITHUB_SHA}));'
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

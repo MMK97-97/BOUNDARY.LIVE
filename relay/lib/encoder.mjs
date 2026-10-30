@@ -55,7 +55,7 @@ export function ingestArgs({ font, overlay = true, bitrateKbps = 6000, mimeType 
     '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0',
     '-b:v', `${kbps}k`, '-minrate', `${kbps}k`, '-maxrate', `${kbps}k`, '-bufsize', `${kbps * 2}k`,
     '-x264-params', 'nal-hrd=cbr:force-cfr=1', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-    '-af', 'aresample=async=1000:first_pts=0', '-flvflags', 'no_duration_filesize', '-f', 'flv', 'pipe:1'];
+    '-af', 'aresample=async=1000:first_pts=0', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', 'pipe:1'];
 }
 export function outputArgs(destination, env = {}) {
   const base = ['-hide_banner', '-loglevel', 'warning', '-nostats', '-progress', 'pipe:2',
@@ -73,6 +73,6 @@ export function outputArgs(destination, env = {}) {
     base.push('-tls_verify', '1');
     if (env.TLS_CA_FILE) base.push('-ca_file', env.TLS_CA_FILE);
   }
-  base.push('-rw_timeout', '15000000', '-flvflags', 'no_duration_filesize', '-f', 'flv', destination.url);
+  base.push('-rw_timeout', '15000000', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', destination.url);
   return base;
 }

@@ -1,1 +1,19 @@
-{"name":"Boundary Live Cricket Studio","short_name":"Boundary","description":"Mobile cricket streaming studio","start_url":"./","scope":"./","display":"standalone","orientation":"any","background_color":"#0c1015","theme_color":"#0c1015","icons":[{"src":"./assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "MK97 Cricket Live Studio",
+  "short_name": "MK97",
+  "description": "Cricket broadcast control with CricClubs scores and private replay",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c1015",
+  "theme_color": "#0c1015",
+  "icons": [
+    {
+      "src": "./assets/mk97.png",
+      "sizes": "1295x1214",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

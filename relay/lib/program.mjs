@@ -23,9 +23,9 @@ export function programArgs({ bitrateKbps = 6000, width = 1920, height = 1080, m
     '-b:v', `${bitrateKbps}k`, '-maxrate', `${bitrateKbps}k`, '-bufsize', `${bitrateKbps * 2}k`,
     '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2', '-shortest'];
   return mp4 ? [...args, '-movflags', 'frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4', 'pipe:1']
-    : [...args, '-minrate', `${bitrateKbps}k`, '-x264-params', 'nal-hrd=cbr:force-cfr=1', '-flvflags', 'no_duration_filesize', '-f', 'flv', 'pipe:1'];
+    : [...args, '-minrate', `${bitrateKbps}k`, '-x264-params', 'nal-hrd=cbr:force-cfr=1', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', 'pipe:1'];
 }
-const clipPublic = c => ({ id: c.id, title: c.title, duration: c.frames.length / FPS, createdAt: c.createdAt, timing: c.timing });
+const clipPublic = c => ({ id: c.id, title: c.title, duration: c.frames.length / FPS, createdAt: c.createdAt, timing: c.timing, kind: c.kind || 'manual' });
 export class BroadcastProgram extends EventEmitter {
   constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, width = 1920, height = 1080, realtime = true, preset }) {
     super(); this.options = options; this.binary = binary; this.renderer = new GraphicRenderer(font); this.detector = new CricketEvents();
@@ -55,9 +55,9 @@ export class BroadcastProgram extends EventEmitter {
     }
     const events = this.detector.update(score); this.score = score;
     for (const event of events.filter(e => ['team', 'player'].includes(e.type))) if (this.options.milestones) this.enqueue({ ...event, frames: 60 });
-    for (const event of events.filter(e => ['boundary', 'delivery'].includes(e.type))) {
+    for (const event of events.filter(e => ['boundary', 'delivery', 'wicket'].includes(e.type))) {
       const mark = this.mark; this.mark = null;
-      if (event.type !== 'boundary' || !this.options.replay) continue;
+      if (!['boundary', 'wicket'].includes(event.type) || !this.options.replay) continue;
       const at = mark && Date.now() - mark.at < 25000 ? mark.index
         : event.timing === 'provider' && this.ring.origin !== null ? Math.round((event.occurredAt - this.ring.origin) * FPS / 1000)
           : this.ring.latest - Math.round(this.options.scorerDelay * FPS);
@@ -77,7 +77,7 @@ export class BroadcastProgram extends EventEmitter {
   markBall() { this.mark = { index: this.ring.latest, at: Date.now() }; return this.mark.index; }
   snapshot() { return { bufferSeconds: Number(this.ring.seconds.toFixed(1)), memoryMB: Math.round(this.ring.bytes / 1048576), clips: [...this.clips.values()].map(clipPublic).reverse(), cards: this.score ? this.detector.cards(this.score) : null,
     current: this.current ? { type: this.current.type, title: this.current.title || this.current.type, remaining: Math.max(0, (this.current.frames - this.current.position) / FPS) } : null }; }
-  storeClip(frames, title, score, timing) {
+  storeClip(frames, title, score, timing, kind = 'manual') {
     const bytes = frames.reduce((n, f) => n + f.jpeg.length + f.audio.length, 0);
     if (bytes > this.options.clipBytes) throw new Error('This clip exceeds the replay memory limit.');
     let used = [...this.clips.values()].reduce((n, c) => n + c.bytes, 0);
@@ -85,7 +85,7 @@ export class BroadcastProgram extends EventEmitter {
       const removable = [...this.clips.values()].find(c => c.id !== this.current?.clipId); if (!removable) throw new Error('Replay memory is busy. Try again after the current replay.');
       this.clips.delete(removable.id); used -= removable.bytes;
     }
-    const clip = { id: randomBytes(8).toString('hex'), frames, title, score, timing, bytes, createdAt: Date.now() };
+    const clip = { id: randomBytes(8).toString('hex'), frames, title, score, timing, kind, bytes, createdAt: Date.now() };
     this.clips.set(clip.id, clip); this.emit('clips', this.snapshot()); return clip;
   }
   selectClip(behind = 0) {
@@ -105,7 +105,7 @@ export class BroadcastProgram extends EventEmitter {
       if (p.deadline < Date.now() || p.start < this.ring.first) { this.emit('warning', 'Boundary detected, but its complete ball clip is outside the replay buffer. Adjust scoring delay or use Mark ball.'); return false; }
       if (p.end > this.ring.latest) return true;
       const frames = this.ring.window(p.start, p.end - p.start + 1); if (!frames) return false;
-      try { const clip = this.storeClip(frames, `${p.event.runs === 4 ? 'FOUR' : 'SIX'} · ${p.event.name || 'Boundary'}`, p.score, p.timing); this.replay(clip.id); }
+      try { const kind = p.event.type === 'wicket' ? 'wicket' : p.event.runs === 4 ? 'four' : 'six'; const clip = this.storeClip(frames, `${kind.toUpperCase()}${p.event.name ? ' · ' + p.event.name : ''}`, p.score, p.timing, kind); if (kind !== 'wicket') this.replay(clip.id); }
       catch (e) { this.emit('warning', e.message); }
       return false;
     });

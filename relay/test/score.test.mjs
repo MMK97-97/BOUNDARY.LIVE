@@ -41,6 +41,14 @@ test('canonical approved feed is supported', () => {
   const s = normalizeScore({ schema: 'boundary.score.v1', batting: 'TEAM C', bowling: 'TEAM D', runs: 0, wickets: 0, overs: '0.0', status: 'scheduled' }, ids);
   assert.equal(s.runs, '0'); assert.equal(s.source, 'Approved score feed');
 });
+test('commentary and partnership are whitelisted source values, not generated from totals', () => {
+  const raw = { schema: 'boundary.score.v1', batting: 'A', bowling: 'B', runs: 104, wickets: 1, overs: '8.0',
+    commentary: [{ id: 'ball48', over: '7.6', text: '<b>Six</b> from the source', email: 'private' }],
+    stats: { toss: 'A chose to bat', partnership: { runs: 88, balls: 73, batters: [{ name: 'A Batter', runs: 53, balls: 38, email: 'private' }] } } };
+  const s = normalizeScore(raw, ids); assert.equal(s.commentary[0].text, 'Six from the source'); assert.equal(s.stats.partnership.runs, '88');
+  assert.equal(s.stats.partnership.batters[0].runs, '53'); assert.equal(JSON.stringify(s).includes('private'), false);
+  assert.deepEqual(normalizeScore({ ...raw, commentary: undefined }, ids).commentary, []);
+});
 test('approved feed bounds totals, validates match IDs and tolerates malformed optional arrays', () => {
   const raw = { schema: 'boundary.score.v1', batting: 'A', bowling: 'B', runs: 50, wickets: 1, overs: '8.0' };
   assert.throws(() => normalizeScore({ ...raw, runs: '9'.repeat(10000) }, ids));

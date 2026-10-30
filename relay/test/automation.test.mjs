@@ -23,6 +23,10 @@ test('byes and wides reaching four are not bat boundaries', () => {
   const e = new CricketEvents(); e.update(score());
   assert.equal(e.update(score({ runs: '102', overs: '8.0', balls: ['4b'] })).some(e => e.type === 'boundary'), false);
 });
+test('a single observed wicket is classified for private highlight capture', () => {
+  const e = new CricketEvents(); e.update(score()); const next = score({ wickets: '2', overs: '8.0', balls: ['W'] });
+  assert.ok(e.update(next).some(v => v.type === 'wicket')); assert.deepEqual(e.update(next), []);
+});
 test('multiple boundaries missed between polls do not guess a particular ball', () => {
   const e = new CricketEvents(); e.update(score());
   const events = e.update(score({ runs: '106', overs: '8.1', batters: [{ id: 'a', name: 'Batter A', runs: '57', fours: '5', sixes: '0' }] }));
@@ -74,6 +78,9 @@ test('automation settings bound memory/delay and keep popups/cards exactly 60 fr
   const o = automationOptions({ scorerDelay: 500 }, { REPLAY_MEMORY_MB: '999999', REPLAY_BUFFER_SECONDS: '999' });
   assert.equal(o.popupFrames, 60); assert.equal(o.cardFrames, 60); assert.equal(o.scorerDelay, 30); assert.equal(o.bufferSeconds, 45); assert.equal(o.memoryBytes, 512 * 1048576);
 });
+test('malformed optional automation settings cannot break stream initialization', () => {
+  for (const v of [null, false, 'invalid', []]) { const o = automationOptions(v); assert.equal(o.replay, true); assert.equal(o.bufferSeconds, 30); }
+});
 test('JPEG parser handles arbitrary transport chunk boundaries', () => {
   const output = [], p = new JpegFrames(b => output.push(b)); const jpeg = Buffer.from([255,216,1,2,3,255,217]);
   const data = Buffer.concat([jpeg, jpeg]); for (const b of data) p.push(Buffer.from([b])); assert.equal(output.length, 2); assert.deepEqual(output[0], jpeg);
@@ -86,7 +93,8 @@ test('replay memory is bounded and audio stays associated with original video fr
 });
 test('graphics escape score/player markup and cache across consecutive event frames', () => {
   const event = { type: 'team', title: '<image href="https://evil.test"/>', milestone: 150, position: 0 };
-  const svg = graphicSvg(score(), event); assert.equal(svg.includes('<image '), false); assert.ok(svg.includes('&lt;image'));
+  const svg = graphicSvg(score(), event); assert.equal(svg.includes('<image href="https://evil.test"'), false); assert.ok(svg.includes('&lt;image'));
+  assert.equal((svg.match(/<image /g) || []).length, 1); assert.ok(svg.includes('data:image/png;base64,'));
   const render = new GraphicRenderer(findFont()), a = render.frame(score({ fetchedAt: 0 }), event, false, true);
   const b = render.frame(score({ fetchedAt: 0 }), { ...event, position: 1 }, false, true); assert.equal(a, b);
 });

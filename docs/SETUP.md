@@ -2,13 +2,15 @@
 
 ## 1. Publish the website free on GitHub Pages
 
-1. Extract the ZIP. Open the `boundary-live` folder.
-2. Create a **public** GitHub repository, for example `boundary-live`. GitHub Free supports Pages for public repositories.
-3. Upload the contents of `boundary-live` to the repository root. Include `.github/workflows/pages.yml`, `web/`, `relay/`, the docs and the package files. A ZIP uploaded as one file will not deploy the app.
+1. Extract the ZIP. Open the `mk97` folder.
+2. Create a **public** GitHub repository, for example `MK97`. GitHub Free supports Pages for public repositories.
+3. Upload the contents of `mk97` to the repository root. Include `.github/workflows/pages.yml`, `web/`, `relay/`, the docs and the package files. A ZIP uploaded as one file will not deploy the app.
 4. Do **not** upload `relay/.env`, platform stream keys, `node_modules`, runtime data or camera footage. The supplied ZIP contains no real credentials.
 5. Open the repository's **Settings → Pages**. Under the build/deployment source, select **GitHub Actions**.
-6. Open **Actions → Publish mobile studio → Run workflow**, or push another commit to `main`. Wait for the workflow to finish.
-7. Use the HTTPS URL shown in Pages, usually `https://YOUR_USERNAME.github.io/boundary-live/`.
+6. Open **Actions → Deploy MK97 Cricket Studio → Run workflow**, or push another commit to `main`. Wait for the workflow to finish.
+7. Use the HTTPS URL shown in Pages, usually `https://YOUR_USERNAME.github.io/MK97/`.
+
+If updating an existing `BOUNDARY.LIVE` repository, keep that name and use its exact Pages and OAuth callback path. See [UPGRADE.md](UPGRADE.md).
 
 Only `web/` is published by the workflow. The relay remains on your computer. Relative asset URLs make the site work inside a GitHub project subpath.
 
@@ -17,9 +19,9 @@ If uploading through a desktop file picker hides `.github`, use Git instead:
 ```sh
 git init
 git add .
-git commit -m "Add Boundary Live cricket studio"
+git commit -m "Add MK97 cricket studio"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/boundary-live.git
+git remote add origin https://github.com/YOUR_USERNAME/MK97.git
 git push -u origin main
 ```
 
@@ -108,9 +110,13 @@ Cloudflare Quick Tunnels are development tools without an uptime guarantee. Publ
 
 ## 4. Configure YouTube, Facebook and Instagram
 
-The software uses the stream server address and key supplied by each platform. It does not log into your social accounts. Enable live streaming in the account first and follow its current eligibility requirements.
+YouTube can now connect through Google sign-in and create its event/key from the website. Facebook and Instagram retain the Live Producer key workflow. Enable live streaming in each account first and follow the platform's eligibility requirements.
 
 ### YouTube
+
+For the website login flow, complete the one-time [Google OAuth setup](YOUTUBE.md), then use **Settings → YouTube account & live setup → Connect YouTube**. Enter the broadcast details, create the setup and select YouTube as a destination. The key goes directly from Google's API to the private relay. START sends camera video; **Preview / Go live / End** in the YouTube panel control publication.
+
+Manual fallback, if you are not connecting an account:
 
 1. Open YouTube Studio → Create → Go live → streaming software/encoder.
 2. Create an **unlisted/private test broadcast** first. Initial live activation can take time; follow YouTube's account instructions.
@@ -122,6 +128,8 @@ YOUTUBE_KEY=PASTE_YOUR_ACTUAL_KEY_HERE
 ```
 
 Prefer the exact RTMPS URL from your control room. The code accepts YouTube subdomains and rejects unencrypted RTMP. If Studio initially shows RTMP, use its RTMPS option.
+
+Once a YouTube account is connected, its account setup takes precedence and the manual key is suppressed. Pending Google sign-in also blocks the older destination until it finishes or is cancelled, protecting against streaming to the wrong channel.
 
 ### Facebook
 
@@ -168,10 +176,10 @@ For this completed match, the score should show ICAT 208/5, 30.5 overs, and the 
 5. Use native zoom presets or the slider if enabled. Prefer an exposed optical telephoto lens over aggressive digital zoom. Lens switching is locked during a stream to avoid invalidating the recorder.
 6. In Settings choose **Balanced** (8 Mbps upload at 1080p) or **More detail** (14 Mbps) with strong network/thermal headroom. Bitrate requests are hints to the browser; actual encoder output can differ. Lower resolutions use proportionally lower requested bitrates.
 7. Keep the three broadcast automation switches enabled for replays, milestones and end-of-over cards. Set the scoring delay after a rehearsal; see [AUTOMATION.md](AUTOMATION.md). Select configured destinations, close the panel and press **START** in the bottom transport bar.
-8. Confirm video/audio and score in each platform's control room, then use its **Go Live** step. “Packets sent” means the relay sent output; it does not certify a public broadcast.
+8. Confirm video/audio and score in each platform's preview. For connected YouTube use the website's **YouTube live setup → Preview / Go live** controls. For the other destinations use their control rooms. “Packets sent” does not certify a public broadcast.
 9. Use the bottom **Pause local monitor** button or **Settings → Battery screen** after framing. Both keep camera upload running. Lower screen brightness manually. Keep the website visible, Tailscale connected and the phone unlocked; mobile browsers may suspend background camera capture.
 10. In **Clips**, Preview checks a ball privately, **On air** switches the outgoing program to its replay, and Download exports an MP4. The bottom LIVE button returns only your local monitor to the camera. During an on-air replay the operator's raw camera monitor stays live; verify the program on the platform preview.
-11. To finish, end broadcasts in their platform control rooms, then press **Stop stream → Yes, stop streaming**. Close the camera when done.
+11. To finish a connected YouTube event, use **End YouTube broadcast → Yes, end YouTube**. Other active destinations continue. End Facebook/Instagram in their control rooms, then stop any remaining camera upload. Close the camera when done.
 
 The Score panel's overlay switch controls the scorebar. During a session using the new program processor it can be changed on air. With all automation off at 1080p, set it before starting. [CONTROLS.md](CONTROLS.md) explains every layout button.
 

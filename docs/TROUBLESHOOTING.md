@@ -2,6 +2,12 @@
 
 | Symptom | Check / remedy |
 | --- | --- |
+| Connect YouTube is disabled | Connect the relay, then configure GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and YOUTUBE_REDIRECT_URI in local relay/.env. Register the exact callback and restart. See YOUTUBE.md. |
+| Google redirect_uri_mismatch | The Google Web client and relay must contain the same full callback URL, including the GitHub repository path. Its origin must match the open studio. |
+| Sign-in does not return to the studio | Keep the original tab open and allow its popup. Do not open the callback directly. Use Cancel sign-in and retry. Browser popup/Google isolation behavior still needs checking on the actual phone. |
+| YouTube preview / Go live is disabled | Create the setup, start camera upload, then wait for YouTube's active signal. Status is cached up to 15 seconds. Check channel live eligibility and Google permissions. |
+| YouTube setup result is unconfirmed | A write may have succeeded before a network error. Inspect Studio before acknowledging New setup. The app will not automatically create duplicate resources after an ambiguous failure. |
+| Commentary is empty | Match 986's public feed returned no commentary. The site does not invent ball descriptions. An authorized feed must provide commentary for this panel. |
 | Camera access needs HTTPS | Open the GitHub Pages HTTPS URL or private HTTPS Serve URL. An ordinary LAN HTTP address is not sufficient on a phone. |
 | Camera/microphone denied | Allow both in browser site settings. Check OS privacy settings. Close other apps using the camera. |
 | Camera cannot supply 1080p | Rotate to landscape and reopen. Try an exposed rear camera/lens. Or explicitly choose Auto/720p/480p in the header before streaming. The 1080p setting requires native 1920 × 1080 and does not silently upscale. |

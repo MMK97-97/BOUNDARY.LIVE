@@ -1,108 +1,43 @@
 #!/usr/bin/env node
-// GitHub Actions CricClubs Match Archiver.
-// Scrapes the exact data from CricClubs liveScoreOverlayData.do, folds every delivery
-// into the shared match-model (commentary, batting/bowling cards, stats, partnerships),
-// and persists the archive to data/matches/<clubId>-<matchId>.json.
-
+// Optional operator-run source snapshots. No inferred commentary or player history.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseSnapshot, applySnapshot, emptyModel, mergeModels, SCHEMA, overlayUrl } from '../web/match-model.mjs';
+import { fileURLToPath } from 'node:url';
+import { ScoreService, validateIds } from '../relay/lib/score.mjs';
 
-function parseArgs(args) {
-  const options = {
-    clubId: process.env.BOUNDARY_CLUB_ID || '300',
-    matchId: process.env.BOUNDARY_MATCH_ID || '986',
-    league: process.env.BOUNDARY_LEAGUE || 'FWCWL',
-    outDir: process.env.BOUNDARY_DATA_DIR || 'data/matches',
-    iterations: Number(process.env.ARCHIVE_ITERATIONS || 1),
-    interval: Number(process.env.ARCHIVE_INTERVAL_SEC || 10)
-  };
+export function parseArgs(args = []) {
+  const o = { clubId: process.env.MK97_CLUB_ID || '300', matchId: process.env.MK97_MATCH_ID || '986',
+    outDir: process.env.MK97_DATA_DIR || 'data/matches', iterations: process.env.ARCHIVE_ITERATIONS || 1, interval: process.env.ARCHIVE_INTERVAL_SEC || 10 };
+  const flags = { '--club': 'clubId', '--match': 'matchId', '--out': 'outDir', '--iterations': 'iterations', '--interval': 'interval' };
   for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === '--club' && args[i + 1]) options.clubId = args[++i];
-    else if (a === '--match' && args[i + 1]) options.matchId = args[++i];
-    else if (a === '--league' && args[i + 1]) options.league = args[++i];
-    else if (a === '--out' && args[i + 1]) options.outDir = args[++i];
-    else if (a === '--iterations' && args[i + 1]) options.iterations = Number(args[++i]);
-    else if (a === '--interval' && args[i + 1]) options.interval = Number(args[++i]);
+    if (!flags[args[i]] || args[i + 1] == null) throw new Error('Use --club, --match, --out, --iterations or --interval with a value.');
+    o[flags[args[i]]] = args[++i];
   }
-  return options;
+  Object.assign(o, validateIds(o.clubId, o.matchId)); o.iterations = Number(o.iterations); o.interval = Number(o.interval);
+  if (!Number.isInteger(o.iterations) || o.iterations < 1 || o.iterations > 120) throw new Error('Iterations must be 1–120.');
+  if (!Number.isInteger(o.interval) || o.interval < 5 || o.interval > 60) throw new Error('Interval must be 5–60 seconds.');
+  return o;
 }
-
-const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-async function fetchCricClubsOverlay(clubId, matchId) {
-  const url = overlayUrl({ clubId, matchId });
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/javascript, */*; q=0.01',
-    'Origin': 'https://cricclubs.com'
-  };
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`CricClubs responded HTTP ${res.status}: ${res.statusText}`);
-  const text = await res.text();
-  if (!text || text.trim() === '' || text.trim() === '{}') {
-    throw new Error(`CricClubs returned empty payload for match ${matchId} (club ${clubId})`);
+export async function archiveMatch(options, fetchFn = fetch) {
+  const o = parseArgs(['--club', String(options.clubId), '--match', String(options.matchId), '--out', options.outDir,
+    '--iterations', String(options.iterations ?? 1), '--interval', String(options.interval ?? 10)]);
+  const service = new ScoreService({ fetchFn, pollSeconds: o.interval }); service.select(o.clubId, o.matchId);
+  let last = null;
+  for (let n = 0; n < o.iterations; n++) {
+    const result = await service.refresh();
+    if (!result.score || result.error) throw new Error(result.error || 'No source data returned.');
+    const target = path.resolve(o.outDir, `${o.clubId}-${o.matchId}.json`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const next = target + '.next';
+    fs.writeFileSync(next, JSON.stringify({ schema: 'mk97.source-snapshot.v1', score: result.score }, null, 2) + '\n', { mode: 0o600 });
+    fs.renameSync(next, target); last = result.score;
+    console.log(`Saved Club ${o.clubId} / Match ${o.matchId}: ${last.batting} ${last.runs}/${last.wickets} (${last.overs})`);
+    if (last.status === 'complete') break;
+    if (n + 1 < o.iterations) await new Promise(resolve => setTimeout(resolve, o.interval * 1000));
   }
-  const cleanJson = text.replace(/^\uFEFF/, '').trim();
-  return JSON.parse(cleanJson);
+  return last;
 }
-
-export async function archiveMatch(opts) {
-  const { clubId, matchId, league, outDir, iterations, interval } = opts;
-  const ids = { clubId, matchId, league };
-  fs.mkdirSync(outDir, { recursive: true });
-  const filePath = path.join(outDir, `${clubId}-${matchId}.json`);
-
-  let model = emptyModel(ids);
-  if (fs.existsSync(filePath)) {
-    try {
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      if (existing.schema === SCHEMA) {
-        model = existing;
-        console.log(`Loaded existing archive for match ${matchId} (${model.order.length} innings, ${model.polls} polls)`);
-      }
-    } catch (e) {
-      console.warn(`Could not parse existing archive at ${filePath}:`, e.message);
-    }
-  }
-
-  console.log(`Scraping CricClubs match ${matchId} (club ${clubId})...`);
-
-  for (let i = 0; i < iterations; i++) {
-    try {
-      const raw = await fetchCricClubsOverlay(clubId, matchId);
-      const snap = parseSnapshot(raw, ids);
-      applySnapshot(model, snap);
-      fs.writeFileSync(filePath, JSON.stringify(model, null, 2), 'utf8');
-      console.log(`[${new Date().toISOString()}] Poll ${i + 1}/${iterations}: ${model.meta.series || 'Match'} | ` +
-        `Batting: ${snap.batting} ${snap.runs}/${snap.wickets} (${snap.overs} ov) | Status: ${snap.status}`);
-      if (snap.status === 'complete' && iterations > 1) {
-        console.log('Match is complete. Finished archiving.');
-        break;
-      }
-    } catch (err) {
-      console.error(`Error fetching CricClubs data:`, err.message);
-      if (iterations === 1) throw err;
-    }
-    if (i < iterations - 1) {
-      await sleep(interval * 1000);
-    }
-  }
-
-  return model;
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'))) {
-  const opts = parseArgs(process.argv.slice(2));
-  archiveMatch(opts).then(
-    () => {
-      console.log('Archiving complete.');
-      process.exit(0);
-    },
-    err => {
-      console.error('Archiving failed:', err);
-      process.exit(1);
-    }
-  );
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { await archiveMatch(parseArgs(process.argv.slice(2))); }
+  catch (error) { console.error('Snapshot failed:', error.message); process.exitCode = 1; }
 }
