@@ -21,9 +21,11 @@ Portrait: header, quality selector, viewfinder, four tools and bottom transport.
 | Speaker | Mutes/unmutes the outgoing microphone. The local camera player remains muted to prevent feedback. |
 | Timer | Time since camera upload started, not platform viewer time. |
 | Fullscreen | Enters supported browser fullscreen; uses an in-page theater fallback when needed. |
-| Cloud connection | Exchanges a private relay token for an origin-bound session. Hosted same-origin address is discovered automatically over HTTPS. |
-| Save securely | Validates a platform RTMPS URL/key and keeps it only in that session's server memory; clears the form key and selects the destination. |
-| Remove session key | Removes only that session's selected manual key. A configured server fallback remains available. |
+| Cloud connection | Detects the hosted address. Remembered devices reconnect using their protected cookie; first setup uses the relay token. Temporary connections remain available. |
+| Save securely | Validates a platform RTMPS URL/key, clears the form and selects the destination. Remembered devices save it encrypted for the shared studio; temporary keys remain memory-only. |
+| Remove key | Removes the selected saved-studio or temporary manual key. A configured server fallback remains available. |
+| Link another device | Generates a one-use five-minute code. The other device links once and then restores the same saved connections without the relay token. |
+| Sign out this device | Revokes this remembered device and its upload, retaining shared saved connections. Temporary mode removes its session credentials. |
 | YouTube account & live setup | Configured Google sign-in, event details, key setup, status, Preview, Go live and End. |
 | Microphone / lens / profile | Native lens selection and requested upload bitrate before streaming; microphone toggle remains available while streaming. |
 | Pitch guide | Toggles a local framing grid; it is not burned into the broadcast. |

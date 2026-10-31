@@ -1,6 +1,6 @@
 # MK97 — phone-first live cricket streaming
 
-**Version 1.6.2: phone YouTube setup fixes, clearer league selection and live streaming only.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
+**Version 1.7.1: Supabase-ready encrypted saved connections and remembered devices.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
 
 **YouTube update:** Render callback detection, secure callback completion without a popup opener, Start now / scheduled setup, automatic destination selection, safer retry/transition handling and a visible callback to register. Follow [YOUTUBE.md](docs/YOUTUBE.md) for the required Google/Render configuration.
 
@@ -8,17 +8,19 @@
 
 Start with **[the complete free-hosting steps](docs/FREE_HOSTING.md)** and **[phone-only stream setup](docs/CLOUD_SETUP.md)**. No laptop needs to run at the ground. Host the container once; operate MK97 from your phone.
 
+**Supabase:** follow [SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) to use Supabase PostgreSQL for your saved studio. The website/live encoder remains on the existing Render container; Supabase Edge Functions cannot run the full-match video server.
+
 ## Included
 
 - Responsive studio with rear-camera capture, Auto/1080p/720p/480p selection, exposed native camera zoom, Fit/Fill, full screen, microphone mute, framing guide and battery screen.
 - Guided setup with cloud connection, destinations, CricClubs match and camera readiness. START opens setup when something is missing.
-- YouTube Google sign-in, event details, automatic ingestion-key setup, Preview, Go live and End after one-time Google configuration. Manual RTMPS keys for YouTube, Facebook and Instagram can be entered securely inside MK97; no `.env` edit is required for session keys.
+- YouTube Google sign-in, event details, automatic ingestion-key setup, Preview, Go live and End after one-time Google configuration. Manual RTMPS keys for YouTube, Facebook and Instagram can be entered securely inside MK97; no `.env` edit is required for in-app keys. Remembered devices share an encrypted saved studio and reconnect automatically for 30 days; see [SAVED_STUDIO.md](docs/SAVED_STUDIO.md).
 - One camera/audio upload, one live landscape encode, independent landscape writers and a separate Instagram portrait conversion. The original camera/audio go directly through FFmpeg: no JPEG video intermediate or rolling footage buffer.
 - CricClubs source checks every five seconds by default, with an authenticated live link pushing received changes to the phone and on-air renderer. Match IDs are dynamic within their Club ID; no example is used as a fallback.
 - Background full-scorecard HTML parsing, including supported innings tables, extras, dismissals, fall of wickets and source commentary, when robots rules/access and identity/totals reconciliation permit it. Verification pages remain explicit failures.
 - Optional two-second team/player milestones and end-of-over batting/bowling graphics over the continuing live camera. Complete cards are shown only when source data supports them.
 - Docker runtime with Node/FFmpeg/fonts, a free-tier Render test blueprint, optional hardened Compose deployment and HTTPS via Caddy on your own eligible server.
-- Origin-bound sessions, one-use upload tickets, RTMPS host allowlists, request/stream limits, session-scoped manual keys, no secret return in status APIs, CSP and no public recording endpoint.
+- Origin-bound sessions, one-use upload tickets, RTMPS host allowlists, request/stream limits, encrypted saved credentials or temporary session keys, no secret return in status APIs, CSP and no public recording endpoint.
 - GitHub Actions validation/Pages publication, a cloud container build check and a separate manual CricClubs scraper workflow.
 
 ## Hosting and platform limits
@@ -64,10 +66,12 @@ Tests use local/synthetic sources and FFmpeg outputs; they do not publish to you
 | `relay/server.mjs` | Authenticated APIs, upload, output ownership and lifecycle |
 | `relay/lib/program.mjs` | Live camera/audio + graphics through one encoder |
 | `relay/lib/score.mjs`, `cricclubs.mjs`, `cricclubs-parser.mjs` | Bounded, read-only source retrieval and reconciliation |
-| `relay/lib/cloud.mjs`, `destinations.mjs`, `security.mjs` | Exact cloud origins, private session keys and tickets |
+| `relay/lib/cloud.mjs`, `destinations.mjs`, `security.mjs` | Exact cloud origins, validated private keys and upload tickets |
 | `relay/lib/youtube.mjs` | Google authorization and YouTube live-event control |
 | `Dockerfile`, `render.yaml`, `deploy/cloud/` | Hosted runtime and deployment templates |
 | `docs/FREE_HOSTING.md` | Detailed free hosting and conditional VM walkthrough |
 | `docs/CLOUD_SETUP.md`, `CONTROLS.md` | Match-day setup and every studio control |
 
 No service worker caches tokens, scores or video. No third-party analytics or fonts are loaded. This project is independent of CricClubs, Google, Meta and hosting providers.
+
+Version 1.7 adds encrypted PostgreSQL saved connections for Render Free, remembered devices, one-use device linking, device revocation and saved YouTube grant/event recovery. Existing hosts add `DATABASE_URL` and `STUDIO_ENCRYPTION_KEY` once; the update does not configure your host automatically. See [the complete saved studio setup](docs/SAVED_STUDIO.md).

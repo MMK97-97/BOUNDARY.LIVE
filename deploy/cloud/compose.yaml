@@ -10,6 +10,12 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       YOUTUBE_REDIRECT_URI: ${YOUTUBE_REDIRECT_URI:-}
+      STUDIO_ENCRYPTION_KEY: ${STUDIO_ENCRYPTION_KEY:?Generate and retain a private 32-byte encryption key}
+      STUDIO_DATA_FILE: /appdata/studio.enc
+      DATABASE_URL: ${DATABASE_URL:-}
+      DATABASE_CA_CERT: ${DATABASE_CA_CERT:-}
+    volumes:
+      - studio_data:/appdata
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m,mode=1777
@@ -35,5 +41,6 @@ services:
     depends_on: [mk97]
     security_opt: [no-new-privileges:true]
 volumes:
+  studio_data:
   caddy_data:
   caddy_config:

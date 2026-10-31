@@ -7,11 +7,13 @@ import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
 import { knownLeague } from './cricclubs-reference.mjs';
 import { installMatchSelection } from './match-setup.mjs';
+import { installSavedStudio } from './saved-studio.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
 let setupUI = null;
 let matchUI = null;
+let savedUI = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
@@ -64,15 +66,17 @@ function updateControls() {
   homeUI?.update();
   setupUI?.update();
   matchUI?.update();
+  savedUI?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
-  if (!state.relay || !authToken) throw new Error('Connect the relay first.');
+  const deviceRequest = ['/api/device/restore', '/api/device/link'].includes(path);
+  if (!state.relay || !authToken && !deviceRequest) throw new Error('Connect the relay first.');
   let response;
   const { timeoutMs = 12000, ...requestOptions } = options;
   try {
-    response = await fetch(state.relay + path, { ...requestOptions, cache: 'no-store', credentials: 'omit',
+    response = await fetch(state.relay + path, { ...requestOptions, cache: 'no-store', credentials: state.relay === location.origin ? 'same-origin' : 'omit',
       redirect: 'error', signal: AbortSignal.timeout(Math.max(1000, Math.min(60000, timeoutMs))),
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}`, 'X-MK97-Origin': location.origin, ...(options.headers || {}) } });
+      headers: { 'Content-Type': 'application/json', ...(authToken ? {Authorization: `Bearer ${authToken}`} : {}), 'X-MK97-Origin': location.origin, ...(options.headers || {}) } });
   } catch { throw new Error('Relay unreachable. Check its HTTPS address, internet connection and ALLOWED_ORIGINS setting.'); }
   let data; try { data = await response.json(); } catch { throw new Error('The address did not return a MK97 relay response.'); }
   if (!response.ok) {
@@ -82,9 +86,10 @@ async function api(path, options = {}, authToken = state.session) {
 }
 function renderRelay() {
   youtubeUI?.accept(state.info?.youtube || null);
+  savedUI?.accept(state.info);
   const connected = Boolean(state.session);
   const cloudVersion = state.info?.version;
-  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.6.2${cloudVersion !== '1.6.2' ? ' · Deploy v1.6.2 to Render to use the matching update.' : ''}` : '';
+  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.7.1${cloudVersion !== '1.7.1' ? ' · Deploy v1.7.1 to Render to use the matching update.' : ''}` : '';
   $('relayForm').hidden = connected; $('relayConnected').hidden = !connected;
   $('connectionBadge').replaceChildren(); const i = document.createElement('i');
   $('connectionBadge').append(i, document.createTextNode(connected ? ' Secure relay connected' : ' Relay disconnected'));
@@ -92,37 +97,53 @@ function renderRelay() {
   $('relayState').textContent = connected ? 'Connected' : 'Offline'; $('relayState').classList.toggle('good', connected);
   for (const id of DESTS) {
     const d = state.info?.destinations.find(x => x.id === id);
-    if (!state.live) $(id + 'Status').textContent = d?.configured ? d.mode === 'account' ? 'YouTube account setup ready' : d.mode === 'session' ? 'Session key saved · ready' : 'Server key configured · ready' : d?.error || 'Add a stream key or connect an account';
+    if (!state.live) $(id + 'Status').textContent = d?.configured ? d.mode === 'account' ? 'YouTube account setup ready' : d.mode === 'saved' ? 'Saved studio key · ready' : d.mode === 'session' ? 'Temporary session key · ready' : 'Server key configured · ready' : d?.error || 'Add a stream key or connect an account';
     $(id + 'Status').className = 'destination-status' + (d?.configured ? ' good' : '');
     $(id + 'Resolution').textContent = id === 'instagram' ? (d?.resolution?.startsWith('1080') ? '1080p · portrait (check acceptance)' : '720p · portrait compatibility') : '1080p · landscape';
     if (!d?.configured) $('dest-' + id).checked = false;
   }
   updateControls();
 }
+async function connectIdentity(identity, quiet = false) {
+  state.session = identity.sessionToken; state.sessionExpiry = identity.expiresAt;
+  const session = state.session, info = await api('/api/info'); if (session !== state.session) return;
+  if (info.name !== 'MK97 relay' || !Array.isArray(info.destinations)) throw new Error('Incompatible relay response.');
+  state.info = info; save('relay', state.relay); $('relayUrl').value = state.relay;
+  $('relayExpiry').textContent = identity.remembered ? 'Remembered until ' + new Date(identity.deviceExpiresAt).toLocaleDateString() :
+    'Session expires ' + new Date(identity.expiresAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const preferences = info.savedStudio?.preferences || {};
+  if (!state.camera && !state.live && ['auto','1080','720','480'].includes(preferences.resolution)) state.captureResolution = preferences.resolution;
+  if (['balanced','detail'].includes(preferences.quality)) $('qualitySelect').value = preferences.quality;
+  for (const [key,id] of [['overlay','overlayToggle'],['milestones','autoMilestones'],['cards','autoCards']]) if (typeof preferences[key] === 'boolean') $(id).checked = preferences[key];
+  if (typeof preferences.watchUrl === 'string') $('watchUrl').value = preferences.watchUrl;
+  for (const id of DESTS) $('dest-' + id).checked = Boolean(info.destinations.find(d=>d.id===id)?.configured && preferences.destinations?.includes(id));
+  if (!Array.isArray(preferences.destinations)) { const first = info.destinations.find(d=>d.configured); if (first) $('dest-'+first.id).checked = true; }
+  renderRelay(); savedUI?.synced();
+  if (!quiet) notice(info.encoder.ready ? identity.remembered ? 'Studio connected and remembered on this device.' : 'Studio connected for this session.' : info.encoder.error, info.encoder.ready ? 'success' : 'error');
+  if (!feed.ids && preferences.match) {
+    try { const ref = preferences.match; if (ref.league) save('league.' + ref.clubId, ref.league); await loadSelectedMatch(ref.matchId, ref.clubId); } catch (e) { if (session === state.session) notice(e.message,'error'); }
+  } else await feed.changeSource();
+}
 $('relayForm').addEventListener('submit', async event => {
   event.preventDefault(); if (state.live || state.starting || state.connecting) return;
-  state.connecting = true; updateControls();
-  let master = $('relayToken').value.trim();
+  const remember = $('rememberDevice').checked && !$('rememberDevice').disabled;
+  state.connecting = true; updateControls(); let master = $('relayToken').value.trim();
   try {
     state.relay = relayOrigin($('relayUrl').value.trim());
-    const identity = await api('/api/session', { method: 'POST', body: '{}' }, master);
-    state.session = identity.sessionToken; state.sessionExpiry = identity.expiresAt;
-    state.info = await api('/api/info');
-    if (state.info.name !== 'MK97 relay' || !Array.isArray(state.info.destinations)) throw new Error('Incompatible relay response.');
-    save('relay', state.relay); $('relayExpiry').textContent = 'Session expires ' + new Date(identity.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const available = state.info.destinations.filter(d => d.configured); if (available[0]) $('dest-' + available[0].id).checked = true;
-    notice(state.info.encoder.ready ? 'Relay connected. Load your CricClubs scorecard and open the camera.' : state.info.encoder.error, state.info.encoder.ready ? 'success' : 'error');
-    await feed.changeSource();
+    const identity = await api('/api/session', {method:'POST', body:JSON.stringify({remember,deviceName:$('deviceName').value}), timeoutMs:60000}, master);
+    await connectIdentity(identity);
   } catch (error) {
-    try { if (state.session) await api('/api/logout', { method: 'POST', body: '{}' }); } catch {}
     state.session = null; state.info = null; notice(error.message, 'error');
-  }
-  finally { state.connecting = false; master = ''; $('relayToken').value = ''; renderRelay(); }
+  } finally { state.connecting = false; master = ''; $('relayToken').value = ''; renderRelay(); }
 });
-async function disconnect() {
-  if (state.live || state.starting) return;
-  try { if (state.session) await api('/api/logout', { method: 'POST', body: '{}' }); } catch {}
+async function clearConnection() {
   state.session = null; state.info = null; state.score = null; renderScore(null); renderRelay(); await feed.changeSource();
+}
+async function disconnect() {
+  if (state.live || state.starting || state.connecting) return;
+  try { if (state.session) await api('/api/logout', {method:'POST',body:'{}'}); }
+  catch (e) { notice('Sign-out could not be confirmed. ' + e.message,'error'); return; }
+  await clearConnection(); notice('This device is signed out. Saved studio connections remain available to your other linked devices.');
 }
 $('disconnectRelay').addEventListener('click', disconnect);
 function renderScore(result) {
@@ -441,5 +462,7 @@ youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, cl
 homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera });
 setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo });
 matchUI = installMatchSelection({ state });
+savedUI = installSavedStudio({state,api,notice,updateControls,connectIdentity,clearConnection,refreshInfo});
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';
+savedUI.discover();

@@ -14,7 +14,7 @@ for (const file of files) {
 const html = fs.readFileSync('web/index.html', 'utf8');
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 if (new Set(ids).size !== ids.length) throw new Error('Duplicate HTML IDs');
-const app = fs.readFileSync('web/app.mjs', 'utf8') + fs.readFileSync('web/studio.mjs', 'utf8') + fs.readFileSync('web/youtube.mjs', 'utf8') + fs.readFileSync('web/home.mjs', 'utf8') + fs.readFileSync('web/stream-setup.mjs', 'utf8') + fs.readFileSync('web/match-setup.mjs', 'utf8');
+const app = fs.readFileSync('web/app.mjs', 'utf8') + fs.readFileSync('web/studio.mjs', 'utf8') + fs.readFileSync('web/youtube.mjs', 'utf8') + fs.readFileSync('web/home.mjs', 'utf8') + fs.readFileSync('web/stream-setup.mjs', 'utf8') + fs.readFileSync('web/match-setup.mjs', 'utf8') + fs.readFileSync('web/saved-studio.mjs', 'utf8');
 for (const m of app.matchAll(/\$\('([^']+)'\)/g)) if (!ids.includes(m[1])) throw new Error(`Missing UI element ${m[1]}`);
 for (const m of html.matchAll(/(?:href|src)="\.\/([^"#]+)"/g)) if (!fs.existsSync(path.join('web', m[1]))) throw new Error(`Missing asset ${m[1]}`);
 console.log(`Checked ${files.length} JavaScript modules, ${ids.length} unique UI IDs and local assets.`);

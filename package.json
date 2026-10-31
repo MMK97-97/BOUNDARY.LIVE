@@ -1,6 +1,6 @@
 {
   "name": "mk97-live",
-  "version": "1.6.2",
+  "version": "1.7.1",
   "private": true,
   "description": "Phone-first cricket broadcast studio with cloud streaming and live scores",
   "type": "module",
@@ -17,7 +17,11 @@
   "dependencies": {
     "@resvg/resvg-js": "2.6.2",
     "cheerio": "1.2.0",
+    "pg": "8.23.1",
     "robots-parser": "3.0.1",
     "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.13"
   }
 }

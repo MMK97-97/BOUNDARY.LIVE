@@ -35,7 +35,7 @@ Use your phone's browser. A container service hosts both the website and API, so
 11. Under Destinations, add a current YouTube RTMPS server and stream key, or connect a configured Google account. Save securely; the destination becomes selected. Never use the public QA placeholders from test reports.
 12. Load a match. Open the rear camera. For a first capacity test, choose **480p or 720p**, YouTube only, and turn off optional milestone/card graphics. Use an unlisted/private platform test event. Inspect actual platform playback and audio before trying native 1080p.
 13. If stable, try 1080p and check CPU/RAM, bitrate, dropped frames and preview. If the service runs out of resources, restart/disconnects, or cannot keep up, that free plan is unsuitable. Lowering resolution can help; it is not 1080p. Do not assume three-platform output will fit because the website opens.
-14. Automatic redeployment is disabled in the template so a Git commit does not unexpectedly end a live match. Deploy updates manually between matches and reconnect; in-memory sessions/keys reset on restart.
+14. Automatic redeployment is disabled in the template so a Git commit does not unexpectedly end a live match. Deploy updates manually between matches and reconnect; temporary sessions/keys reset on restart. Remembered-device connections survive when the encrypted database is configured; follow [SAVED_STUDIO.md](SAVED_STUDIO.md) once.
 15. End the platform event and STOP the camera upload when done. Shut down/delete unused test resources through the provider dashboard.
 
 **Free-tier conditions checked October 30, 2026:** Render describes Free instances as preview/testing resources. Its free web services can sleep after idle time, restart, hit monthly runtime/build/bandwidth limits, or be suspended for unusually high outbound traffic. Added billing methods can permit usage charges; without one, limit exhaustion can suspend service. Review current limits and billing settings before use. These conditions make it unsuitable to promise uninterrupted free cricket broadcasts. Source: [Render Free documentation](https://render.com/docs/free). No artificial keep-alive or quota-evasion script is included.
@@ -131,7 +131,7 @@ cd deploy/cloud
 sudo docker compose up -d --build
 ```
 
-If Git reports local changes/conflicts, review them; do not overwrite them blindly. Reconnect MK97 after restart.
+If Git reports local changes/conflicts, review them; do not overwrite them blindly. Remembered devices reconnect after restart. Preserve `STUDIO_ENCRYPTION_KEY` and the `studio_data` volume; temporary connections must reconnect.
 
 23. To stop services:
 

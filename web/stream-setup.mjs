@@ -43,7 +43,9 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
       await refreshInfo();
       if (owner !== state.session || generation !== operation) return;
       if (!clear) $('dest-' + id).checked = Boolean(state.info?.destinations?.find(d => d.id === id)?.configured);
-      $('destinationOperation').textContent = clear ? 'Session key removed. A server-configured fallback, if present, remains available.' : 'Key saved to your cloud studio for this session. Destination selected.';
+      const remembered = state.info?.savedStudio?.remembered;
+      $('destinationOperation').textContent = clear ? `${remembered ? 'Saved studio' : 'Temporary session'} key removed. A server-configured fallback, if present, remains available.` :
+        remembered ? 'Key saved encrypted in your studio and shared with linked devices. Destination selected.' : 'Key saved for this temporary session. Destination selected.';
       $('destinationOperation').className = 'helper good';
     } catch (e) {
       if (owner === state.session && generation === operation) { $('destinationOperation').textContent = e.message; $('destinationOperation').className = 'helper error'; }
@@ -54,16 +56,6 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
   }
   $('destinationForm').addEventListener('submit', e => { e.preventDefault(); change(); });
   $('clearDestination').addEventListener('click', () => change(true));
-  async function discover() {
-    try {
-      const response = await fetch(new URL('./api/public-config', document.baseURI), { cache: 'no-store', credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(5000) });
-      if (!response.ok) return;
-      const value = await response.json();
-      if (value.product !== 'mk97' || value.sameOrigin !== true || location.protocol !== 'https:' || state.session || state.connecting) return;
-      $('relayUrl').value = location.origin;
-      $('cloudDiscovery').textContent = 'Your hosted MK97 studio is available at this address. Enter its private access token to unlock it.';
-    } catch { /* A GitHub Pages install may not host a relay at this origin. */ }
-  }
-  discover(); update();
+  update();
   return { update };
 }

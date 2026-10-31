@@ -6,7 +6,7 @@
 | Set up stream opens when START is pressed | A readiness item is missing. Connect the cloud studio, select a valid destination, load the match or switch off overlay, and open a supported camera. |
 | Cloud service unreachable | Open its exact HTTPS `/health` address. Check the cloud dashboard for startup errors, a sleeping service, restart, expired free quota or failed build. Check exact origins and WebSocket support. |
 | Relay token rejected | Copy the current private RELAY_TOKEN from the hosting dashboard or server configuration. Restart/redeploy may have changed it. Do not copy a test placeholder or put the token in a URL. |
-| Session expired | Reconnect. Browser refresh/close loses the in-memory token. Google grants and session destination keys must be set up again; existing platform events may still exist. |
+| Session expired | Remembered devices restore a short session automatically. Open the hosted address directly, allow its cookie, or link again after device expiry. Temporary mode requires reconnecting and platform setup again. See [SAVED_STUDIO.md](SAVED_STUDIO.md). |
 | Origin not allowed | Set PUBLIC_URL to the real HTTPS cloud origin, or use Render's supplied URL. For Pages, add only its exact origin to ALLOWED_ORIGINS, without repository path/trailing slash. Restart between broadcasts. |
 | Encoder not ready | Inspect the specific runtime error. The Docker image supplies FFmpeg, libx264 and fonts. Ensure the host actually runs the Dockerfile and the image built successfully. |
 | Native 1080p fails | Rotate the phone, reopen the rear camera or try another exposed lens. Choose Auto/720p/480p if the camera/browser cannot provide 1920 × 1080. Lower-resolution output is not native 1080p. |

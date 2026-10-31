@@ -10,8 +10,8 @@ if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]
 }
 const file = path.join(dir, '.env');
 try {
-  fs.writeFileSync(file, `PUBLIC_HOST=${host}\nRELAY_TOKEN=${randomBytes(32).toString('hex')}\nGOOGLE_CLIENT_ID=\nGOOGLE_CLIENT_SECRET=\nYOUTUBE_REDIRECT_URI=\n`, { flag: 'wx', mode: 0o600 });
-  console.log('Created deploy/cloud/.env with a private random token. Existing files are never overwritten.');
+  fs.writeFileSync(file, `PUBLIC_HOST=${host}\nRELAY_TOKEN=${randomBytes(32).toString('hex')}\nSTUDIO_ENCRYPTION_KEY=${randomBytes(32).toString('hex')}\nGOOGLE_CLIENT_ID=\nGOOGLE_CLIENT_SECRET=\nYOUTUBE_REDIRECT_URI=\n`, { flag: 'wx', mode: 0o600 });
+  console.log('Created deploy/cloud/.env with independent private access and encryption keys. Existing files are never overwritten.');
 } catch (e) {
   if (e.code === 'EEXIST') { console.error('deploy/cloud/.env already exists and was preserved.'); process.exit(1); }
   throw e;

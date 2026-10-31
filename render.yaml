@@ -12,6 +12,10 @@ services:
     envVars:
       - key: RELAY_TOKEN
         generateValue: true
+      - key: STUDIO_ENCRYPTION_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
       - key: HOST
         value: "0.0.0.0"
       - key: PORT
@@ -28,5 +32,11 @@ services:
 # allowlist. On another provider set PUBLIC_URL to the exact HTTPS service origin.
 # Add Google OAuth secrets in the dashboard when enabling YouTube sign-in.
 
-# Club/path values above are an optional legacy override. Version 1.6.1 also
+# Use a private PostgreSQL URL (for example Supabase Free or Neon Free) for DATABASE_URL.
+# Keep STUDIO_ENCRYPTION_KEY unchanged across deploys. Existing services must add
+# these in their Environment settings once. See docs/SAVED_STUDIO.md.
+# Club/path values above are an optional legacy override. MK97 also
 # supports TampaCricket/1507 and TCL/157 automatically, and paths from full URLs.
+
+# Supabase: use its Session pooler URI on 5432 and add DATABASE_CA_CERT as the
+# downloaded PEM root certificate in Environment. See docs/SUPABASE_SETUP.md.

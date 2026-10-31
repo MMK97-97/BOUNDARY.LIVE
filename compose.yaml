@@ -10,6 +10,12 @@ services:
     environment:
       RELAY_TOKEN: ${RELAY_TOKEN:?Set a random private token of at least 32 characters}
       PUBLIC_URL: ${PUBLIC_URL:?Set the exact public HTTPS origin}
+      STUDIO_ENCRYPTION_KEY: ${STUDIO_ENCRYPTION_KEY:?Set and retain a private 32-byte encryption key}
+      STUDIO_DATA_FILE: /appdata/studio.enc
+      DATABASE_URL: ${DATABASE_URL:-}
+      DATABASE_CA_CERT: ${DATABASE_CA_CERT:-}
+    volumes:
+      - studio_data:/appdata
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m,mode=1777
@@ -19,3 +25,5 @@ services:
     mem_limit: 2g
     cpus: 2
     stop_grace_period: 15s
+volumes:
+  studio_data:

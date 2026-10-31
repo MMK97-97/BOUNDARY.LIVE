@@ -27,3 +27,7 @@
 .drawer-feedback{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}
 .drawer-feedback .notice{position:static;inset:auto;transform:none;width:100%;margin:0 0 14px;box-shadow:none;overflow-wrap:anywhere}
 .drawer-feedback .dismiss-notice{position:static;inset:auto;transform:none;grid-column:2;margin:0 0 14px;min-width:28px}
+
+.device-code{display:block;padding:16px 8px;text-align:center;border:1px solid #37648a;border-radius:10px;font:600 18px monospace;letter-spacing:1px;overflow-wrap:anywhere;margin:12px 0}.remembered-device{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #293d50;padding:12px 0;font-size:12px}.remembered-device small{display:block;color:#a1bad0;font-size:10px;line-height:1.7}.remembered-device button{flex-shrink:0;font-size:11px}.device-code-panel{margin:14px 0}#savedDevicePanel h3{margin-top:22px}#linkDeviceDetails{margin:18px 0}#rememberHelp,#savedConnectionState{overflow-wrap:anywhere}
+
+.encryption-key{font-size:.85rem;word-break:break-all;letter-spacing:.05em;user-select:all}

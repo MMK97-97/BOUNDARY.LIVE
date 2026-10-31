@@ -1,10 +1,10 @@
-# MK97 1.6.2 validation — October 30, 2026
+# MK97 1.7.1 validation — October 31, 2026
 
 ## Automated checks completed
 
-`npm run check`: **52 JavaScript modules, 244 unique UI IDs**, relative imports and local HTML assets checked.
+`npm run check`: **60 JavaScript modules, 268 unique UI IDs**, relative imports and local HTML assets checked.
 
-`npm test`: **199 passed, 0 failed, 0 skipped**. The full suite completed after the YouTube/league changes. Removed replay behavior remains covered.
+`npm test`: **232 passed, 0 failed, 0 skipped**. The full suite completed after Supabase CA/private-schema support. The prior browser check and device/UI tests remain covered. Removed replay behavior remains covered.
 
 | Check | Result and scope |
 | --- | --- |
@@ -16,7 +16,9 @@
 | Source feeds | Captured real CricClubs 986 ticker regression, canonical data validation, hostile markup handling, match/club switching, stale values, duplicate requests, source size/time limits and source/HTML identity reconciliation. |
 | Full HTML parser | Synthetic supported scorecard tables, both innings, bowling, extras, dismissals, fall of wickets, did-not-bat and commentary. Robots rules, verification responses, Retry-After, blocked-state handling and incomplete/contradictory tables. This does not prove that full 986 HTML is currently readable. |
 | Live updates | Five-second source deadline, change/freshness push, authenticated subscriptions, split UTF-8/events, size limits, expiry, match change, late-response rejection, reconnect/poll fallback and hidden-page lifecycle. |
-| Destination keys | Session isolation, expiry/logout removal, no secret echo, platform RTMPS allowlists/port restrictions, malformed/oversized values and 409 while the owner streams. |
+| Destination keys | Encrypted shared keys for remembered devices; temporary session isolation, expiry/logout removal, no secret echo, platform RTMPS allowlists/port restrictions, malformed/oversized values and 409 while the owner streams. |
+| Saved studio | AES-256-GCM ciphertext, tamper/wrong-key refusal, atomic revision writes, private file permissions and PostgreSQL SQL against the local PGlite engine. This does not test a remote Neon TCP/TLS deployment. Real server process restarts recover two independent device cookies, platform keys, match/preferences, Google refresh grants and YouTube setup without recreating events. |
+| Device access | Secure/HttpOnly/SameSite cookie attributes, 30-day expiry, one-use/expired/racing code checks, revocation of sessions/cookies/tickets, cancelled Google callbacks and sign-out preserving shared credentials. UI tests exercise cookie-based restoration, preference events and private key generation without persisting secrets in the browser. |
 | Cloud origin/config | Exact configured HTTPS service origin, no Host-header inference, no wildcard/path/credential origin, secret-free discovery and private config generation without printing/overwriting the token. |
 | Sessions/tickets | Origin-bound expiry/revocation, master token limited to session creation, one-use tickets, HTTP/WS authorization, body/connection limits, CORS and private-file protection. |
 | YouTube | Render callback derivation/mismatch guidance; real HTTP callback routing without an opener; single-use state/PKCE, expiry/cancellation/session isolation; safe failure outcomes; endpoint re-read without duplicate writes; idempotent setup and partial retries; immediate/concurrent/intermediate transitions; late browser response rejection and safe cancellation messages. Google responses are mocked; no real Google account was used. |
@@ -51,3 +53,15 @@ Tampa Cricket Club 1507 / Match 3866 and TCL Club 157 / Match 6098 loaded throug
 Two actual read-only ticker calls also returned valid totals for those same club/match pairs on October 30. Both are completed matches; neither test proves a live game's timing or full innings/commentary availability. The published Pages build reported 1.6.1, while the user's actual Render address/settings were not available. The exact cause of their reported deployed failure therefore remains unconfirmed.
 
 Browser screenshots are supplied separately from the source. The QA transport, test consent page, preview-only origin/header changes and no-external-output wrapper are excluded from the ZIP.
+
+## Additional 1.7 saved-studio browser checks
+
+On an isolated 390 × 844 layout, the first fixture device connected with Remember enabled. A nonfunctional Facebook key saved through the real HTTP endpoint, cleared from its field and displayed Saved studio key · ready. Reloading the page restored access without the relay token. A second tab automatically restored the same device cookie and saved destination, and an altered end-of-over preference was restored. The QA server was stopped and restarted; the browser recovered the same encrypted profile and access automatically. Landscape 1120 × 700 was also inspected.
+
+This preview uses a private encrypted file backend and synthetic credentials. Secure production cookie flags are covered by HTTP tests; the HTTP-only QA copy uses its explicit development cookie and same-origin viewport allowances. Two genuinely separate device cookies, pairing and revocation are tested by HTTP integration, not by two tabs sharing the same browser profile. No real Neon database, user credentials or real Google account were configured. Production remains undeployed by this update.
+
+## Additional 1.7.1 Supabase checks
+
+Three additional tests verify: Supabase-style session pooler URL/CA configuration with TLS and hostname verification preserved; an atomic migration from a legacy public table retaining the exact ciphertext/revision; denial of schema/table privileges to anon, authenticated and service_role; RLS returning no rows if a non-owner API role is accidentally given read grants; and conflict refusal retaining both old/new rows. The PostgreSQL tests run against local PGlite, with Supabase-like roles/grants created in the test.
+
+No real Supabase account, database, remote TLS session, deployed schema or hosted broadcast was exercised. Production rollout still requires the user's private project settings and a container redeploy. Static UI copy/version was updated; no additional cloud-browser run was needed for this database-focused change.

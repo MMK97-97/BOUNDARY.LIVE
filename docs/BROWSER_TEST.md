@@ -1,4 +1,4 @@
-# MK97 1.6.1 cloud-browser checks
+# MK97 cloud-browser checks
 
 The test UI uses an isolated checkout, the real Node relay and explicitly labelled synthetic/recorded match data. Test credentials are public nonfunctional placeholders; provider fetches are blocked. No camera/broadcast/account or free cloud allocation is simulated as a verified real service.
 
@@ -25,3 +25,9 @@ Both league presets loaded their recorded completed-match totals over the authen
 A discovered phone issue was fixed: global feedback could cover the panel's header buttons. Feedback now flows below the heading. Close was verified with the message still visible, without dismissing it first.
 
 Actual ticker totals were checked separately against the read-only CricClubs endpoint. Cloud-browser score data remained explicitly recorded fixtures, and Google responses remained synthetic. No user Render service, real Google consent, actual phone camera, battery consumption, provider TLS ingestion or external live broadcast was verified.
+
+## 1.7 remembered studio follow-up
+
+The real 1.7 app/Node server were tested in the 390 × 844 isolated viewport. Remembered first-device bootstrap, saving/clearing a fixture platform key, page reload, another tab and server restart all retained automatic access and the saved destination. Changing the end-of-over setting initially exposed a missing change trigger; it was fixed, covered by a UI event test and confirmed as restored in the second tab. Landscape 1120 × 700 remained readable.
+
+The browser uses a test-only encrypted private file, HTTP development cookie and fixture token. Production Secure cookie attributes, different device cookies, pairing, code reuse/expiry and revocation are verified in HTTP tests. Two tabs are not represented as two independently authenticated devices. No real account or external broadcast was used.
