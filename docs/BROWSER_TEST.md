@@ -1,6 +1,6 @@
 # MK97 cloud-browser checks
 
-The test UI uses an isolated checkout, the real Node relay and explicitly labelled synthetic/recorded match data. Test credentials are public nonfunctional placeholders; provider fetches are blocked. No camera/broadcast/account or free cloud allocation is simulated as a verified real service.
+The test UI uses an isolated checkout, the real Node relay and explicitly labelled synthetic/recorded match data. Test credentials are public nonfunctional placeholders; provider fetches are blocked. Synthetic account and camera fixtures are explicitly labelled; no real account, physical camera, external broadcast or cloud allocation is claimed.
 
 - Portrait 390 × 844, landscape 1120 × 700 and compact landscape 844 × 390 inspected against the user's references.
 - Studio opens directly; tools are Score, Stats, Stream and Share. Replay/Clips/seek/export controls are removed.
@@ -31,3 +31,11 @@ Actual ticker totals were checked separately against the read-only CricClubs end
 The real 1.7 app/Node server were tested in the 390 × 844 isolated viewport. Remembered first-device bootstrap, saving/clearing a fixture platform key, page reload, another tab and server restart all retained automatic access and the saved destination. Changing the end-of-over setting initially exposed a missing change trigger; it was fixed, covered by a UI event test and confirmed as restored in the second tab. Landscape 1120 × 700 remained readable.
 
 The browser uses a test-only encrypted private file, HTTP development cookie and fixture token. Production Secure cookie attributes, different device cookies, pairing, code reuse/expiry and revocation are verified in HTTP tests. Two tabs are not represented as two independently authenticated devices. No real account or external broadcast was used.
+
+## Version 1.8 account and native-orientation UI
+
+The isolated browser now exercises first-account creation, email/password sign-in after device sign-out, saved destination restoration, automatic cookie restoration and encrypted-profile recovery across a server restart. No real credentials are entered. The account login form does not expose a relay-token requirement.
+
+A clearly labelled synthetic camera adapter supplies native portrait or landscape MediaStreams. Actual browser MediaRecorder, authenticated WebSocket upload and FFmpeg run to a local sink; external RTMPS destinations are blocked/replaced only by the QA wrapper. Portrait 390 × 844 and compact landscape 844 × 390 reached SENDING, displayed the scaled bottom score and kept Stop within the viewport. Camera buttons were usable before upload in both orientations. The program follows the native track orientation at startup and remains fixed for that upload.
+
+These checks do not grant or test a physical phone camera/microphone permission and do not establish a real platform publication. The source package contains the production camera checks, production cookie protections and production frame-ancestors restrictions.

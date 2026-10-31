@@ -1,4 +1,4 @@
-# YouTube setup — MK97 1.7 on Render
+# YouTube setup — MK97 1.8 on Render
 
 MK97 signs in with Google, creates and binds a YouTube event and ingestion stream, and keeps the RTMPS key private on the cloud server. Remembered devices save it with the Google grant and setup progress in encrypted storage; see [SAVED_STUDIO.md](SAVED_STUDIO.md). Camera START sends video; **Go live** is a separate action that publishes it. No laptop is required at the ground.
 
@@ -6,7 +6,7 @@ MK97 signs in with Google, creates and binds a YouTube event and ingestion strea
 
 Extract the latest source ZIP. Upload the files inside `MK97` to the root of your GitHub repository, including `web/`, `relay/`, `Dockerfile`, package files and hidden workflows. On Render deploy the latest commit. Keep your existing private `RELAY_TOKEN`.
 
-Open your **Render HTTPS app address** on the phone. Connect the cloud studio using its private token. Stream setup shows both the website version and cloud-reader version; both should be **1.7.1** for this update.
+Open your **Render HTTPS app address** on the phone. Sign in to your MK97 studio account. Create it once using an already connected device or your private studio token; see [ACCOUNT_SIGNIN.md](ACCOUNT_SIGNIN.md). Stream setup shows both the website version and cloud-reader version; both should be **1.8.0** for this update.
 
 ## 2. Copy the callback from MK97
 
@@ -68,7 +68,7 @@ Setup feedback now stays below the panel heading so it cannot cover the Back or 
 | Google rejects the client ID/secret | Confirm both belong to a Web application client; replace the incorrect private environment value and redeploy. |
 | Google blocks consent or says access denied | Check the consent audience/test users, organization policy and any required verification. Follow Google's requirements. |
 | Channel has no live permission | Enable/verify the channel in YouTube Studio and complete any activation wait or restriction. |
-| Returned to a tab but MK97 still waits | Return to the original MK97 tab, without reloading it. Let it check the result. Check that both server and web are v1.7.1. Cancel and reconnect if the flow expires. |
+| Returned to a tab but MK97 still waits | Return to the original MK97 tab, without reloading it. Let it check the result. Check that both server and web are v1.8.0. Cancel and reconnect if the flow expires. |
 | Setup failed partway | A definite failure keeps confirmed progress; **Retry setup** reuses the request/details. Fix the stated cause first. |
 | Setup result unconfirmed | A write may have succeeded. Inspect YouTube Studio before acknowledging **New setup**. The app blocks automatic duplicate creation. |
 | Go live is disabled | Start camera upload, wait for an active YouTube signal and a ready/testing event; refresh status. |

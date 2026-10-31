@@ -27,7 +27,7 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
     $('saveDestination').textContent = state.destinationBusy ? 'Saving…' : 'Save securely';
     $('setupCameraStep').disabled = locked() || state.cameraBusy;
   }
-  $('setupConnectionStep').addEventListener('click', () => { $('cloudConnectionPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); if (!state.session) $('relayToken').focus({ preventScroll: true }); });
+  $('setupConnectionStep').addEventListener('click', () => { $('cloudConnectionPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); if(!state.session){ const field=!$('accountPanel').hidden?(!$('accountLoginForm').hidden?$('accountEmail'):!$('accountCreateForm').hidden?$('accountCreateEmail'):null):null; if(field)field.focus({preventScroll:true});else{$('legacyConnectionDetails').open=true;$('relayToken').focus({preventScroll:true});} } });
   $('setupDestinationStep').addEventListener('click', () => { $('destinationPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); });
   $('setupCameraStep').addEventListener('click', () => { ui.closeDrawer(); if (!state.stream) openCamera(); });
   $('returnToStudio').addEventListener('click', () => ui.closeDrawer());

@@ -1,4 +1,5 @@
-import { PROFILES, SIZES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, is1080Landscape, preflight } from './core.mjs';
+import { openNativeCamera, captureProfile, programSize } from './capture.mjs';
+import { PROFILES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, preflight } from './core.mjs';
 import { installStudio } from './studio.mjs';
 import { installYouTube } from './youtube.mjs';
 import { createFeed } from './feed.mjs';
@@ -8,12 +9,14 @@ import { installStreamSetup } from './stream-setup.mjs';
 import { knownLeague } from './cricclubs-reference.mjs';
 import { installMatchSelection } from './match-setup.mjs';
 import { installSavedStudio } from './saved-studio.mjs';
+import { installStudioAccount } from './studio-account.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
 let setupUI = null;
 let matchUI = null;
 let savedUI = null;
+let accountUI = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
@@ -67,9 +70,10 @@ function updateControls() {
   setupUI?.update();
   matchUI?.update();
   savedUI?.update();
+  accountUI?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
-  const deviceRequest = ['/api/device/restore', '/api/device/link'].includes(path);
+  const deviceRequest = ['/api/device/restore', '/api/device/link','/api/account/status','/api/account/login','/api/account/register','/api/account/recover'].includes(path);
   if (!state.relay || !authToken && !deviceRequest) throw new Error('Connect the relay first.');
   let response;
   const { timeoutMs = 12000, ...requestOptions } = options;
@@ -87,9 +91,10 @@ async function api(path, options = {}, authToken = state.session) {
 function renderRelay() {
   youtubeUI?.accept(state.info?.youtube || null);
   savedUI?.accept(state.info);
+  accountUI?.accept(state.info);
   const connected = Boolean(state.session);
   const cloudVersion = state.info?.version;
-  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.7.1${cloudVersion !== '1.7.1' ? ' · Deploy v1.7.1 to Render to use the matching update.' : ''}` : '';
+  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.8.0${cloudVersion !== '1.8.0' ? ' · Deploy v1.8.0 to Render to use the matching update.' : ''}` : '';
   $('relayForm').hidden = connected; $('relayConnected').hidden = !connected;
   $('connectionBadge').replaceChildren(); const i = document.createElement('i');
   $('connectionBadge').append(i, document.createTextNode(connected ? ' Secure relay connected' : ' Relay disconnected'));
@@ -105,9 +110,9 @@ function renderRelay() {
   updateControls();
 }
 async function connectIdentity(identity, quiet = false) {
-  state.session = identity.sessionToken; state.sessionExpiry = identity.expiresAt;
-  const session = state.session, info = await api('/api/info'); if (session !== state.session) return;
+  const previousSession=state.session,info=await api('/api/info',{},identity.sessionToken);if(state.session!==previousSession)return;
   if (info.name !== 'MK97 relay' || !Array.isArray(info.destinations)) throw new Error('Incompatible relay response.');
+  state.session = identity.sessionToken; state.sessionExpiry = identity.expiresAt;const session=state.session;
   state.info = info; save('relay', state.relay); $('relayUrl').value = state.relay;
   $('relayExpiry').textContent = identity.remembered ? 'Remembered until ' + new Date(identity.deviceExpiresAt).toLocaleDateString() :
     'Session expires ' + new Date(identity.expiresAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -209,17 +214,8 @@ async function openCamera(deviceId = '') {
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs HTTPS. Open your hosted MK97 app in a current browser.');
     chooseMime(window.MediaRecorder);
-    const candidates = state.captureResolution === 'auto' ? ['1080', '720', '480'] : [state.captureResolution];
-    let lastError;
-    for (const size of candidates) {
-      const s = SIZES[size], video = { width: { exact: s.width }, height: { exact: s.height }, frameRate: { ideal: 30, max: 30 }, aspectRatio: { ideal: 16 / 9 }, ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }) };
-      if (navigator.mediaDevices.getSupportedConstraints().resizeMode) video.resizeMode = 'none';
-      try { state.stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); break; }
-      catch (e) { lastError = e; if (e.name !== 'OverconstrainedError') throw e; }
-    }
-    if (!state.stream) throw lastError;
+    state.stream = await openNativeCamera(navigator.mediaDevices, state.captureResolution, deviceId, matchMedia('(orientation: portrait)').matches);
     state.camera = state.stream.getVideoTracks()[0].getSettings();
-    if (!captureReady(state.camera, state.captureResolution)) throw new Error('This camera did not provide the selected landscape resolution. Rotate the phone and reopen, or select another camera.');
     const track = state.stream.getVideoTracks()[0];
     track.addEventListener('ended', () => { if (state.live || state.starting) abortStream('Camera was disconnected. Reopen it and start a new stream.'); closeCamera(); });
     ui?.resetMonitor(); $('cameraVideo').removeAttribute('src'); $('cameraVideo').srcObject = state.stream; $('cameraVideo').hidden = false; await $('cameraVideo').play();
@@ -227,14 +223,14 @@ async function openCamera(deviceId = '') {
     $('previewToggle').textContent = '◐ Hide preview'; $('cameraPlaceholder').hidden = true;
     for (const audio of state.stream.getAudioTracks()) audio.enabled = !state.micMuted;
     $('cameraSpec').textContent = `${state.camera.width} × ${state.camera.height} · ${Math.round(state.camera.frameRate || 30)} fps`;
-    health('video', `${state.camera.height}p camera ready`, 'good'); setupZoom(track);
-    await listCameras();
+    health('video', `${captureProfile(state.camera)}p camera ready`, 'good'); setupZoom(track);
+    await listCameras().catch(() => {});
     notice('Camera ready. Use a tripod behind the bowler’s arm and keep the full pitch in frame.', 'success');
   } catch (error) {
     closeCamera(false);
     const messages = { NotAllowedError: 'Camera or microphone permission was denied. Allow both in your browser settings, then try again.',
       NotFoundError: 'No camera or microphone was found.', NotReadableError: 'Camera is in use by another app. Close that app and try again.',
-      OverconstrainedError: 'This camera cannot supply the selected native resolution. Rotate the phone, try another rear camera, or choose Auto before streaming.' };
+      OverconstrainedError: 'This camera cannot supply the selected native resolution. Try another rear camera, or choose Auto before streaming.' };
     notice(messages[error.name] || error.message, 'error');
   } finally { state.cameraBusy = false; updateControls(); }
 }
@@ -337,13 +333,15 @@ async function startStream() {
   if (state.stream) state.camera = state.stream.getVideoTracks()[0]?.getSettings();
   const problem = issue(); if (problem) { ui?.panel('settings'); $('startHint').textContent = problem; return; }
   if (state.starting || state.live || state.stopping || state.destinationBusy || state.youtubeBusy) return;
+  const capture = { ...state.camera };
+  state.programCanvas = programSize(capture);
   state.starting = true; state.closedByUser = false; updateControls();
   let ws;
   try {
     const mimeType = chooseMime(window.MediaRecorder);
     const profile = PROFILES[$('qualitySelect').value];
     // Construct before claiming a relay session; unsupported codec options fail early.
-    const qualityScale = state.camera.height >= 1080 ? 1 : state.camera.height >= 720 ? .56 : .25;
+    const nativeProfile = captureProfile(capture), qualityScale = nativeProfile === '1080' ? 1 : nativeProfile === '720' ? .56 : .25;
     const recorder = new MediaRecorder(state.stream, { mimeType, videoBitsPerSecond: Math.round(profile.bitrate * qualityScale), audioBitsPerSecond: 128_000 });
     state.recorder = recorder;
     const { ticket } = await api('/api/ticket', { method: 'POST', body: '{}' });
@@ -355,7 +353,7 @@ async function startStream() {
     ws.onopen = () => {
       if (state.socket !== ws) return;
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
-        width: state.camera.width, height: state.camera.height, resolution: state.captureResolution, overlay: $('overlayToggle').checked,
+        width: capture.width, height: capture.height, resolution: state.captureResolution, framing: state.framing || 'fit', overlay: $('overlayToggle').checked,
         match: state.score ? { clubId: state.score.clubId, matchId: state.score.matchId } : null,
         automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked } }));
     };
@@ -462,7 +460,8 @@ youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, cl
 homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera });
 setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo });
 matchUI = installMatchSelection({ state });
-savedUI = installSavedStudio({state,api,notice,updateControls,connectIdentity,clearConnection,refreshInfo});
+accountUI=installStudioAccount({state,api,notice,updateControls,connectIdentity});
+savedUI = installSavedStudio({state,api,notice,updateControls,connectIdentity,clearConnection,refreshInfo,onConfig:(config,eligible)=>accountUI.configure(config,eligible)});
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';
 savedUI.discover();

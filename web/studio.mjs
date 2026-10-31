@@ -1,3 +1,5 @@
+import { programRect, programSize, captureProfile } from './capture.mjs';
+import { graphicSvg } from './score-graphic.mjs';
 const $ = id => document.getElementById(id);
 const label = { settings: 'Stream settings', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
 const el = (tag, content, className) => { const n = document.createElement(tag); if (content != null) n.textContent = String(content); if (className) n.className = className; return n; };
@@ -6,6 +8,23 @@ const safeWatch = value => { const u = new URL(value); if (u.protocol !== 'https
 export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview }) {
   let lastFocus = null, lastGraphic = null;
   let scoreTab = 'batting', statsTab = 'overview';
+  let monitorCanvas = programSize(state.camera);
+  function drawScore(s = state.score) {
+    if (s) $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas));
+    else $('scoreGraphic').removeAttribute('src');
+  }
+  function frameMonitor() {
+    const canvas = (state.live || state.starting || state.stopping) && state.programCanvas || programSize(state.camera), changed = canvas.width !== monitorCanvas.width || canvas.height !== monitorCanvas.height;
+    monitorCanvas = canvas;
+    const box = $('viewfinder'), rect = programRect(box.clientWidth, box.clientHeight, canvas.width, canvas.height), surface = $('programSurface');
+    document.documentElement.style.setProperty('--studio-notice-top', `${Math.max(8, box.getBoundingClientRect().top + 10)}px`);
+    surface.style.width = `${rect.width}px`; surface.style.height = `${rect.height}px`;
+    surface.style.setProperty('--program-unit', `${rect.width / 1920}px`);
+    if (changed) drawScore();
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(frameMonitor).observe($('viewfinder'));
+  else window.addEventListener('resize', frameMonitor);
+  frameMonitor();
   function tabs(root, attribute, changed) {
     const buttons = [...$(root).querySelectorAll('button')];
     for (const [i, b] of buttons.entries()) {
@@ -53,11 +72,16 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     }
   });
   $('dismissNotice').addEventListener('click', () => notice(''));
-  $('fitButton').addEventListener('click', () => { const fill = $('studio').classList.toggle('fit-fill'); $('fitButton').querySelector('small').textContent = fill ? 'Fill' : 'Fit'; $('fitButton').setAttribute('aria-pressed', String(fill)); });
+  $('fitButton').addEventListener('click', () => {
+    if (state.live || state.starting || state.stopping) return;
+    const fill = $('studio').classList.toggle('fit-fill'); state.framing = fill ? 'fill' : 'fit';
+    $('fitButton').querySelector('small').textContent = fill ? 'Fill' : 'Fit'; $('fitButton').setAttribute('aria-pressed', String(fill)); $('fitButton').setAttribute('aria-label', 'Camera framing: ' + (fill ? 'Fill' : 'Fit'));
+    notice(fill ? 'Fill crops the camera to the broadcast frame. Portrait capture may lose detail when enlarged. Use Fit to keep the full camera image.' : 'Fit keeps the full camera image in the broadcast frame.');
+  });
   async function fullscreen() {
     try {
       if (document.fullscreenElement) { await document.exitFullscreen(); return; }
-      if (document.documentElement.requestFullscreen) { await document.documentElement.requestFullscreen(); try { await screen.orientation?.lock('landscape'); } catch {} }
+      if (document.documentElement.requestFullscreen) { await document.documentElement.requestFullscreen();  }
       else document.body.classList.toggle('theater');
     } catch { document.body.classList.toggle('theater'); }
   }
@@ -140,7 +164,8 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     for (const [k, v] of [['Capture', state.camera ? `${state.camera.width} × ${state.camera.height}` : 'Camera off'], ['Camera frame rate', state.camera?.frameRate ? `${Math.round(state.camera.frameRate)} fps` : '—'], ['On-air graphic', a?.current?.type || 'Live camera'], ['Cloud studio', state.session ? 'Connected' : 'Disconnected'], ['Viewer count', 'Check platform analytics']]) stats.append(el('dt', k), el('dd', v));
   }
   function score(s) {
-    if (!s) { tables(); return; }
+    if (!s) { $('scoreGraphic').removeAttribute('src'); tables(); return; }
+    drawScore(s);
     $('seriesTitle').textContent = s.series || `CricClubs · Match ${s.matchId}`; $('groundTitle').textContent = `${s.ground || 'Club ' + s.clubId} · Match ${s.matchId}`;
     $('oppositionTeam').textContent = s.teams?.find(t => t.code === s.bowling || t.name === s.bowling)?.name || s.bowling;
     $('battingLogo').textContent = s.batting.slice(0, 4); $('bowlingLogo').textContent = s.bowling.slice(0, 4);
@@ -160,8 +185,10 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function update() {
     const locked = state.live || state.starting || state.stopping;
+    $('fitButton').disabled = locked; $('fitButton').setAttribute('aria-label', 'Camera framing: ' + (state.framing === 'fill' ? 'Fill' : 'Fit'));
+    frameMonitor();
     if (!state.camera) $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · 30 fps`;
-    for (const id of ['youtube', 'facebook']) $(id + 'Resolution').textContent = `${state.camera?.height ? state.camera.height + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · landscape`;
+    for (const id of ['youtube', 'facebook']) $(id + 'Resolution').textContent = `${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · ${state.camera?.height > state.camera?.width ? 'portrait' : 'landscape'}`;
     for (const b of $('resolutionOptions').querySelectorAll('button')) { b.disabled = locked || state.cameraBusy; b.classList.toggle('selected', b.dataset.resolution === state.captureResolution); b.setAttribute('aria-pressed', String(b.dataset.resolution === state.captureResolution)); }
     for (const id of ['showBatting', 'showBowling']) $(id).disabled = !state.live || !state.programEnabled;
     $('previewToggle').replaceChildren(icon(state.previewOff ? 'play' : 'pause'), el('span', state.previewOff ? 'Resume local monitor' : 'Pause local monitor'));

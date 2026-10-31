@@ -11,9 +11,11 @@ The complete streaming server cannot run on hosted Supabase Edge Functions. Thei
 | CricClubs polling and score overlay rendering | Existing Render service |
 | Camera upload, FFmpeg encoding and YouTube/Facebook/Instagram forwarding | Existing Render service |
 
+Existing saved storage also supports the private MK97 account in version 1.8.0. No Supabase Auth service, public signup or new environment keys are needed. Follow [ACCOUNT_SIGNIN.md](ACCOUNT_SIGNIN.md).
+
 ## 1. Update MK97 first
 
-1. Extract `MK97_v1.7.1_Supabase_Source.zip`.
+1. Extract `MK97_v1.8_Account_Mobile_Fixes_Source.zip`.
 2. Open your existing GitHub repository, `MMK97-97/BOUNDARY.LIVE`.
 3. Upload the **files inside the `MK97` folder**, including `web`, `relay`, `scripts`, package files, `Dockerfile`, `render.yaml`, documentation and `.github/workflows`. Do not upload only the ZIP or nest another MK97 folder inside the repository.
 4. Commit the changes. In [Render](https://dashboard.render.com), select your existing `boundary-live` **Web Service** and use **Manual Deploy → Deploy latest commit**.
@@ -123,7 +125,7 @@ Changing `DATABASE_URL` alone does not copy data from Neon or another server int
 | Database unreachable / IPv6 error | Use the project's Session pooler URI on port 5432. Keep the full pooler username. |
 | Password authentication failed | Check the database password, project suffix, placeholder replacement and URL encoding. An API key is not the database password. |
 | Certificate validation failed | Paste the full current project CA certificate into `DATABASE_CA_CERT`; keep normal verification enabled. A filename does not load the certificate. |
-| Remember checkbox disabled | Confirm both versions are 1.7.1, environment settings were deployed and the app is open on its hosted address. |
+| Remember checkbox disabled | Confirm both versions are 1.8.0, environment settings were deployed and the app is open on its hosted address. |
 | Saved storage unavailable | Check whether the Supabase project is paused, its quotas, the URI/CA and the server's database permissions. Conflicting legacy/private tables also require review. |
 | Saved data cannot be unlocked | Restore the original encryption key. Do not generate a replacement just to reconnect. |
 | Table not shown under public | Select the `mk97_private` schema after the first remembered connection; the table is intentionally private. |

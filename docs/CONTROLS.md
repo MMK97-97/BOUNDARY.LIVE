@@ -5,7 +5,7 @@ Portrait: header, quality selector, viewfinder, four tools and bottom transport.
 | Control | Function |
 | --- | --- |
 | Back | Opens match-connection home when idle; active upload stays in the studio. |
-| Auto / 1080p / 720p / 480p | Chooses actual native landscape capture before streaming. Auto tries supported sizes. |
+| Auto / 1080p / 720p / 480p | Chooses actual native capture in either orientation before streaming. Auto tries supported sizes. |
 | Open camera | Requests rear camera and microphone after a tap. Displays actual capture settings. |
 | Set up stream / Settings / Stream tool | Opens the phone setup checklist, cloud connection, destinations and camera controls. |
 | Cast / AirPlay | Uses supported native playback routing; opens sharing help when local camera routing is unavailable. |
@@ -14,14 +14,14 @@ Portrait: header, quality selector, viewfinder, four tools and bottom transport.
 | Stats / monitor info | Shows broadcast health, actual capture data and supplied match statistics. Viewer counts are not invented. |
 | Share | Copies/shares a validated public platform viewing URL; never includes access tokens. |
 | Native zoom + / − / slider / presets | Uses camera-exposed zoom constraints only. Disabled when unsupported; magnification may be digital inside the device. |
-| Fit / Fill | Changes local framing display only. Capture is not cropped or modified. |
+| Fit / Fill | Chooses the monitor and outgoing camera framing before streaming. Fit retains the full source; Fill crops to the program frame and may reduce detail. Locked during an upload. |
 | START | Opens setup if incomplete; begins one authenticated camera upload when preflight passes. It does not itself publish a YouTube event. |
 | STOP | Requires confirmation, then ends the camera upload and all remaining outputs. Platform-event publication is checked separately. |
 | LIVE | Opens the camera or resumes the hidden local monitor; it does not publish a platform event. |
 | Speaker | Mutes/unmutes the outgoing microphone. The local camera player remains muted to prevent feedback. |
 | Timer | Time since camera upload started, not platform viewer time. |
 | Fullscreen | Enters supported browser fullscreen; uses an in-page theater fallback when needed. |
-| Cloud connection | Detects the hosted address. Remembered devices reconnect using their protected cookie; first setup uses the relay token. Temporary connections remain available. |
+| Cloud connection | Detects the hosted address. Remembered devices reconnect using their protected cookie; sign in with your MK97 email/password on another device. The relay token is used once to authorize account creation or recovery. Advanced temporary connections remain available. |
 | Save securely | Validates a platform RTMPS URL/key, clears the form and selects the destination. Remembered devices save it encrypted for the shared studio; temporary keys remain memory-only. |
 | Remove key | Removes the selected saved-studio or temporary manual key. A configured server fallback remains available. |
 | Link another device | Generates a one-use five-minute code. The other device links once and then restores the same saved connections without the relay token. |
@@ -36,3 +36,5 @@ Portrait: header, quality selector, viewfinder, four tools and bottom transport.
 | Phone-only hosting guide | Opens concise setup steps; the full walkthrough is docs/FREE_HOSTING.md. |
 
 There is no Clips tool, seek bar, footage buffer, ball mark, automatic replay or video download in 1.6. Facebook and Instagram use their own eligible Live Producer key/publication workflows; their account login and publish controls are not implemented inside MK97.
+
+The score uses the same SVG drawing in the preview and encoder, anchored to the bottom of the program frame. Portrait uses a compact arrangement; small-screen controls fit the dynamic viewport and safe areas. Fullscreen no longer locks landscape. The output orientation follows the native camera track at startup and remains fixed for that upload.

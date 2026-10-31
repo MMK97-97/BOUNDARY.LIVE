@@ -1,14 +1,14 @@
-# MK97 1.7.1 validation — October 31, 2026
+# MK97 1.8.0 validation — October 31, 2026
 
 ## Automated checks completed
 
-`npm run check`: **60 JavaScript modules, 268 unique UI IDs**, relative imports and local HTML assets checked.
+`npm run check`: **68 JavaScript modules, 304 unique UI IDs**, relative imports and local HTML assets checked.
 
-`npm test`: **232 passed, 0 failed, 0 skipped**. The full suite completed after Supabase CA/private-schema support. The prior browser check and device/UI tests remain covered. Removed replay behavior remains covered.
+`npm test`: **262 passed, 0 failed, 0 skipped**. The full suite completed after account sign-in and the camera/layout/overlay changes. The prior browser check and device/UI tests remain covered. Removed replay behavior remains covered.
 
 | Check | Result and scope |
 | --- | --- |
-| Live media pipeline | Authenticated WebSocket camera upload passed through real FFmpeg and two independent local output writers. Both 1920 × 1080 H.264 outputs included AAC audio and a decoded-pixel check of the selected match's burned score. Only an explicit test wrapper replaced fake RTMPS targets with local test files; no external broadcast occurred. |
+| Live media pipeline | Authenticated WebSocket camera upload passed through real FFmpeg and two independent local output writers. Separate 1920 × 1080 and 1080 × 1920 runs each produced two H.264 outputs including AAC audio and a decoded-pixel check of the selected match's burned score. Only an explicit test wrapper replaced fake RTMPS targets with local test files; no external broadcast occurred. |
 | Native 720p WebM | Real Android-style VP8/Opus input passed through the live-only encoder to 1280 × 720 H.264 with AAC audio. Forged/unknown capture-profile claims are rejected before a stream starts. |
 | Native live graphics | Original camera/audio and transparent PNG graphics entered one encoder. Team popup, batting and bowling graphics each covered 60 frames at 30 fps, verified in encoded output. Source video continued behind them. AAC final-packet padding may hold the final camera frame for one extra output tick; event coverage was checked separately. |
 | Removed replay feature | No rolling video/PCM history class or clip/export methods. Obsolete authenticated replay routes return 404. No production test transport or recording fallback. |
@@ -65,3 +65,16 @@ This preview uses a private encrypted file backend and synthetic credentials. Se
 Three additional tests verify: Supabase-style session pooler URL/CA configuration with TLS and hostname verification preserved; an atomic migration from a legacy public table retaining the exact ciphertext/revision; denial of schema/table privileges to anon, authenticated and service_role; RLS returning no rows if a non-owner API role is accidentally given read grants; and conflict refusal retaining both old/new rows. The PostgreSQL tests run against local PGlite, with Supabase-like roles/grants created in the test.
 
 No real Supabase account, database, remote TLS session, deployed schema or hosted broadcast was exercised. Production rollout still requires the user's private project settings and a container redeploy. Static UI copy/version was updated; no additional cloud-browser run was needed for this database-focused change.
+
+## Additional 1.8 account and mobile checks
+
+- Real scrypt hashing, independent random salts, encrypted reopen/restart, generic email/password denial, persistent backoff, password change, master-authorized recovery, device revocation, oldest-device replacement and stale credential-proof rejection passed. HTTP tests create distinct device cookies and restore the same saved platform profile with email/password and no master token. A pre-change WebSocket ticket is rejected after password rotation. Temporary platform grants are promoted during first authorized account creation. Browser form tests verify that ordinary sign-in never reads a relay token and that credentials clear after failures/success.
+- An isolated cloud browser created a fixture MK97 account through the actual account API, saved a nonfunctional destination, signed out, signed in with email/password, restored the destination, and automatically recovered the remembered session after a page reload and server restart. No real account password or external identity provider was used.
+- Native camera tests cover portrait-first requests, landscape-only fallback, larger sensor modes, explicit-resolution validation, Auto fallback, cleanup of rejected low-resolution streams, permission denial and bounded dimensions. Camera enumeration failure no longer discards a working camera. Fullscreen no longer locks landscape.
+- Real authenticated WebSocket/FFmpeg runs accept both 1920 × 1080 and 1080 × 1920 source/outputs, with selected-match graphics burned into both platform writers and AAC preserved. Another real encoder test retains a full portrait source in a landscape Fit frame, proving padding rather than stretching. Decoded-pixel tests verify the score reaches the bottom.
+- Instagram conversion tests cover a landscape program and a 480 × 854 portrait source: each encodes 720 × 1280 successfully and retains a bottom marker at the output's bottom. This catches rounding overflow and score placement during portrait conversion; no Instagram service was contacted.
+- Browser synthetic camera capture (canvas MediaStream → actual MediaRecorder → actual WebSocket/FFmpeg → local output sink) reached SENDING in portrait 390 × 844 and compact landscape 844 × 390. Stop returned to standby. Geometry checks show the portrait Stop button entirely within y=784.5–827.5 of its 844px viewport, and the compact landscape button within y=345–379 of its 390px viewport. The score frame shares the camera program rectangle and its bottom edge. A ResizeObserver scales the program independently of control sizes.
+
+The QA checkout is separate, labelled synthetic, blocks provider fetches and replaces outgoing RTMPS addresses with a local sink. Its HTTP-only synthetic camera adapter and development cookies are not shipped. Actual phone permissions, lens/native zoom, battery endurance, orientation metadata quirks, network interruptions, remote Supabase TLS, real Google consent and external platform publication are not established by these tests. The new source remains undeployed until the user updates GitHub/Render.
+
+Final layout follow-up: feedback is positioned below the toolbar using the measured viewfinder top. Browser geometry placed Settings at y=14–48 and a visible framing message at y=144–216 on the 390 × 844 layout; Settings opened while that message remained present. The message body ignores pointer input and its separate dismissal button remains usable. Account HTTP tests also reject null/array/string request bodies with a safe validation error.

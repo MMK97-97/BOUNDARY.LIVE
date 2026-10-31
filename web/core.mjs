@@ -1,7 +1,7 @@
 import { matchReference } from './cricclubs-reference.mjs';
 export const PROFILES = Object.freeze({ balanced: { bitrate: 8_000_000, fps: 30 }, detail: { bitrate: 14_000_000, fps: 30 } });
-export const SIZES = { '1080': { width: 1920, height: 1080 }, '720': { width: 1280, height: 720 }, '480': { width: 854, height: 480 } };
-export const captureReady = (s, resolution = '1080') => { const wanted = SIZES[resolution] || SIZES['480']; return Number(s?.width) >= wanted.width && Number(s?.height) >= wanted.height && Number(s?.width) >= Number(s?.height); };
+import { captureReady } from './capture.mjs';
+export { SIZES, captureReady } from './capture.mjs';
 export function parseMatch(input, savedClub, savedLeague) { return matchReference(input, savedClub, savedLeague); }
 export function relayOrigin(value) {
   const u = new URL(value);
@@ -32,7 +32,7 @@ export function preflight({ connected, encoderReady, camera, destinations, overl
   if (!connected) return 'Connect your cloud studio first.';
   if (!encoderReady) return 'The relay needs FFmpeg and a font. Check its setup.';
   if (!camera) return 'Open the camera to continue.';
-  if (!captureReady(camera, resolution)) return `${resolution === 'auto' ? 'Landscape capture' : resolution + 'p landscape'} is required. Rotate the phone and reopen the camera.`;
+  if (!captureReady(camera, resolution)) return `${resolution === 'auto' ? 'At least 480p native capture' : resolution + 'p native capture'} is required. Choose Auto or a supported camera resolution.`;
   if (!destinations.length) return 'Select at least one configured destination.';
   if (overlay && !score) return 'Load a scorecard, or turn off the score overlay.';
   return null;

@@ -1,4 +1,4 @@
-/* MK97 1.6 — one camera, portrait and landscape control surfaces. */
+/* MK97 1.8 — one camera, portrait and landscape control surfaces. */
 .studio{display:grid;grid-template-columns:112px minmax(0,1fr);grid-template-rows:106px minmax(0,1fr)76px;gap:16px;padding:24px;height:100dvh;min-height:620px;overflow:auto;background:radial-gradient(ellipse at 55% 70%,#06302c40,transparent 65%),#030e17}
 .stage-header{position:relative;inset:auto;grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:20px;min-width:0;pointer-events:auto}
 .stage-header:before{display:none}.stage-header>.icon-button,.top-actions>.icon-button{width:52px;height:52px;min-width:52px;min-height:52px;border:1px solid #3d5061;border-radius:50%;background:linear-gradient(140deg,#15233170,#07101bc0);padding:12px}
@@ -31,3 +31,78 @@
 .device-code{display:block;padding:16px 8px;text-align:center;border:1px solid #37648a;border-radius:10px;font:600 18px monospace;letter-spacing:1px;overflow-wrap:anywhere;margin:12px 0}.remembered-device{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #293d50;padding:12px 0;font-size:12px}.remembered-device small{display:block;color:#a1bad0;font-size:10px;line-height:1.7}.remembered-device button{flex-shrink:0;font-size:11px}.device-code-panel{margin:14px 0}#savedDevicePanel h3{margin-top:22px}#linkDeviceDetails{margin:18px 0}#rememberHelp,#savedConnectionState{overflow-wrap:anywhere}
 
 .encryption-key{font-size:.85rem;word-break:break-all;letter-spacing:.05em;user-select:all}
+
+.studio-account{margin:18px 0 22px}.account-brand{display:flex;align-items:center;gap:14px;margin-bottom:14px}.account-brand img{width:58px;height:58px;object-fit:contain}.account-brand h3{margin:6px 0 0}.account-brand .eyebrow{font-size:.62rem;letter-spacing:.16em}.account-identity{color:#7df5bc;overflow-wrap:anywhere}.studio-account form{display:grid;gap:0}.studio-account form button{margin-top:16px}.studio-account details{margin-top:18px}.studio-account .helper{overflow-wrap:anywhere}
+
+/* The video and graphics share one program frame in every screen orientation. */
+.studio{min-height:0;overflow:hidden;padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
+.program-surface{position:absolute;left:50%;bottom:0;transform:translateX(-50%);overflow:hidden;background:#000;pointer-events:none}
+.program-surface video{position:absolute;inset:0;object-fit:contain}
+.studio.fit-fill .program-surface video{object-fit:cover}
+.program-surface .score-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.score-graphic,.program-surface .program-graphic{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+/* Retain the readable score text for assistive technology; SVG supplies its visual layout. */
+.program-surface .score-overlay>div{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap}
+.program-brand{position:absolute;top:calc(var(--program-unit,1px)*35);right:2.6%;width:5.73%;height:calc(var(--program-unit,1px)*104);object-fit:contain;pointer-events:none}
+.studio:not(.camera-open) .program-surface{visibility:hidden}
+.graphic-active .program-brand{visibility:hidden}
+.camera-open .monitor-meta{top:8px;bottom:auto;left:8px;right:65px;font-size:9px;z-index:6;flex-wrap:nowrap}
+.camera-open .monitor-meta #cameraSpec{background:#001018d9;padding:5px 7px;border-radius:6px}
+.camera-open .zoom-tools{top:10px;right:10px;transform:none;gap:8px;z-index:7}
+.camera-open .fit-button{position:static}
+@media(max-width:1100px) and (orientation:landscape){.studio{min-height:0;padding:16px max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}}
+@media(orientation:portrait){
+ .studio{min-height:0;grid-template-rows:116px minmax(0,1fr)64px 56px;padding:10px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));gap:8px}
+ .stage-header{grid-template-rows:64px 38px;gap:8px}
+ .viewfinder{min-height:0}
+ .standby-copy{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:14px 46px;height:100%;width:100%}
+ .standby-copy h1{margin:14px -24px;font-size:clamp(26px,7.5vw,42px)}
+ .standby-copy p{margin:0 -22px 14px;font-size:11px}
+ .standby-copy>div{width:100%;gap:8px}
+ .standby-copy button{min-height:40px}
+ .side-actions{height:64px;padding:4px;gap:8px}
+ .side-actions button{min-height:50px;gap:3px;font-size:10px}
+ .side-actions button>span{width:26px;height:26px}
+ .side-actions svg{width:23px;height:23px}
+ .player-controls{height:56px;min-width:0;padding:6px 8px;gap:8px}
+ .camera-open .monitor-meta{right:8px;top:8px;gap:4px;flex-wrap:wrap}
+ .camera-open .monitor-meta #cameraSpec{font-size:8px;margin-left:0}
+ .camera-open .zoom-tools{top:64px}
+}
+@media(max-height:720px) and (orientation:portrait){
+ .studio{grid-template-rows:108px minmax(0,1fr)56px 52px;gap:6px}
+ .standby-logo{width:48px;height:42px;margin-bottom:0}
+ .standby-copy .eyebrow{display:none}
+ .standby-copy h1{font-size:26px;margin:10px -28px}
+ .standby-copy p{font-size:10px;margin-bottom:10px}
+ .standby-copy{padding:8px 46px}
+ .side-actions{height:56px}.player-controls{height:52px}
+ .standby-copy button{min-height:36px;font-size:11px}
+ .standby-copy>div{gap:6px}
+}
+@media(max-height:560px) and (orientation:landscape){
+ .studio{min-height:0;grid-template-rows:60px minmax(0,1fr)50px;padding:8px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));gap:6px}
+ .stage-header .match-heading{max-width:none;flex:1}.stage-header{gap:8px}.resolution-options{min-width:180px;max-width:280px;flex:1}
+ .resolution-options button{min-width:0;padding:0 7px}.top-actions{gap:5px}
+ .player-controls{height:50px}.zoom-rail{height:122px}.zoom-rail input{height:36px}
+ .camera-open .zoom-rail{height:122px}.camera-open .zoom-rail input{height:36px}
+ .camera-open .monitor-meta{right:58px}.camera-open .monitor-meta #cameraSpec{font-size:8px}
+ .standby-copy{padding:8px 58px}.standby-copy h1{font-size:25px;margin:6px 0}.standby-copy p{font-size:10px;margin:0 0 8px}
+ .standby-logo{width:40px;height:35px}.standby-copy button{min-height:34px}
+}
+@media(max-height:390px) and (orientation:landscape){
+ .studio{grid-template-columns:50px minmax(0,1fr);grid-template-rows:52px minmax(0,1fr)46px;gap:5px;padding-top:5px;padding-bottom:max(5px,env(safe-area-inset-bottom))}
+ .stage-header .match-heading h2{font-size:13px}.match-heading p{font-size:9px}.status-tag{font-size:9px;padding:4px 6px}.live-line{margin-bottom:4px}
+ .stage-header>.icon-button,.top-actions>.icon-button{width:30px;height:30px;min-width:30px;min-height:30px;padding:6px}
+ .resolution-options{max-width:240px;min-width:165px}.resolution-options button{min-height:28px;font-size:10px}
+ .side-actions button>span{width:27px;height:27px}.side-actions svg{width:18px;height:18px}.side-actions button{font-size:8px}
+ .player-controls{height:46px;padding:5px 9px}.red-pill{min-height:34px}
+ .standby-copy .standby-logo,.standby-copy .eyebrow{display:none}.standby-copy h1{font-size:23px;margin:0 0 5px}.standby-copy p{margin-bottom:6px}
+ .camera-open .zoom-rail{height:94px}.camera-open .zoom-rail input{display:none}.camera-open .zoom-rail button{min-height:27px}
+ .monitor-source{font-size:8px;gap:4px;padding:2px 5px}.camera-open .monitor-meta #cameraSpec{display:none}
+}
+@media(max-height:550px) and (orientation:portrait){.standby-copy .standby-logo,.standby-copy h1,.standby-copy p{display:none}.standby-copy>div{margin:auto 0}.camera-open .zoom-rail{height:110px}.camera-open .zoom-rail input{height:24px}.camera-open .zoom-tools{top:58px}}
+
+/* Feedback stays below the toolbar; it cannot cover Settings or Start/Stop. */
+body>.notice{top:var(--studio-notice-top,140px);width:min(560px,92vw);font-size:11px;padding:9px 36px 9px 12px;pointer-events:none}
+body>.dismiss-notice{top:var(--studio-notice-top,140px);left:calc(50% + min(280px,46vw) - 32px);min-width:28px;min-height:34px}

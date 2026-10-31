@@ -1,4 +1,8 @@
-# Upgrade to MK97 1.7.1
+# Upgrade to MK97 1.8.0
+
+Follow [ACCOUNT_SIGNIN.md](ACCOUNT_SIGNIN.md) for the exact GitHub/Render upload, first account creation and subsequent sign-in steps. This upgrade adds email/password access to the existing encrypted studio without changing its database or encryption key.
+
+Native portrait capture is accepted at the selected resolution. The monitor and encoder share bottom-aligned landscape/portrait score drawings, and short screens keep their control bar in view. Fit/Fill now applies to the actual outgoing program and is chosen before streaming.
 
 Stop the active camera upload and end platform events before updating. Back up your own changes, then replace the complete source, including `web/`, `relay/`, tests, package files, Docker/hosting files and hidden workflows.
 

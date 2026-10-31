@@ -1,6 +1,8 @@
 # MK97 — phone-first live cricket streaming
 
-**Version 1.7.1: Supabase-ready encrypted saved connections and remembered devices.** Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
+**Version 1.8.0: account sign-in across devices, native portrait capture, and bottom-aligned responsive score graphics.**
+
+Start with **[the account and mobile upgrade guide](docs/ACCOUNT_SIGNIN.md)**. Create your private MK97 account once, then use its email/password on any device to restore the same saved studio. Existing Supabase/Render saved-storage settings can stay unchanged. Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
 
 **YouTube update:** Render callback detection, secure callback completion without a popup opener, Start now / scheduled setup, automatic destination selection, safer retry/transition handling and a visible callback to register. Follow [YOUTUBE.md](docs/YOUTUBE.md) for the required Google/Render configuration.
 
@@ -15,7 +17,7 @@ Start with **[the complete free-hosting steps](docs/FREE_HOSTING.md)** and **[ph
 - Responsive studio with rear-camera capture, Auto/1080p/720p/480p selection, exposed native camera zoom, Fit/Fill, full screen, microphone mute, framing guide and battery screen.
 - Guided setup with cloud connection, destinations, CricClubs match and camera readiness. START opens setup when something is missing.
 - YouTube Google sign-in, event details, automatic ingestion-key setup, Preview, Go live and End after one-time Google configuration. Manual RTMPS keys for YouTube, Facebook and Instagram can be entered securely inside MK97; no `.env` edit is required for in-app keys. Remembered devices share an encrypted saved studio and reconnect automatically for 30 days; see [SAVED_STUDIO.md](docs/SAVED_STUDIO.md).
-- One camera/audio upload, one live landscape encode, independent landscape writers and a separate Instagram portrait conversion. The original camera/audio go directly through FFmpeg: no JPEG video intermediate or rolling footage buffer.
+- One camera/audio upload, one live encode following the native camera orientation, independent platform writers and an Instagram portrait conversion. The original camera/audio go directly through FFmpeg: no JPEG video intermediate or rolling footage buffer.
 - CricClubs source checks every five seconds by default, with an authenticated live link pushing received changes to the phone and on-air renderer. Match IDs are dynamic within their Club ID; no example is used as a fallback.
 - Background full-scorecard HTML parsing, including supported innings tables, extras, dismissals, fall of wickets and source commentary, when robots rules/access and identity/totals reconciliation permit it. Verification pages remain explicit failures.
 - Optional two-second team/player milestones and end-of-over batting/bowling graphics over the continuing live camera. Complete cards are shown only when source data supports them.

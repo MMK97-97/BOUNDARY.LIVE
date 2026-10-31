@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-export function installSavedStudio({ state, api, notice, updateControls, connectIdentity, clearConnection, refreshInfo }) {
+export function installSavedStudio({ state, api, notice, updateControls, connectIdentity, clearConnection, refreshInfo, onConfig=()=>{} }) {
   let config = null, eligible = false, restoring = null, busy = false, codeTimer = null, keyTimer = null, listFingerprint = '', restoreError = '';
   let preferencesSession = null, preferencesFingerprint = '', preferencesTimer = null, preferencesRetryAfter = 0;
   function preferences() { return { destinations:['youtube','facebook','instagram'].filter(id=>$('dest-'+id).checked), resolution:state.captureResolution,
@@ -107,9 +107,10 @@ export function installSavedStudio({ state, api, notice, updateControls, connect
           'Your hosted studio is here. Connect with its token; enable saved studio storage once to remember devices.';
       }
       if (!eligible) $('rememberDevice').checked = false;
+      await onConfig(config,eligible);
       update();
       if (!state.session && eligible) await restore();
-      $('cloudDiscovery').textContent = eligible ? state.session ? 'Your remembered device connected automatically.' : 'Use your relay token once, or link this device with a code from another connected device.' : $('cloudDiscovery').textContent;
+      $('cloudDiscovery').textContent = eligible ? state.session ? 'Your remembered device connected automatically.' : 'Create or sign in to your MK97 account to connect this device.' : $('cloudDiscovery').textContent;
     } catch { await staticHost(); update(); }
   }
   $('rememberDevice').addEventListener('change', update);

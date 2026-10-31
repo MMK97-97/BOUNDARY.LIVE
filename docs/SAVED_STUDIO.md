@@ -1,15 +1,17 @@
-# Save the studio once — MK97 1.7
+# Save the studio once — MK97 1.8
 
-Your cloud connection, platform keys, YouTube authorization, YouTube setup progress and selected match can now survive a page reload or server restart. Remembered browsers reconnect automatically for 30 days. Another phone/computer links once with a short-lived code and then uses the same saved studio. A new, unlinked device cannot open your private studio without authorization.
+Your cloud connection, platform keys, YouTube authorization, YouTube setup progress and selected match can now survive a page reload or server restart. Remembered browsers reconnect automatically for 30 days. Another phone/computer signs in with your MK97 account email/password and uses the same saved studio. The older short-lived pairing code remains an optional alternative. A new, unlinked device cannot open your private studio without authorization.
 
 MK97 encrypts the saved profile with AES-256-GCM before writing it to PostgreSQL. The browser stores a protected device cookie, not the relay token or platform keys. One private studio and up to 12 fully trusted devices are supported. All linked devices have operator control. Only one camera upload runs at a time.
 
+For account creation, sign-in and password recovery, follow **[ACCOUNT_SIGNIN.md](ACCOUNT_SIGNIN.md)**. The studio token is needed only to authorize initial setup or recovery; it is not the account password.
+
 ## 1. Update your existing GitHub/Render service
 
-1. Download and extract `MK97_v1.7.1_Supabase_Source.zip`.
+1. Download and extract `MK97_v1.8_Account_Mobile_Fixes_Source.zip`.
 2. Open your existing repository, `MMK97-97/BOUNDARY.LIVE`. Upload the **contents inside `MK97`**, including `web`, `relay`, `scripts`, package files, `Dockerfile`, `render.yaml`, documentation and hidden `.github/workflows` files. Do not upload the ZIP as the application. Commit the update.
 3. In the [Render dashboard](https://dashboard.render.com), open the existing **Web Service** for `boundary-live`. Open **Manual Deploy → Deploy latest commit**. Let the Docker build finish. Keep your existing `RELAY_TOKEN` and Google settings.
-4. Open [your hosted studio](https://boundary-live.onrender.com/) on the phone. The website and cloud-reader versions should both show **1.7.1**. If your host is different, use its actual HTTPS address and update the public `studioUrl` in `web/studio-config.json`. That file contains the address only, never a token.
+4. Open [your hosted studio](https://boundary-live.onrender.com/) on the phone. The website and cloud-reader versions should both show **1.8.0**. If your host is different, use its actual HTTPS address and update the public `studioUrl` in `web/studio-config.json`. That file contains the address only, never a token.
 
 Updating `render.yaml` does not add environment variables to an independently created existing service. Complete the next two sections once. No GitHub access token is needed in MK97.
 

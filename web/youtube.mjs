@@ -1,3 +1,4 @@
+import { captureProfile } from './capture.mjs';
 const $ = id => document.getElementById(id);
 const localDate = date => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 export function installYouTube({ state, api, notice, refreshInfo, updateControls = () => {}, closePanel = () => {} }) {
@@ -55,7 +56,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCreate').disabled = Boolean(disabled || !connected || data?.authorizing || data?.setup?.stage === 'ready' || data?.setup?.uncertain);
     $('ytCreate').textContent = busy ? 'Working…' : data?.setup?.stage === 'ready' ? 'Setup ready' : data?.setup ? 'Retry setup' : 'Create YouTube setup';
     if (!titleTouched && !data?.setup && !submitted && state.score) $('ytTitle').value = `${state.score.batting} vs ${state.score.bowling} · ${state.score.series || 'Live cricket'}`.slice(0, 100);
-    $('ytCapture').textContent = `Capture: ${state.camera?.height ? state.camera.height + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · 30 fps program. YouTube detects the incoming format.`;
+    $('ytCapture').textContent = `Capture: ${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · 30 fps program. YouTube detects the incoming format.`;
     $('ytEvent').hidden = !b;
     $('ytOperation').textContent = data?.setup && data.setup.stage !== 'ready' ? `Setup stage: ${data.setup.stage}${data.setup.uncertain ? ' · result unconfirmed; review Studio before New setup' : ''}` : '';
     $('ytError').textContent = data?.error || '';
