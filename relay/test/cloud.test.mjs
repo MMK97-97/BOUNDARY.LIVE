@@ -61,6 +61,8 @@ test('cloud configuration generator writes private secrets without printing or o
     const file=path.join(dir,'deploy/cloud/.env'), content=fs.readFileSync(file,'utf8');
     const token=content.match(/RELAY_TOKEN=([a-f0-9]{64})/)[1];assert.ok(content.startsWith('PUBLIC_HOST=example.duckdns.org\n'));
     assert.equal((first.stdout+first.stderr).includes(token),false);
+    const encryptionKey=content.match(/STUDIO_ENCRYPTION_KEY=([a-f0-9]{64})/)[1];assert.notEqual(encryptionKey,token);
+    assert.equal((first.stdout+first.stderr).includes(encryptionKey),false);
     if(process.platform!=='win32')assert.equal(fs.statSync(file).mode&0o777,0o600);
     const again=spawnSync(process.execPath,[script,'different.example.org'],{encoding:'utf8'});assert.equal(again.status,1);
     assert.equal(fs.readFileSync(file,'utf8'),content);

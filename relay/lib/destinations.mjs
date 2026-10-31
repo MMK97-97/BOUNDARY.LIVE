@@ -18,15 +18,21 @@ export class SessionDestinations {
     const destination = destinationConfig({ [`${prefix}_SERVER`]: value.server, [`${prefix}_KEY`]: value.key })[value.id];
     if (!destination.configured) throw new Error(destination.error || 'Invalid RTMPS destination.');
     if (!this.owners.has(owner) && this.owners.size >= 8) throw Object.assign(new Error('Destination session limit reached.'), { status: 429 });
-    const entry = this.owners.get(owner) || { origin, destinations: {} };
+    const entry = this.owners.get(owner) || { origin, destinations: {}, secrets: {} };
+    entry.secrets ||= {}; entry.secrets[value.id] = { server: value.server.trim(), key: value.key.trim() };
     entry.destinations[value.id] = destination; this.owners.set(owner, entry);
     return { ok: true, id: value.id };
   }
   clear(owner, id) {
     if (!DESTINATIONS.includes(id)) throw new Error('Unknown destination.');
     const entry = this.owners.get(owner);
-    if (entry) { delete entry.destinations[id]; if (!Object.keys(entry.destinations).length) this.owners.delete(owner); }
+    if (entry) { delete entry.destinations[id]; if (entry.secrets) delete entry.secrets[id]; if (!Object.keys(entry.destinations).length) this.owners.delete(owner); }
     return { ok: true, id };
   }
   forget(owner) { this.owners.delete(owner); }
+  exportPrivate(owner) { return structuredClone(this.owners.get(owner)?.secrets || {}); }
+  restorePrivate(owner, origin, values) {
+    if (!values || typeof values !== 'object' || Array.isArray(values)) return;
+    for (const id of DESTINATIONS) if (values[id]) this.set(owner, origin, { id, server: values[id].server, key: values[id].key });
+  }
 }

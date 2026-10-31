@@ -15,6 +15,9 @@ import { LiveProgram } from './lib/program.mjs';
 import { YouTubeService } from './lib/youtube.mjs';
 import { cloudConfig } from './lib/cloud.mjs';
 import { SessionDestinations } from './lib/destinations.mjs';
+import { configuredVault, storageError } from './lib/vault.mjs';
+import { TrustedDevices, STUDIO_OWNER } from './lib/trusted-devices.mjs';
+import { validatePreferences } from './lib/preferences.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -27,6 +30,12 @@ if (token.length < 32 || token.includes('REPLACE_WITH')) {
 const { origins, publicOrigin } = cloudConfig(process.env);
 const auth = value => constantTimeEquals(value, token);
 const sessions = new SessionStore();
+let saved = { vault: null, configured: false, backend: null, message: 'Saved studio storage is not configured. See docs/SAVED_STUDIO.md.' };
+try { saved = await configuredVault(process.env); } catch (e) { saved.message = e.message; }
+const devices = saved.vault ? new TrustedDevices({ vault: saved.vault, secure: Boolean(publicOrigin) }) : null;
+const ownerOf = identity => identity.owner || identity.id;
+const isSavedOwner = owner => Boolean(devices && owner === STUDIO_OWNER);
+const validOwner = (owner, origin) => isSavedOwner(owner) ? Boolean(saved.vault.state && origins.has(origin)) : Boolean(sessions.get(owner, origin));
 // Same-origin browser GETs can omit Origin. The explicit client-origin header
 // keeps their bearer session bound to the same allowed origin as the POST that
 // created it. A browser-supplied Origin always takes precedence and must agree.
@@ -35,8 +44,13 @@ const allowedOrigin = req => (!req.headers.origin || origins.has(req.headers.ori
   (!req.headers['x-mk97-origin'] || origins.has(req.headers['x-mk97-origin'])) &&
   (!req.headers.origin || !req.headers['x-mk97-origin'] || req.headers.origin === req.headers['x-mk97-origin']);
 const destinations = destinationConfig(process.env);
-const youtube = new YouTubeService({ env: process.env, validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
-const manualDestinations = new SessionDestinations({ validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
+const youtube = new YouTubeService({ env: process.env, validSession: validOwner,
+  validFlow: (id, origin) => { const session = sessions.get(id, origin); return Boolean(session && (!session.deviceId || devices?.valid(session.deviceId))); },
+  saveConnection: async (owner, value, guard) => { if (isSavedOwner(owner)) await saved.vault.mutate(state => {
+    if (guard && !guard()) throw Object.assign(new Error('Device sign-in ended before the connection could be saved.'), {status:401});
+    state.profile.youtube = value;
+  }); } });
+const manualDestinations = new SessionDestinations({ validSession: validOwner });
 const destinationFor = owner => {
   const configured = { ...destinations, ...manualDestinations.get(owner) };
   return { ...configured, youtube: youtube.destination(owner) || configured.youtube };
@@ -48,8 +62,47 @@ const scores = new ScoreService({ template: process.env.SCORE_URL_TEMPLATE, head
   scorecardScraper: process.env.CRICCLUBS_SCORECARD_ENABLED === 'false' ? null : new CricClubsScraper(),
   scorecardClubId: process.env.CRICCLUBS_CLUB_ID || '300', scorecardLeague: process.env.CRICCLUBS_LEAGUE || 'FWCWL' });
 let active = null;
-const scoreStream = new ScoreStream({ snapshot: () => scores.snapshot(), validSession: (id, origin) => Boolean(sessions.get(id, origin)) });
+const scoreStream = new ScoreStream({ snapshot: () => scores.snapshot(), validSession: (id, origin) => {
+  const session = sessions.get(id, origin); return Boolean(session && (!session.deviceId || devices?.valid(session.deviceId)));
+} });
 scores.subscribe(snapshot => { scoreStream.publish(snapshot); updateOverlay(); });
+let sharedLoaded = false, sharedLoading = null, savedWarning = null;
+async function hydrateSavedStudio(origin) {
+  if (sharedLoaded) return;
+  if (!sharedLoading) sharedLoading = (async () => {
+    await saved.vault.ready(); const profile = saved.vault.snapshot().profile;
+    try { manualDestinations.restorePrivate(STUDIO_OWNER, origin, profile.destinations); }
+    catch { savedWarning = 'A saved destination needs to be entered again. Its stored configuration was not accepted.'; }
+    try {
+      if (youtube.restorePrivate(STUDIO_OWNER, profile.youtube)) { try { await youtube.refresh(STUDIO_OWNER, true); } catch {} }
+      else if (profile.youtube) savedWarning = 'The saved YouTube connection needs reconnecting because its Google client or website origin changed.';
+    } catch { savedWarning = 'The saved YouTube setup needs to be reconnected. Review its existing event in YouTube Studio.'; }
+    if (!scores.ids && profile.preferences?.match) { const match = profile.preferences.match; try { scores.select(match.clubId, match.matchId, match.league); } catch {} }
+    sharedLoaded = true;
+  })().finally(() => { sharedLoading = null; });
+  await sharedLoading;
+}
+function savedOriginAllowed(req) {
+  const origin = originOf(req);
+  return publicOrigin ? origin === publicOrigin : ['127.0.0.1', 'localhost'].includes(host) &&
+    [`http://localhost:${server.address()?.port}`, `http://127.0.0.1:${server.address()?.port}`].includes(origin);
+}
+async function requireSaved(req) {
+  if (!devices) throw storageError(saved.message);
+  if (!savedOriginAllowed(req)) throw Object.assign(new Error('Open the hosted MK97 app directly to use remembered devices. Its cookies stay on that website.'), { status: 403 });
+  await saved.vault.ready();
+}
+async function savePreferences(owner, values) {
+  if (!isSavedOwner(owner)) return;
+  const next = validatePreferences(values);
+  await saved.vault.mutate(state => { state.profile.preferences = { ...state.profile.preferences, ...next }; });
+}
+function revokeDeviceSessions(id) {
+  for (const sessionId of sessions.revokeDevice(id)) {
+    scoreStream.closeSession(sessionId); youtube.forgetBinding(sessionId);
+    if (active?.sessionId === sessionId) finish(active, false);
+  }
+}
 const attempts = new Map();
 const failures = new Map();
 function failedAuth(req) {
@@ -111,51 +164,95 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
-    product: 'mk97', version: '1.6.2', sameOrigin: Boolean(publicOrigin), mode: publicOrigin ? 'cloud' : 'self-hosted'
+    product: 'mk97', version: '1.7.1', sameOrigin: Boolean(publicOrigin), studioUrl: publicOrigin, mode: publicOrigin ? 'cloud' : 'self-hosted',
+    savedStudio: { configured: saved.configured, backend: saved.backend, message: saved.message, rememberDays: 30 }
   });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
     const bearer = req.headers.authorization?.replace(/^Bearer /, '');
+    if (req.method === 'POST' && ['/api/device/restore', '/api/device/link'].includes(url.pathname)) {
+      try {
+        await requireSaved(req);
+        const key = req.socket.remoteAddress || 'local', bucket = failures.get(key);
+        if (bucket && Date.now() - bucket.start < 60000 && bucket.count > 8) return json(res, 429, { error: 'Device sign-in temporarily limited. Wait one minute.' });
+        const value = await body(req);
+        const device = url.pathname.endsWith('/link') ? await devices.link(value.code, value.deviceName) : await devices.authenticate(req.headers.cookie);
+        if (!device) { res.setHeader('Set-Cookie', devices.clearCookie()); return json(res, 200, { remembered: false }); }
+        const session = sessions.create(originOf(req), device); await hydrateSavedStudio(originOf(req));
+        if (device.cookie) res.setHeader('Set-Cookie', device.cookie);
+        return json(res, 200, { sessionToken: session.id, expiresAt: session.expires, remembered: true, deviceExpiresAt: device.expires });
+      } catch (e) { if (e.status === 401) failedAuth(req); return json(res, e.status || 400, { error: e.message }); }
+    }
     if (req.method === 'POST' && url.pathname === '/api/session') {
       const key = req.socket.remoteAddress || 'local', bucket = failures.get(key);
       if (bucket && Date.now() - bucket.start < 60000 && bucket.count > 8) return json(res, 429, { error: 'Authentication temporarily limited. Wait one minute.' });
       if (!auth(bearer)) return json(res, failedAuth(req) ? 429 : 401, { error: 'Relay token is incorrect.' });
       try {
-        const session = sessions.create(originOf(req));
-        return json(res, 201, { sessionToken: session.id, expiresAt: session.expires });
-      } catch (e) { return json(res, 429, { error: e.message }); }
+        const value = await body(req);
+        let device = null;
+        if (value.remember === true) { await requireSaved(req); device = await devices.remember(value.deviceName, req.headers.cookie); }
+        const session = sessions.create(originOf(req), device || {});
+        if (device) { await hydrateSavedStudio(originOf(req)); if (device.cookie) res.setHeader('Set-Cookie', device.cookie); }
+        return json(res, 201, { sessionToken: session.id, expiresAt: session.expires, remembered: Boolean(device), ...(device ? { deviceExpiresAt: device.expires } : {}) });
+      } catch (e) { return json(res, e.status || 400, { error: e.message }); }
     }
     const authenticated = sessions.get(bearer, originOf(req));
-    if (!authenticated) return json(res, 401, { error: 'Session expired or invalid. Reconnect the relay.' });
+    if (!authenticated || authenticated.deviceId && !devices?.valid(authenticated.deviceId)) return json(res, 401, { code: 'SESSION_REQUIRED', error: 'Session expired or device was signed out. Reconnect the studio.' });
     try {
+      const owner = ownerOf(authenticated);
+      if (req.method === 'GET' && url.pathname === '/api/devices') {
+        if (!isSavedOwner(owner)) return json(res, 200, { remembered: false, devices: [] });
+        return json(res, 200, devices.status(authenticated.deviceId));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/devices/pair') {
+        await requireSaved(req); if (!isSavedOwner(owner)) throw Object.assign(new Error('Connect with Remember this device enabled first.'), { status: 409 });
+        return json(res, 201, await devices.pairing(authenticated.deviceId));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/devices/revoke') {
+        await requireSaved(req); if (!isSavedOwner(owner)) throw Object.assign(new Error('A remembered device is required.'), { status: 403 });
+        const value = await body(req); await devices.remove(value.deviceId); revokeDeviceSessions(value.deviceId);
+        if (value.deviceId === authenticated.deviceId) res.setHeader('Set-Cookie', devices.clearCookie());
+        return json(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/preferences') {
+        if (!isSavedOwner(owner)) throw Object.assign(new Error('Connect a saved studio to sync preferences.'), { status: 409 });
+        await savePreferences(owner, await body(req)); return json(res, 200, { ok: true });
+      }
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.6.2', encoder, busy: Boolean(active), mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(authenticated.id),
-        destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(authenticated.id)[id].configured, error: destinationFor(authenticated.id)[id].error,
-          mode: id === 'youtube' && youtube.connections.has(authenticated.id) ? 'account' : manualDestinations.get(authenticated.id)[id] ? 'session' : 'manual',
+        name: 'MK97 relay', version: '1.7.1', encoder, busy: Boolean(active), ownUpload: active?.sessionId === authenticated.id, mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(owner),
+        savedStudio: { configured: saved.configured, remembered: isSavedOwner(owner), message: saved.message, warning: savedWarning,
+          ...(isSavedOwner(owner) ? { device: devices.status(authenticated.deviceId), preferences: saved.vault.snapshot().profile.preferences } : {}) },
+        destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(owner)[id].configured, error: destinationFor(owner)[id].error,
+          mode: id === 'youtube' && youtube.connections.has(owner) ? 'account' : manualDestinations.get(owner)[id] ? isSavedOwner(owner) ? 'saved' : 'session' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
         pollSeconds: scores.pollMs / 1000, scoreSource: process.env.SCORE_URL_TEMPLATE ? 'configured-feed' : 'cricclubs'
       });
       if (req.method === 'POST' && ['/api/destination', '/api/destination/clear'].includes(url.pathname)) {
-        if (active?.sessionId === authenticated.id) return json(res, 409, { error: 'Stop this camera upload before changing destinations.' });
+        if (active?.owner === owner) return json(res, 409, { error: 'Stop this studio’s camera upload before changing destinations.' });
         const value = await body(req, 8192);
-        if (value?.id === 'youtube' && youtube.destination(authenticated.id)) return json(res, 409, { error: 'Disconnect the YouTube account or cancel sign-in before changing a manual YouTube key.' });
-        const result = url.pathname.endsWith('/clear') ? manualDestinations.clear(authenticated.id, value?.id)
-          : manualDestinations.set(authenticated.id, originOf(req), value);
+        if (value?.id === 'youtube' && youtube.destination(owner)) return json(res, 409, { error: 'Disconnect the YouTube account or cancel sign-in before changing a manual YouTube key.' });
+        let result;
+        if (isSavedOwner(owner)) {
+          const candidate = new SessionDestinations({validSession:()=>true});
+          result = url.pathname.endsWith('/clear') ? candidate.clear(owner, value?.id) : candidate.set(owner, originOf(req), value);
+          const record = candidate.exportPrivate(owner)[value.id];
+          await saved.vault.mutate(state => { if(record) state.profile.destinations[value.id] = record; else delete state.profile.destinations[value.id]; });
+          manualDestinations.forget(owner); manualDestinations.restorePrivate(owner, originOf(req), saved.vault.snapshot().profile.destinations);
+        } else result = url.pathname.endsWith('/clear') ? manualDestinations.clear(owner, value?.id) : manualDestinations.set(owner, originOf(req), value);
         return json(res, 200, result);
       }
       if (url.pathname.startsWith('/api/youtube/')) {
-        const owner = authenticated.id;
-        const stopEditing = () => { if (active?.sessionId === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
+        const stopEditing = () => { if (active?.owner === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
         if (req.method === 'GET' && url.pathname === '/api/youtube/status') return json(res, 200, await youtube.refresh(owner, url.searchParams.get('refresh') === '1'));
-        if (req.method === 'POST' && url.pathname === '/api/youtube/auth/start') { stopEditing(); return json(res, 201, youtube.start(owner, originOf(req))); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/auth/start') { stopEditing(); return json(res, 201, youtube.start(owner, originOf(req), authenticated.id)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/cancel') { stopEditing(); return json(res, 200, youtube.cancelAuth(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/complete') { stopEditing(); return json(res, 200, await youtube.complete(owner, originOf(req), await body(req, 8192))); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/setup') { stopEditing(); return json(res, 201, await youtube.prepare(owner, await body(req, 16384))); }
-        if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); await youtube.refresh(owner, true); return json(res, 200, youtube.resetSetup(owner)); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); await youtube.refresh(owner, true); const result = youtube.resetSetup(owner); await youtube.persist(owner); return json(res, 200, result); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/disconnect') { stopEditing(); return json(res, 200, await youtube.disconnect(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/transition') {
           const value = await body(req), result = await youtube.transition(owner, value.state);
-          if (value.state === 'complete' && active?.sessionId === owner) {
+          if (value.state === 'complete' && active?.owner === owner) {
             const out = active.outputs.get('youtube');
             if (out) { out.failed = true; out.process.stdin.end(); const closeOutput = setTimeout(() => { if (out.process.exitCode === null) out.process.kill(); }, 2000); closeOutput.unref(); send(active.ws, { type: 'destination', id: 'youtube', state: 'ended', message: 'YouTube broadcast ended.' }); }
             if ([...active.outputs.values()].every(o => o.failed)) finish(active, true);
@@ -173,18 +270,20 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && url.pathname === '/api/graphics') return json(res, 200, active?.sessionId === authenticated.id && active.program ? active.program.snapshot() : { cards: null, current: null });
       if (req.method === 'POST' && url.pathname === '/api/ticket') return json(res, 201, { ticket: sessions.ticket(authenticated.id, originOf(req)) });
       if (req.method === 'POST' && url.pathname === '/api/logout') {
-        youtube.forget(authenticated.id);
-        manualDestinations.forget(authenticated.id);
+        if (authenticated.deviceId) { await devices.remove(authenticated.deviceId); res.setHeader('Set-Cookie', devices.clearCookie()); revokeDeviceSessions(authenticated.deviceId); }
+        else { youtube.forget(owner); manualDestinations.forget(owner); }
+        youtube.forgetBinding(authenticated.id);
         sessions.revoke(authenticated.id);
         scoreStream.closeSession(authenticated.id);
         if (active?.sessionId === authenticated.id) finish(active, false);
         return json(res, 200, { ok: true });
       }
       if (req.method === 'POST' && url.pathname === '/api/match') {
-        if (active && active.sessionId !== authenticated.id) return json(res, 409, { error: 'Another device owns the active stream.' });
+        if (active && active.owner !== owner) return json(res, 409, { error: 'Another studio owns the active stream.' });
         const data = await body(req);
         if (active && (String(data.clubId) !== scores.ids?.clubId || String(data.matchId) !== scores.ids?.matchId || data.league != null && data.league !== scores.league)) return json(res, 409, { error: 'Stop the active camera upload before changing matches or leagues.' });
         scores.select(data.clubId, data.matchId, data.league);
+        await savePreferences(owner, { match: { ...scores.ids, ...(scores.league ? {league:scores.league} : {}) } });
         const result = await scores.refresh(); updateOverlay();
         return json(res, result.score ? 200 : 502, result);
       }
@@ -238,7 +337,7 @@ function run(ws, message, identity) {
   if (!encoder.ready) throw new Error(encoder.error);
   if (!Array.isArray(message.destinations) || !message.destinations.length || message.destinations.length > 3) throw new Error('Select at least one destination.');
   const chosen = [...new Set(message.destinations)];
-  const resolved = destinationFor(identity.id);
+  const owner = ownerOf(identity), resolved = destinationFor(owner);
   if (chosen.some(id => !DESTINATIONS.includes(id) || !resolved[id].configured)) throw new Error('A selected destination has no valid live setup or stream key on the relay.');
   if (!/^video\/(webm|mp4)(;|$)/i.test(message.mimeType || '')) throw new Error('Unsupported browser recording container.');
   const width = Number(message.width), height = Number(message.height);
@@ -252,7 +351,7 @@ function run(ws, message, identity) {
   if (message.overlay !== false && !selected) throw new Error('Reload your selected Match ID before starting the score overlay.');
   if (message.overlay !== false && !scores.snapshot().score) throw new Error('Connect a valid score feed, or turn off the score overlay before streaming.');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-live-'));
-  const session = { ws, dir, match: selected, sessionId: identity.id, main: null, outputs: new Map(), ending: false, bytes: 0, windowBytes: 0, windowAt: Date.now(), lastInput: Date.now(), started: Date.now(), frames: 0, timer: null };
+  const session = { ws, dir, match: selected, sessionId: identity.id, owner, deviceId: identity.deviceId, main: null, outputs: new Map(), ending: false, bytes: 0, windowBytes: 0, windowAt: Date.now(), lastInput: Date.now(), started: Date.now(), frames: 0, timer: null };
   active = session;
   if (!updateOverlay()) {
     active = null; fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {});
@@ -318,7 +417,7 @@ function run(ws, message, identity) {
   });
   session.timer = setInterval(() => {
     if (Date.now() - session.lastInput > 15000) { send(ws, { type: 'error', message: 'No camera data for 15 seconds. Keep the page in the foreground and the phone unlocked.' }); finish(session, false); return; }
-    if (!sessions.sessions.has(session.sessionId) || Date.now() - session.started > 8 * 3600_000) { send(ws, { type: 'error', message: 'Session expired. Reconnect the relay.' }); finish(session, false); return; }
+    if (!sessions.sessions.has(session.sessionId) || session.deviceId && !devices?.valid(session.deviceId) || Date.now() - session.started > 8 * 3600_000) { send(ws, { type: 'error', message: 'Session expired. Reconnect the relay.' }); finish(session, false); return; }
     send(ws, { type: 'stats', bytes: session.bytes, frames: session.frames, elapsed: Math.floor((Date.now() - session.started) / 1000), graphics: session.program?.snapshot() });
   }, 2000);
   send(ws, { type: 'ready', bitrateKbps: bitrate, program: Boolean(session.program), message: 'Relay is ready for camera data.' });
@@ -359,7 +458,7 @@ wss.on('connection', (ws, req) => {
         if (isBinary || data.length > 4096) throw new Error('Authentication required.');
         const message = JSON.parse(data.toString());
         const identity = sessions.consume(message.ticket, originOf(req));
-        if (message.type !== 'start' || !identity) throw new Error('Streaming ticket expired or invalid. Reconnect and try again.');
+        if (message.type !== 'start' || !identity || identity.deviceId && !devices?.valid(identity.deviceId)) throw new Error('Streaming ticket expired or invalid. Reconnect and try again.');
         clearTimeout(timeout); authorized = true;
         session = run(ws, message, identity); return;
       }
@@ -418,6 +517,7 @@ function shutdown() {
   clearInterval(scoreTimer); clearInterval(heartbeat);
   stopScorePolling(); scoreStream.closeAll();
   manualDestinations.owners.clear();
+  saved.vault?.close().catch(() => {});
   if (active) finish(active, false);
   for (const ws of wss.clients) ws.close(1001, 'Relay shutting down');
   server.close(); setTimeout(() => process.exit(0), 1000).unref();

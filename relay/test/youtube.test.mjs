@@ -161,3 +161,31 @@ test('a confirmed partial setup keeps its original details for a later retry', a
   const operation = s.status(owner).setup; assert.equal(operation.details.title, details.title);
   clock += 2 * 3600000; control.failResource = ''; assert.equal((await s.prepare(owner, details)).broadcast.keyReady, true);
 });
+test('saved YouTube setup checkpoints an uncertain write and cannot recreate it after a restart', async () => {
+  let persisted;
+  const mock=youtubeProvider(), s=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,now:()=>now,saveConnection:async(owner,value)=>{persisted=structuredClone(value);}});
+  const flow=s.start(owner,origin);await s.complete(owner,origin,{state:flow.state,code:'fixture'});mock.control.timeoutResource='liveBroadcasts';
+  await assert.rejects(s.prepare(owner,details),/could not be confirmed/);assert.equal(persisted.operation.uncertain,true);assert.equal(persisted.operation.stream.id,'stream_test');
+  const restored=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,now:()=>now});assert.equal(restored.restorePrivate(owner,persisted),true);
+  const count=mock.log.length;await assert.rejects(restored.prepare(owner,details),/previous Google write/);assert.equal(mock.log.length,count);
+});
+test('unavailable saved storage blocks a new YouTube write before sending it to Google', async () => {
+  let blocked=false;const mock=youtubeProvider(),s=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,now:()=>now,saveConnection:async()=>{if(blocked)throw Object.assign(new Error('Saved storage unavailable'),{status:503});}});
+  const flow=s.start(owner,origin);await s.complete(owner,origin,{state:flow.state,code:'fixture'});blocked=true;
+  await assert.rejects(s.prepare(owner,details),/storage unavailable/);assert.equal(mock.log.filter(v=>v.method==='POST'&&v.url.includes('/liveStreams')).length,0);
+});
+test('restored YouTube destinations stay disabled until their event and stream binding are freshly checked', async () => {
+  const {service:s,control}=await connected();await s.prepare(owner,details);const stored=s.exportPrivate(owner),mock=youtubeProvider();
+  const restored=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,now:()=>now});assert.equal(restored.restorePrivate(owner,stored),true);assert.equal(restored.status(owner).broadcast.keyReady,false);assert.equal(restored.destination(owner).configured,false);
+  await restored.refresh(owner,true);assert.equal(restored.destination(owner).configured,true);
+  const other=new YouTubeService({env:{...testGoogleEnv,GOOGLE_CLIENT_ID:'different-client.apps.googleusercontent.com'},fetchFn:mock.fetchFn});assert.equal(other.restorePrivate(owner,stored),false);assert.equal(other.status(owner).connected,false);
+});
+
+test('a grant is not connected before durable saving succeeds and cancellation is rechecked before commit',async()=>{
+ const mock=youtubeProvider();let release,waiting;const blocked=new Promise(resolve=>{waiting=resolve;});
+ const s=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,now:()=>now,saveConnection:async(owner,value,guard)=>{waiting();await new Promise(resolve=>{release=resolve;});if(!guard())throw new Error('Device sign-in ended');throw new Error('Saved storage unavailable');}});
+ const flow=s.start(owner,origin),pending=s.complete(owner,origin,{state:flow.state,code:'fixture'});await blocked;
+ assert.equal(s.status(owner).connected,false);s.cancelAuth(owner);release();await assert.rejects(pending,/Device sign-in ended/);assert.equal(s.status(owner).connected,false);
+ const failing=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,saveConnection:async()=>{throw new Error('Saved storage unavailable');}}),second=failing.start(owner,origin);
+ await assert.rejects(failing.complete(owner,origin,{state:second.state,code:'fixture'}),/storage unavailable/);assert.equal(failing.status(owner).connected,false);
+});
