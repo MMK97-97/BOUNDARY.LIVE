@@ -37,12 +37,19 @@ export class TrustedDevices {
     const id = randomBytes(16).toString('hex'), secret = randomBytes(32).toString('base64url'), now = this.now();
     return { value: `${id}.${secret}`, record: { id, hash: hash(secret), name: label(name), created: now, lastSeen: now, expires: now + DEVICE_LIFETIME } };
   }
-  async remember(name, existingCookie) {
+  async remember(name, existingCookie, guard=null, replaceOldest=false) {
     const previous = await this.authenticate(existingCookie);
-    if (previous) return { ...previous, cookie: null };
+    if (previous) {if(guard)guard(this.vault.snapshot());return { ...previous, cookie: null };}
     const created = this.makeDevice(name);
-    await this.vault.mutate(state => { prune(state, this.now()); if (state.devices.length >= 12) throw fail('Trusted-device limit reached. Remove an old device first.', 409); state.devices.push(created.record); });
-    return { owner: STUDIO_OWNER, deviceId: created.record.id, expires: created.record.expires, name: created.record.name, cookie: this.cookie(created.value) };
+    const evictedDeviceId=await this.vault.mutate(state => {
+      if(guard)guard(state);prune(state,this.now());let evicted=null;
+      if(state.devices.length>=12){
+        if(!replaceOldest||!guard)throw fail('Trusted-device limit reached. Remove an old device first.',409);
+        const oldest=[...state.devices].sort((a,b)=>a.lastSeen-b.lastSeen)[0];evicted=oldest.id;state.devices=state.devices.filter(d=>d.id!==evicted);if(state.pairing?.createdBy===evicted)state.pairing=null;
+      }
+      state.devices.push(created.record);return evicted;
+    });
+    return { owner: STUDIO_OWNER, deviceId: created.record.id, expires: created.record.expires, name: created.record.name, cookie: this.cookie(created.value),evictedDeviceId };
   }
   async pairing(deviceId) {
     if (!this.valid(deviceId)) throw fail('Sign in on a remembered device before linking another device.', 401);

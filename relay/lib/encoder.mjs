@@ -64,7 +64,7 @@ export function outputArgs(destination, env = {}) {
   if (destination.id === 'instagram') {
     const h = Number(env.INSTAGRAM_HEIGHT) === 1920 ? 1920 : 1280, w = h === 1920 ? 1080 : 720;
     const bitrate = Math.max(2250, Math.min(6000, Number(env.INSTAGRAM_VIDEO_KBPS) || 3500));
-    base.push('-vf', `scale=${w}:-2,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=0x0b1527,setsar=1`,
+    base.push('-vf', `scale=${w}:${h}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${w}:${h}:(ow-iw)/2:oh-ih:color=0x0b1527,setsar=1`,
       '-c:v', 'libx264', '-threads', '4', '-preset', 'veryfast', '-tune', 'zerolatency', '-profile:v', 'high',
       '-pix_fmt', 'yuv420p', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0',
       '-b:v', `${bitrate}k`, '-maxrate', `${bitrate}k`, '-minrate', `${bitrate}k`, '-bufsize', `${bitrate * 2}k`,

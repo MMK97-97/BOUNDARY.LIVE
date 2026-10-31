@@ -6,7 +6,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { LiveProgram } from '../lib/program.mjs';
 import { automationOptions } from '../lib/events.mjs';
-import { findFont, probeEncoder } from '../lib/encoder.mjs';
+import { findFont, probeEncoder, outputArgs } from '../lib/encoder.mjs';
 const font = findFont(), ready = probeEncoder('ffmpeg', font).ready;
 test('real encoded popups and consecutive scorecards each occupy exactly 60 frames', { skip: !ready, timeout: 45000 }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-program-test-')); let p;
@@ -55,4 +55,34 @@ test('live-only encoder accepts Android WebM/Opus and preserves native 720p with
     const result=spawnSync('ffprobe',['-v','error','-show_streams','-of','json',file],{encoding:'utf8',timeout:5000});assert.equal(result.status,0,result.stderr);
     const streams=JSON.parse(result.stdout).streams;assert.equal(streams[0].width,1280);assert.equal(streams[0].height,720);assert.equal(streams[0].r_frame_rate,'30/1');assert.ok(streams.some(s=>s.codec_name==='aac'));
   }finally{p?.stop(false);fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('portrait native camera encodes a landscape program with a bottom score, full source framing and AAC', {skip:!ready,timeout:20000}, async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mk97-portrait-'));let p;
+  try{
+    const input=spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','color=0x19523b:s=1080x1920:r=30','-f','lavfi','-i','sine=sample_rate=44100','-t','1','-c:v','libx264','-threads','2','-preset','ultrafast','-c:a','aac','-movflags','frag_keyframe+empty_moov+default_base_moof','-f','mp4','pipe:1'],{timeout:10000,maxBuffer:8_000_000});assert.equal(input.status,0,input.stderr.toString());
+    const score={clubId:'123',matchId:'456',innings:'1',batting:'QA A',bowling:'QA B',runs:'123',wickets:'4',overs:'15.2',status:'live',fetchedAt:Date.now(),batters:[{name:'A very long player surname & more',runs:'50',balls:'30'}],balls:['4','1','Wd','.','6','W']};
+    p=new LiveProgram({binary:'ffmpeg',font,dir,mimeType:'video/mp4',options:automationOptions(),bitrateKbps:5000,score,overlay:true,realtime:false});
+    const output=[],failures=[];p.encoder.stdout.on('data',b=>output.push(b));p.on('failure',m=>failures.push(m));
+    const done=new Promise(resolve=>p.encoder.once('close',resolve));p.startFrames();p.encoder.stdin.end(input.stdout);
+    const timer=setTimeout(()=>p.stop(false),10000);const code=await done;clearTimeout(timer);assert.equal(code,0);assert.deepEqual(failures,[]);
+    const file=path.join(dir,'portrait.flv');fs.writeFileSync(file,Buffer.concat(output));
+    const probe=spawnSync('ffprobe',['-v','error','-show_streams','-of','json',file],{encoding:'utf8',timeout:5000});assert.equal(probe.status,0,probe.stderr);
+    const streams=JSON.parse(probe.stdout).streams;assert.equal(streams[0].width,1920);assert.equal(streams[0].height,1080);assert.ok(streams.some(s=>s.codec_name==='aac'));
+    const pixel=(x,y)=>{const r=spawnSync('ffmpeg',['-v','error','-i',file,'-vf',`crop=2:2:${x}:${y},scale=1:1,format=rgb24`,'-frames:v','1','-f','rawvideo','pipe:1'],{timeout:5000});assert.equal(r.status,0);return [...r.stdout];};
+    const center=pixel(960,400),side=pixel(200,400),bottom=pixel(40,1076);
+    assert.ok(center[1]>60,'portrait camera remains visible');assert.ok(side.every(v=>v<15),'Fit preserves the full portrait source with side bars');
+    assert.ok(bottom[2]>15,'the score strip reaches the bottom of the encoded frame');
+  }finally{p?.stop(false);fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+for (const [width,height] of [[1920,1080],[480,854]]) test(`Instagram portrait conversion keeps a ${width} × ${height} program score at the bottom`, {skip:!ready,timeout:15000},()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mk97-portrait-output-'));
+  try{
+    const source=spawnSync('ffmpeg',['-v','error','-f','lavfi','-i',`color=0x19523b:s=${width}x${height}:r=30`,'-vf',`drawbox=x=0:y=${height-80}:w=iw:h=80:color=blue:t=fill`,'-t','1','-c:v','libx264','-threads','2','-preset','ultrafast','-f','flv','pipe:1'],{timeout:6000,maxBuffer:8_000_000});assert.equal(source.status,0,source.stderr.toString());
+    const output=path.join(dir,'instagram.flv');
+    const converted=spawnSync('ffmpeg',outputArgs({id:'instagram',url:output}),{input:source.stdout,timeout:6000,maxBuffer:2_000_000});assert.equal(converted.status,0,converted.stderr.toString());
+    const probe=spawnSync('ffprobe',['-v','error','-show_streams','-of','json',output],{encoding:'utf8',timeout:3000});assert.equal(probe.status,0,probe.stderr);
+    const video=JSON.parse(probe.stdout).streams[0];assert.equal(video.width,720);assert.equal(video.height,1280);
+    const pixel=spawnSync('ffmpeg',['-v','error','-i',output,'-vf','crop=2:2:360:1270,scale=1:1,format=rgb24','-frames:v','1','-f','rawvideo','pipe:1'],{timeout:3000});assert.equal(pixel.status,0);assert.ok(pixel.stdout[2]>180&&pixel.stdout[0]<40,'blue score marker remains at the portrait output bottom');
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

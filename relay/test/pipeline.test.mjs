@@ -8,12 +8,12 @@ import { spawn, spawnSync } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { findFont, probeEncoder } from '../lib/encoder.mjs';
 const available = process.platform !== 'win32' && probeEncoder('ffmpeg', findFont()).ready;
-test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly without external broadcasting', { skip: !available, timeout: 60000 }, async () => {
+for (const [width, height] of [[1920,1080],[1080,1920]]) test(`${width} × ${height} real WebSocket upload fans out to two FFmpeg writers and stops cleanly without external broadcasting`, { skip: !available, timeout: 60000 }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-pipeline-'));
   let relay, ws;
   try {
     const clip = path.join(dir, 'camera.mp4');
-    const generated = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=0x19523b:s=1920x1080:r=30',
+    const generated = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `color=0x19523b:s=${width}x${height}:r=30`,
       '-f', 'lavfi', '-i', 'sine=sample_rate=44100', '-t', '5', '-c:v', 'libx264', '-threads', '2', '-preset', 'ultrafast',
       '-g', '30', '-c:a', 'aac', '-movflags', 'frag_keyframe+empty_moov+default_base_moof', clip], { timeout: 15000 });
     assert.equal(generated.status, 0, generated.stderr?.toString());
@@ -55,7 +55,7 @@ test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly wit
       // Production ingest and shutdown deadlines are unchanged.
       const timer = setTimeout(() => reject(new Error('Pipeline did not stop')), 30000);
       ws.on('error', reject);
-      ws.on('open', () => ws.send(JSON.stringify({ type: 'start', ticket, width: 1920, height: 1080, mimeType: 'video/mp4', overlay: true, match: selectedMatch, destinations: ['youtube', 'facebook'] })));
+      ws.on('open', () => ws.send(JSON.stringify({ type: 'start', ticket, width, height, mimeType: 'video/mp4', overlay: true, match: selectedMatch, destinations: ['youtube', 'facebook'] })));
       ws.on('message', async data => {
         const m = JSON.parse(data.toString());
         if (m.type === 'stats') lastStats = m;
@@ -88,9 +88,9 @@ test('real WebSocket upload fans out to two FFmpeg writers and stops cleanly wit
     for (const name of ['youtube.flv', 'facebook.flv']) {
       const p = spawnSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', path.join(dir, name)], { timeout: 5000, encoding: 'utf8' });
       assert.equal(p.status, 0, p.stderr); const streams = JSON.parse(p.stdout).streams;
-      assert.equal(streams[0].width, 1920); assert.equal(streams[0].height, 1080);
+      assert.equal(streams[0].width, width); assert.equal(streams[0].height, height);
       assert.ok(streams.some(s => s.codec_name === 'aac'));
-      const pixel = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(dir, name), '-vf', 'crop=2:2:80:910,scale=1:1', '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { timeout: 5000 });
+      const pixel = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(dir, name), '-vf', `crop=2:2:80:${height > width ? height - 210 : 910},scale=1:1`, '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { timeout: 5000 });
       assert.equal(pixel.status, 0, pixel.stderr?.toString()); assert.ok(pixel.stdout[2] > 125 && pixel.stdout[0] < 80, 'The selected-match score graphic must be burned into both platform outputs');
     }
     const r = await fetch(base + '/api/info', { headers: { Origin: origin, Authorization: `Bearer ${sessionToken}` } });

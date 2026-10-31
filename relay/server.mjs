@@ -1,3 +1,4 @@
+import { SIZES, captureProfile, captureReady, programSize } from '../web/capture.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,7 @@ import { SessionDestinations } from './lib/destinations.mjs';
 import { configuredVault, storageError } from './lib/vault.mjs';
 import { TrustedDevices, STUDIO_OWNER } from './lib/trusted-devices.mjs';
 import { validatePreferences } from './lib/preferences.mjs';
+import { StudioAccount } from './lib/studio-account.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -33,6 +35,7 @@ const sessions = new SessionStore();
 let saved = { vault: null, configured: false, backend: null, message: 'Saved studio storage is not configured. See docs/SAVED_STUDIO.md.' };
 try { saved = await configuredVault(process.env); } catch (e) { saved.message = e.message; }
 const devices = saved.vault ? new TrustedDevices({ vault: saved.vault, secure: Boolean(publicOrigin) }) : null;
+const account = saved.vault ? new StudioAccount({vault:saved.vault}) : null;
 const ownerOf = identity => identity.owner || identity.id;
 const isSavedOwner = owner => Boolean(devices && owner === STUDIO_OWNER);
 const validOwner = (owner, origin) => isSavedOwner(owner) ? Boolean(saved.vault.state && origins.has(origin)) : Boolean(sessions.get(owner, origin));
@@ -103,6 +106,18 @@ function revokeDeviceSessions(id) {
     if (active?.sessionId === sessionId) finish(active, false);
   }
 }
+async function accountIdentity(req,res,proof) {
+  for(const id of proof.revoked||[])revokeDeviceSessions(id);
+  if(proof.clearTemporary||proof.revoked)for(const session of [...sessions.sessions.values()])if(!session.deviceId){
+    youtube.forget(session.id);manualDestinations.forget(session.id);scoreStream.closeSession(session.id);sessions.revoke(session.id);
+    if(active?.sessionId===session.id)finish(active,false);
+  }
+  const device=await devices.remember(req.accountDeviceName,req.headers.cookie,account.guard(proof),true);
+  if(device.evictedDeviceId)revokeDeviceSessions(device.evictedDeviceId);
+  const session=sessions.create(originOf(req),device);await hydrateSavedStudio(originOf(req));
+  if(device.cookie)res.setHeader('Set-Cookie',device.cookie);
+  return {sessionToken:session.id,expiresAt:session.expires,remembered:true,deviceExpiresAt:device.expires,deviceReplaced:Boolean(device.evictedDeviceId)};
+}
 const attempts = new Map();
 const failures = new Map();
 function failedAuth(req) {
@@ -164,12 +179,40 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
-    product: 'mk97', version: '1.7.1', sameOrigin: Boolean(publicOrigin), studioUrl: publicOrigin, mode: publicOrigin ? 'cloud' : 'self-hosted',
+    product: 'mk97', version: '1.8.0', sameOrigin: Boolean(publicOrigin), studioUrl: publicOrigin, mode: publicOrigin ? 'cloud' : 'self-hosted',
     savedStudio: { configured: saved.configured, backend: saved.backend, message: saved.message, rememberDays: 30 }
   });
   if (url.pathname.startsWith('/api/')) {
     if (rateLimited(req)) return json(res, 429, { error: 'Too many requests. Try again in a minute.' });
     const bearer = req.headers.authorization?.replace(/^Bearer /, '');
+    if(url.pathname==='/api/account/status'&&req.method==='GET') {
+      try{await requireSaved(req);return json(res,200,account.status());}
+      catch(e){return json(res,e.status||400,{error:e.message});}
+    }
+    if(req.method==='POST'&&['/api/account/login','/api/account/register','/api/account/recover'].includes(url.pathname)) {
+      try {
+        await requireSaved(req);
+        const bucket=failures.get(req.socket.remoteAddress||'local');
+        if(bucket&&Date.now()-bucket.start<60000&&bucket.count>8)return json(res,429,{error:'Sign-in temporarily limited. Wait one minute.'});
+        const value=await body(req,8192);
+        if(!value||typeof value!=='object'||Array.isArray(value))throw Object.assign(new Error('Send account details as a JSON object.'),{status:400});
+        req.accountDeviceName=value.deviceName;
+        let proof;
+        if(url.pathname.endsWith('/login'))proof=await account.login(value.email,value.password);
+        else {
+          if(active)throw Object.assign(new Error('Stop the camera upload before creating or recovering the studio account.'),{status:409});
+          const operator=sessions.get(bearer,originOf(req));
+          const ownerSession=operator&&(!operator.deviceId||devices.valid(operator.deviceId));
+          if(!auth(bearer)&&(!url.pathname.endsWith('/register')||!ownerSession))throw Object.assign(new Error('Use your studio token once to authorize account setup or recovery.'),{status:401});
+          if(url.pathname.endsWith('/recover'))proof=await account.reset(value.email,value.password);
+          else {
+            const importProfile=operator&&ownerOf(operator)!==STUDIO_OWNER?{destinations:manualDestinations.exportPrivate(operator.id),youtube:youtube.exportPrivate(operator.id)}:null;
+            proof=await account.register(value.email,value.password,importProfile);proof.clearTemporary=true;sharedLoaded=false;
+          }
+        }
+        return json(res,200,await accountIdentity(req,res,proof));
+      }catch(e){if(e.status===401)failedAuth(req);return json(res,e.status||400,{error:e.message});}
+    }
     if (req.method === 'POST' && ['/api/device/restore', '/api/device/link'].includes(url.pathname)) {
       try {
         await requireSaved(req);
@@ -200,6 +243,14 @@ const server = http.createServer(async (req, res) => {
     if (!authenticated || authenticated.deviceId && !devices?.valid(authenticated.deviceId)) return json(res, 401, { code: 'SESSION_REQUIRED', error: 'Session expired or device was signed out. Reconnect the studio.' });
     try {
       const owner = ownerOf(authenticated);
+      if(req.method==='POST'&&url.pathname==='/api/account/password') {
+        await requireSaved(req);if(!isSavedOwner(owner))throw Object.assign(new Error('Sign in to the saved studio first.'),{status:403});
+        if(active)throw Object.assign(new Error('Stop the camera upload before changing your account password.'),{status:409});
+        const value=await body(req,8192);
+        if(!value||typeof value!=='object'||Array.isArray(value))throw Object.assign(new Error('Send account details as a JSON object.'),{status:400});
+        req.accountDeviceName=value.deviceName;
+        const proof=await account.change(value.currentPassword,value.password);return json(res,200,await accountIdentity(req,res,proof));
+      }
       if (req.method === 'GET' && url.pathname === '/api/devices') {
         if (!isSavedOwner(owner)) return json(res, 200, { remembered: false, devices: [] });
         return json(res, 200, devices.status(authenticated.deviceId));
@@ -219,9 +270,9 @@ const server = http.createServer(async (req, res) => {
         await savePreferences(owner, await body(req)); return json(res, 200, { ok: true });
       }
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.7.1', encoder, busy: Boolean(active), ownUpload: active?.sessionId === authenticated.id, mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(owner),
+        name: 'MK97 relay', version: '1.8.0', encoder, busy: Boolean(active), ownUpload: active?.sessionId === authenticated.id, mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(owner),
         savedStudio: { configured: saved.configured, remembered: isSavedOwner(owner), message: saved.message, warning: savedWarning,
-          ...(isSavedOwner(owner) ? { device: devices.status(authenticated.deviceId), preferences: saved.vault.snapshot().profile.preferences } : {}) },
+          ...(isSavedOwner(owner) ? { device: devices.status(authenticated.deviceId), preferences: saved.vault.snapshot().profile.preferences,account:account.status(true) } : {}) },
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(owner)[id].configured, error: destinationFor(owner)[id].error,
           mode: id === 'youtube' && youtube.connections.has(owner) ? 'account' : manualDestinations.get(owner)[id] ? isSavedOwner(owner) ? 'saved' : 'session' : 'manual',
           resolution: id === 'instagram' ? (Number(process.env.INSTAGRAM_HEIGHT) === 1920 ? '1080 × 1920' : '720 × 1280') : '1920 × 1080' })),
@@ -341,9 +392,9 @@ function run(ws, message, identity) {
   if (chosen.some(id => !DESTINATIONS.includes(id) || !resolved[id].configured)) throw new Error('A selected destination has no valid live setup or stream key on the relay.');
   if (!/^video\/(webm|mp4)(;|$)/i.test(message.mimeType || '')) throw new Error('Unsupported browser recording container.');
   const width = Number(message.width), height = Number(message.height);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 854 || height < 480 || width < height || width > 4096 || height > 2160) throw new Error('Use a landscape camera providing the selected resolution (1920 × 1080 for 1080p). Rotate the phone and reopen the camera.');
-  const required = { '1080': [1920, 1080], '720': [1280, 720], '480': [854, 480], auto: [854, 480] }[message.resolution || '1080'];
-  if (!required || width < required[0] || height < required[1]) throw new Error(`The selected capture profile requires a landscape camera providing at least ${required?.join(' × ') || 'a supported resolution'}.`);
+  if (!captureProfile({ width, height })) throw new Error('Use a camera providing at least 854 × 480 native pixels in either orientation.');
+  if (!captureReady({ width, height }, message.resolution || '1080')) throw new Error(`The selected capture profile requires ${SIZES[message.resolution || '1080'] ? Object.values(SIZES[message.resolution || '1080']).join(' × ') + ' native pixels' : 'a supported native resolution'} in either orientation. Choose Auto or a supported resolution.`);
+  if (message.framing != null && !['fit', 'fill'].includes(message.framing)) throw new Error('Choose Fit or Fill camera framing.');
   const selected = message.match ? validateIds(message.match.clubId, message.match.matchId) : null;
   if (selected) {
     if (selected.clubId !== scores.ids?.clubId || selected.matchId !== scores.ids?.matchId) throw new Error('The selected Match ID changed on the relay. Reload your match before streaming.');
@@ -360,12 +411,12 @@ function run(ws, message, identity) {
   const bitrate = chosen.includes('facebook') ? 6000 : Math.max(4000, Math.min(14000, Number(process.env.LANDSCAPE_VIDEO_KBPS) || 10000));
   const preset = process.env.ENCODER_PRESET;
   let mainError = '';
-  const options = automationOptions(message.automation, process.env), outputHeight = height >= 1080 && width >= 1920 ? 1080 : height >= 720 && width >= 1280 ? 720 : 480;
+  const options = automationOptions(message.automation, process.env), outputHeight = Number(captureProfile({ width, height })), canvas = programSize({ width, height });
   let main;
   session.program = new LiveProgram({ binary, font, dir, mimeType: message.mimeType, options,
     bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000,
-    width: outputHeight === 1080 ? 1920 : outputHeight === 720 ? 1280 : 854, height: outputHeight,
-    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset });
+    width: canvas.width, height: canvas.height,
+    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset, framing: message.framing || 'fit' });
   main = session.program.encoder; session.main = main;
   session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
   session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));

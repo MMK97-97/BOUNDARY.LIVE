@@ -6,13 +6,16 @@ import { GraphicRenderer } from './graphics.mjs';
 
 // A single encoder reads the original camera/audio plus transparent graphics.
 // No camera frames, PCM history, highlights or exports are retained.
-export function liveProgramArgs({ mimeType = 'video/mp4', bitrateKbps = 6000, width = 1920, height = 1080, preset = 'veryfast' } = {}) {
+export function liveProgramArgs({ mimeType = 'video/mp4', bitrateKbps = 6000, width = 1920, height = 1080, preset = 'veryfast', framing = 'fit' } = {}) {
   if (!['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium'].includes(preset)) preset = 'veryfast';
+  const cameraFilter = framing === 'fill'
+    ? `scale=${width}:${height}:force_original_aspect_ratio=increase:force_divisible_by=2,crop=${width}:${height}`
+    : `scale=w=min(iw\\,${width}):h=min(ih\\,${height}):force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`;
   return ['-hide_banner', '-loglevel', 'warning', '-nostats', '-progress', 'pipe:2',
     '-protocol_whitelist', 'pipe', '-probesize', '3000000', '-analyzeduration', '1000000',
     '-f', mimeType.toLowerCase().startsWith('video/webm') ? 'matroska' : 'mov', '-i', 'pipe:0',
     '-thread_queue_size', '32', '-probesize', '32', '-analyzeduration', '1', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'png', '-i', 'pipe:3',
-    '-filter_complex', `[0:v]setpts=PTS-STARTPTS,scale=w=min(iw\\,${width}):h=min(ih\\,${height}):force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[cam];[1:v]scale=${width}:${height}[graphic];[cam][graphic]overlay=shortest=1:format=auto,format=yuv420p[out]`,
+    '-filter_complex', `[0:v]setpts=PTS-STARTPTS,${cameraFilter},setsar=1,fps=30[cam];[1:v]scale=${width}:${height}[graphic];[cam][graphic]overlay=shortest=1:format=auto,format=yuv420p[out]`,
     '-map', '[out]', '-map', '0:a:0?', '-c:v', 'libx264', '-threads', '4', '-filter_complex_threads', '2', '-preset', preset, '-tune', 'zerolatency',
     '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0',
     '-b:v', `${bitrateKbps}k`, '-maxrate', `${bitrateKbps}k`, '-minrate', `${bitrateKbps}k`, '-bufsize', `${bitrateKbps * 2}k`,
@@ -20,12 +23,12 @@ export function liveProgramArgs({ mimeType = 'video/mp4', bitrateKbps = 6000, wi
     '-shortest', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', 'pipe:1'];
 }
 export class LiveProgram extends EventEmitter {
-  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, width = 1920, height = 1080, realtime = true, preset }) {
-    super(); this.options = options; this.renderer = new GraphicRenderer(font); this.detector = new CricketEvents();
+  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, width = 1920, height = 1080, realtime = true, preset, framing }) {
+    super(); this.options = options; this.renderer = new GraphicRenderer(font, { width, height }); this.detector = new CricketEvents();
     this.score = score; this.showOverlay = overlay; this.queue = []; this.current = null; this.outputFrames = 0;
     this.startedAt = null; this.realtime = realtime; this.blocked = false; this.closing = false; this.dead = false;
     if (score) this.detector.update(score);
-    this.encoder = spawn(binary, liveProgramArgs({ mimeType, bitrateKbps, width, height, preset }), { cwd: dir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe', 'pipe'] });
+    this.encoder = spawn(binary, liveProgramArgs({ mimeType, bitrateKbps, width, height, preset, framing }), { cwd: dir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe', 'pipe'] });
     this.encoder.on('error', () => this.fail('The live encoder could not start.'));
     this.encoder.stdin.on('error', () => {}); this.encoder.stdio[3].on('error', () => {});
     this.encoder.on('close', () => this.dispose());

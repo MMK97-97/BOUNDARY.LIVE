@@ -1,10 +1,11 @@
+import { captureProfile } from '../../web/capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
 
-const source = fs.readFileSync(new URL('../../web/youtube.mjs', import.meta.url), 'utf8').replace('export function installYouTube', 'function installYouTube');
+const source = fs.readFileSync(new URL('../../web/youtube.mjs', import.meta.url), 'utf8').replace(/^import[^\n]*\n/, '').replace('export function installYouTube', 'function installYouTube');
 const origin = 'https://mk97-fixture.onrender.com';
 const blank = () => ({ configured: true, connected: false, authorizing: false, busy: false, redirectUri: origin + '/youtube-callback.html', callbackMode: 'server', authorization: null, setup: null, broadcast: null });
 const flush = async () => { for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -20,7 +21,7 @@ function harness(initial = blank(), overrides = {}) {
   element('ytPrivacy').value = 'unlisted'; element('ytStartMode').value = 'now'; element('ytAudience').value = 'false';
   element('ytTitle').value = 'A vs B'; element('ytDescription').value = 'Cricket';
   const state = { session: 'fixture-owner', captureResolution: '1080', live: false, starting: false, stopping: false, score: null };
-  const context = { URL, Intl, crypto: webcrypto, Date: class extends Date { constructor(...args) { super(...(args.length ? args : [clock])); } static now() { return clock; } },
+  const context = { captureProfile, URL, Intl, crypto: webcrypto, Date: class extends Date { constructor(...args) { super(...(args.length ? args : [clock])); } static now() { return clock; } },
     document: { baseURI: origin + '/', hidden: false, getElementById: element, addEventListener(type, fn) { listeners.set(type, fn); } }, location: { origin },
     localStorage: { setItem: (...args) => stored.push(args) }, navigator: { clipboard: { async writeText(value) { stored.push(['clipboard', value]); } } },
     window: { open() { return { location: { replace(value) { calls.push({ path: 'open-google', value }); } }, close() { closed++; } }; }, addEventListener(type, fn) { listeners.set(type, fn); } },
@@ -126,4 +127,11 @@ test('a late account disconnect cannot clear a newer session’s pending sign-in
   h.state.session = 'new-fixture-owner'; h.setServer(blank()); h.controller.accept(blank()); await h.element('ytConnect').emit('click');
   release(); await disconnecting; await flush();
   assert.equal(h.element('ytCancelAuth').hidden, false); assert.equal(h.state.youtubeBusy, true); h.controller.destroy();
+});
+
+test('YouTube capture summary reports the native quality for portrait and larger sensor modes',()=>{
+ const h=harness();
+ for(const [width,height,profile]of [[1080,1920,'1080'],[720,1280,'720'],[1920,1440,'1080']]){
+  h.state.camera={width,height};h.controller.update();assert.match(h.element('ytCapture').textContent,new RegExp('Capture: '+profile+'p'));
+ }
 });

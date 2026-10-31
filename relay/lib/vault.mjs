@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { rootCertificates } from 'node:tls';
 
 const MAX = 1_500_000;
-const fresh = () => ({ schema: 1, devices: [], pairing: null, profile: { destinations: {}, youtube: null, preferences: {} } });
+const fresh = () => ({ schema: 1, account: null, devices: [], pairing: null, profile: { destinations: {}, youtube: null, preferences: {} } });
 export const storageError = message => Object.assign(new Error(message || 'Saved studio storage is unavailable. Check DATABASE_URL and STUDIO_ENCRYPTION_KEY in your hosting settings.'), { status: 503, code: 'STORAGE_UNAVAILABLE' });
 export function encryptionKey(value) {
   if (typeof value !== 'string') throw storageError('Set a private STUDIO_ENCRYPTION_KEY containing 32 random bytes as hexadecimal or base64.');
