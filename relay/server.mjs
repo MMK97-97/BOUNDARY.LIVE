@@ -179,7 +179,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/health') return json(res, 200, { ok: true, name: 'MK97 relay' });
   if (req.method === 'GET' && url.pathname === '/api/public-config') return json(res, 200, {
-    product: 'mk97', version: '1.8.0', sameOrigin: Boolean(publicOrigin), studioUrl: publicOrigin, mode: publicOrigin ? 'cloud' : 'self-hosted',
+    product: 'mk97', version: '1.9.0', sameOrigin: Boolean(publicOrigin), studioUrl: publicOrigin, mode: publicOrigin ? 'cloud' : 'self-hosted',
     savedStudio: { configured: saved.configured, backend: saved.backend, message: saved.message, rememberDays: 30 }
   });
   if (url.pathname.startsWith('/api/')) {
@@ -270,7 +270,7 @@ const server = http.createServer(async (req, res) => {
         await savePreferences(owner, await body(req)); return json(res, 200, { ok: true });
       }
       if (req.method === 'GET' && url.pathname === '/api/info') return json(res, 200, {
-        name: 'MK97 relay', version: '1.8.0', encoder, busy: Boolean(active), ownUpload: active?.sessionId === authenticated.id, mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(owner),
+        name: 'MK97 relay', version: '1.9.0', encoder, busy: Boolean(active), ownUpload: active?.sessionId === authenticated.id, mode: publicOrigin ? 'cloud' : 'self-hosted', youtube: youtube.status(owner),
         savedStudio: { configured: saved.configured, remembered: isSavedOwner(owner), message: saved.message, warning: savedWarning,
           ...(isSavedOwner(owner) ? { device: devices.status(authenticated.deviceId), preferences: saved.vault.snapshot().profile.preferences,account:account.status(true) } : {}) },
         destinations: DESTINATIONS.map(id => ({ id, configured: destinationFor(owner)[id].configured, error: destinationFor(owner)[id].error,

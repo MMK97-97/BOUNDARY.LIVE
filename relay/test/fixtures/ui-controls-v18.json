@@ -1,0 +1,1503 @@
+[
+  {
+    "id": "i-start",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-volume-off",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-more",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-camera",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-live",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-back",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-settings",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-full",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-score",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-stats",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-share",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-cast",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-fit",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-volume",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-eye",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-pause",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-play",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-close",
+    "tag": "symbol"
+  },
+  {
+    "id": "i-mark",
+    "tag": "symbol"
+  },
+  {
+    "id": "home",
+    "tag": "section"
+  },
+  {
+    "id": "homeConnection",
+    "tag": "span"
+  },
+  {
+    "id": "enterStudio",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "homeMatchState",
+    "tag": "span"
+  },
+  {
+    "id": "homeMatchForm",
+    "tag": "form"
+  },
+  {
+    "id": "homeLeaguePreset",
+    "tag": "select",
+    "type": "",
+    "form": "homeMatchForm",
+    "options": [
+      "300",
+      "1507",
+      "157",
+      "custom"
+    ]
+  },
+  {
+    "id": "homeMatchInput",
+    "tag": "input",
+    "type": "",
+    "form": "homeMatchForm"
+  },
+  {
+    "id": "homeClubInput",
+    "tag": "input",
+    "type": "",
+    "form": "homeMatchForm"
+  },
+  {
+    "id": "homeLoad",
+    "tag": "button",
+    "type": "",
+    "form": "homeMatchForm"
+  },
+  {
+    "id": "homeExample",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "homeMatchTitle",
+    "tag": "h3"
+  },
+  {
+    "id": "homeMatchDetail",
+    "tag": "p"
+  },
+  {
+    "id": "homeMatchResult",
+    "tag": "strong"
+  },
+  {
+    "id": "homeSource",
+    "tag": "small"
+  },
+  {
+    "id": "homeRelayState",
+    "tag": "h3"
+  },
+  {
+    "id": "homePlatformState",
+    "tag": "h3"
+  },
+  {
+    "id": "homeCameraState",
+    "tag": "span"
+  },
+  {
+    "id": "studio",
+    "tag": "main"
+  },
+  {
+    "id": "viewfinder",
+    "tag": "div"
+  },
+  {
+    "id": "cameraPlaceholder",
+    "tag": "div"
+  },
+  {
+    "id": "openCamera",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "quickSetup",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "accountQuickLabel",
+    "tag": "span"
+  },
+  {
+    "id": "previewHidden",
+    "tag": "div"
+  },
+  {
+    "id": "showPreview",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "programSurface",
+    "tag": "div"
+  },
+  {
+    "id": "cameraVideo",
+    "tag": "video"
+  },
+  {
+    "id": "scoreOverlay",
+    "tag": "section"
+  },
+  {
+    "id": "scoreGraphic",
+    "tag": "img"
+  },
+  {
+    "id": "battingLogo",
+    "tag": "span"
+  },
+  {
+    "id": "overlayTeam",
+    "tag": "span"
+  },
+  {
+    "id": "overlayRuns",
+    "tag": "strong"
+  },
+  {
+    "id": "overlayOvers",
+    "tag": "span"
+  },
+  {
+    "id": "overlayRate",
+    "tag": "span"
+  },
+  {
+    "id": "requiredRate",
+    "tag": "span"
+  },
+  {
+    "id": "overlayDetail",
+    "tag": "p"
+  },
+  {
+    "id": "overlayStatus",
+    "tag": "span"
+  },
+  {
+    "id": "oppositionTeam",
+    "tag": "strong"
+  },
+  {
+    "id": "bowlingLogo",
+    "tag": "span"
+  },
+  {
+    "id": "batter1Name",
+    "tag": "span"
+  },
+  {
+    "id": "batter1Runs",
+    "tag": "b"
+  },
+  {
+    "id": "batter2Name",
+    "tag": "span"
+  },
+  {
+    "id": "batter2Runs",
+    "tag": "b"
+  },
+  {
+    "id": "bowlerName",
+    "tag": "span"
+  },
+  {
+    "id": "bowlerFigures",
+    "tag": "b"
+  },
+  {
+    "id": "overBalls",
+    "tag": "div"
+  },
+  {
+    "id": "framingGuide",
+    "tag": "div"
+  },
+  {
+    "id": "programGraphic",
+    "tag": "img"
+  },
+  {
+    "id": "zoomPlus",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "zoomSlider",
+    "tag": "input",
+    "type": "range",
+    "form": ""
+  },
+  {
+    "id": "zoomValue",
+    "tag": "output"
+  },
+  {
+    "id": "zoomMinus",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "fitButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "onAirAction",
+    "tag": "span"
+  },
+  {
+    "id": "monitorInfo",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "cameraSpec",
+    "tag": "span"
+  },
+  {
+    "id": "backButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "streamState",
+    "tag": "span"
+  },
+  {
+    "id": "viewersButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "seriesTitle",
+    "tag": "h2"
+  },
+  {
+    "id": "groundTitle",
+    "tag": "p"
+  },
+  {
+    "id": "resolutionOptions",
+    "tag": "div"
+  },
+  {
+    "id": "castButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "settingsButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "moreButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "studioMenu",
+    "tag": "div"
+  },
+  {
+    "id": "previewToggle",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "fullscreenTop",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "accountMenuOpen",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "goLive",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "stopLive",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "jumpLive",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "timer",
+    "tag": "span"
+  },
+  {
+    "id": "volumeButton",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "transportHint",
+    "tag": "span"
+  },
+  {
+    "id": "fullscreenBottom",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "notice",
+    "tag": "div"
+  },
+  {
+    "id": "dismissNotice",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "stopConfirm",
+    "tag": "div"
+  },
+  {
+    "id": "confirmStop",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "cancelStop",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "drawerScrim",
+    "tag": "div"
+  },
+  {
+    "id": "drawer",
+    "tag": "aside"
+  },
+  {
+    "id": "drawerBack",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "drawerTitle",
+    "tag": "h2"
+  },
+  {
+    "id": "closeDrawer",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "drawerFeedback",
+    "tag": "div"
+  },
+  {
+    "id": "setupProgress",
+    "tag": "progress"
+  },
+  {
+    "id": "setupSummary",
+    "tag": "span"
+  },
+  {
+    "id": "setupConnectionStep",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "setupConnectionState",
+    "tag": "small"
+  },
+  {
+    "id": "setupDestinationStep",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "setupDestinationState",
+    "tag": "small"
+  },
+  {
+    "id": "setupMatchState",
+    "tag": "small"
+  },
+  {
+    "id": "setupCameraStep",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "setupCameraState",
+    "tag": "small"
+  },
+  {
+    "id": "cloudConnectionPanel",
+    "tag": "div"
+  },
+  {
+    "id": "relayState",
+    "tag": "span"
+  },
+  {
+    "id": "connectionBadge",
+    "tag": "span"
+  },
+  {
+    "id": "cloudDiscovery",
+    "tag": "p"
+  },
+  {
+    "id": "openSavedStudio",
+    "tag": "a"
+  },
+  {
+    "id": "accountPanel",
+    "tag": "div"
+  },
+  {
+    "id": "accountHeading",
+    "tag": "h3"
+  },
+  {
+    "id": "accountHelp",
+    "tag": "p"
+  },
+  {
+    "id": "accountIdentity",
+    "tag": "p"
+  },
+  {
+    "id": "accountLoginForm",
+    "tag": "form"
+  },
+  {
+    "id": "accountEmail",
+    "tag": "input",
+    "type": "email",
+    "form": "accountLoginForm"
+  },
+  {
+    "id": "accountPassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountLoginForm"
+  },
+  {
+    "id": "accountDeviceName",
+    "tag": "input",
+    "type": "",
+    "form": "accountLoginForm"
+  },
+  {
+    "id": "accountSignIn",
+    "tag": "button",
+    "type": "",
+    "form": "accountLoginForm"
+  },
+  {
+    "id": "accountCreateForm",
+    "tag": "form"
+  },
+  {
+    "id": "accountCreateEmail",
+    "tag": "input",
+    "type": "email",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountCreatePassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountConfirmPassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountCreateDevice",
+    "tag": "input",
+    "type": "",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountSetupTokenRow",
+    "tag": "div"
+  },
+  {
+    "id": "accountSetupToken",
+    "tag": "input",
+    "type": "password",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountCreate",
+    "tag": "button",
+    "type": "",
+    "form": "accountCreateForm"
+  },
+  {
+    "id": "accountRecoveryDetails",
+    "tag": "details"
+  },
+  {
+    "id": "accountRecoveryForm",
+    "tag": "form"
+  },
+  {
+    "id": "accountRecoveryEmail",
+    "tag": "input",
+    "type": "email",
+    "form": "accountRecoveryForm"
+  },
+  {
+    "id": "accountRecoveryToken",
+    "tag": "input",
+    "type": "password",
+    "form": "accountRecoveryForm"
+  },
+  {
+    "id": "accountRecoveryPassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountRecoveryForm"
+  },
+  {
+    "id": "accountRecoveryConfirm",
+    "tag": "input",
+    "type": "password",
+    "form": "accountRecoveryForm"
+  },
+  {
+    "id": "accountRecover",
+    "tag": "button",
+    "type": "",
+    "form": "accountRecoveryForm"
+  },
+  {
+    "id": "accountPasswordDetails",
+    "tag": "details"
+  },
+  {
+    "id": "accountPasswordForm",
+    "tag": "form"
+  },
+  {
+    "id": "accountCurrentPassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountPasswordForm"
+  },
+  {
+    "id": "accountNewPassword",
+    "tag": "input",
+    "type": "password",
+    "form": "accountPasswordForm"
+  },
+  {
+    "id": "accountNewConfirm",
+    "tag": "input",
+    "type": "password",
+    "form": "accountPasswordForm"
+  },
+  {
+    "id": "accountChangePassword",
+    "tag": "button",
+    "type": "",
+    "form": "accountPasswordForm"
+  },
+  {
+    "id": "accountMessage",
+    "tag": "p"
+  },
+  {
+    "id": "legacyConnectionDetails",
+    "tag": "details"
+  },
+  {
+    "id": "relayForm",
+    "tag": "form"
+  },
+  {
+    "id": "relayUrl",
+    "tag": "input",
+    "type": "url",
+    "form": "relayForm"
+  },
+  {
+    "id": "relayToken",
+    "tag": "input",
+    "type": "password",
+    "form": "relayForm"
+  },
+  {
+    "id": "deviceName",
+    "tag": "input",
+    "type": "",
+    "form": "relayForm"
+  },
+  {
+    "id": "rememberDevice",
+    "tag": "input",
+    "type": "checkbox",
+    "form": "relayForm"
+  },
+  {
+    "id": "rememberHelp",
+    "tag": "p"
+  },
+  {
+    "id": "connectRelay",
+    "tag": "button",
+    "type": "submit",
+    "form": "relayForm"
+  },
+  {
+    "id": "relayConnected",
+    "tag": "div"
+  },
+  {
+    "id": "relayExpiry",
+    "tag": "small"
+  },
+  {
+    "id": "relayVersion",
+    "tag": "p"
+  },
+  {
+    "id": "savedConnectionState",
+    "tag": "p"
+  },
+  {
+    "id": "disconnectRelay",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "linkDeviceDetails",
+    "tag": "details"
+  },
+  {
+    "id": "linkDeviceForm",
+    "tag": "form"
+  },
+  {
+    "id": "linkDeviceName",
+    "tag": "input",
+    "type": "",
+    "form": "linkDeviceForm"
+  },
+  {
+    "id": "linkDeviceCode",
+    "tag": "input",
+    "type": "",
+    "form": "linkDeviceForm"
+  },
+  {
+    "id": "linkDevice",
+    "tag": "button",
+    "type": "",
+    "form": "linkDeviceForm"
+  },
+  {
+    "id": "savedDevicePanel",
+    "tag": "div"
+  },
+  {
+    "id": "rememberedDevices",
+    "tag": "div"
+  },
+  {
+    "id": "createDeviceCode",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "deviceCodePanel",
+    "tag": "div"
+  },
+  {
+    "id": "deviceCode",
+    "tag": "output"
+  },
+  {
+    "id": "deviceCodeExpiry",
+    "tag": "p"
+  },
+  {
+    "id": "copyDeviceCode",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "savedDeviceMessage",
+    "tag": "p"
+  },
+  {
+    "id": "savedHostSetup",
+    "tag": "details"
+  },
+  {
+    "id": "generateEncryptionKey",
+    "tag": "button",
+    "type": "button",
+    "form": ""
+  },
+  {
+    "id": "newEncryptionKeyPanel",
+    "tag": "div"
+  },
+  {
+    "id": "newEncryptionKey",
+    "tag": "output"
+  },
+  {
+    "id": "copyEncryptionKey",
+    "tag": "button",
+    "type": "button",
+    "form": ""
+  },
+  {
+    "id": "encryptionKeyMessage",
+    "tag": "p"
+  },
+  {
+    "id": "cameraSettingsPanel",
+    "tag": "div"
+  },
+  {
+    "id": "cameraSelect",
+    "tag": "select",
+    "type": "",
+    "form": "",
+    "options": [
+      ""
+    ]
+  },
+  {
+    "id": "qualitySelect",
+    "tag": "select",
+    "type": "",
+    "form": "",
+    "options": [
+      "balanced",
+      "detail"
+    ]
+  },
+  {
+    "id": "micToggle",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "gridToggle",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "closeCamera",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "zoomType",
+    "tag": "small"
+  },
+  {
+    "id": "zoomPresets",
+    "tag": "div"
+  },
+  {
+    "id": "zoomHelp",
+    "tag": "p"
+  },
+  {
+    "id": "dimScreen",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "autoMilestones",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "autoCards",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "destinationPanel",
+    "tag": "div"
+  },
+  {
+    "id": "youtubeResolution",
+    "tag": "small"
+  },
+  {
+    "id": "youtubeStatus",
+    "tag": "small"
+  },
+  {
+    "id": "dest-youtube",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "facebookResolution",
+    "tag": "small"
+  },
+  {
+    "id": "facebookStatus",
+    "tag": "small"
+  },
+  {
+    "id": "dest-facebook",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "instagramResolution",
+    "tag": "small"
+  },
+  {
+    "id": "instagramStatus",
+    "tag": "small"
+  },
+  {
+    "id": "dest-instagram",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "manualDestinationDetails",
+    "tag": "details"
+  },
+  {
+    "id": "destinationForm",
+    "tag": "form"
+  },
+  {
+    "id": "destinationPlatform",
+    "tag": "select",
+    "type": "",
+    "form": "destinationForm",
+    "options": [
+      "youtube",
+      "facebook",
+      "instagram"
+    ]
+  },
+  {
+    "id": "destinationServer",
+    "tag": "input",
+    "type": "url",
+    "form": "destinationForm"
+  },
+  {
+    "id": "destinationKey",
+    "tag": "input",
+    "type": "password",
+    "form": "destinationForm"
+  },
+  {
+    "id": "saveDestination",
+    "tag": "button",
+    "type": "",
+    "form": "destinationForm"
+  },
+  {
+    "id": "clearDestination",
+    "tag": "button",
+    "type": "button",
+    "form": "destinationForm"
+  },
+  {
+    "id": "destinationOperation",
+    "tag": "p"
+  },
+  {
+    "id": "startHint",
+    "tag": "p"
+  },
+  {
+    "id": "broadcastLabel",
+    "tag": "p"
+  },
+  {
+    "id": "returnToStudio",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "guideToggle",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "guide",
+    "tag": "div"
+  },
+  {
+    "id": "closeGuide",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "overlayToggle",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "matchForm",
+    "tag": "form"
+  },
+  {
+    "id": "leaguePreset",
+    "tag": "select",
+    "type": "",
+    "form": "matchForm",
+    "options": [
+      "300",
+      "1507",
+      "157",
+      "custom"
+    ]
+  },
+  {
+    "id": "matchInput",
+    "tag": "input",
+    "type": "",
+    "form": "matchForm"
+  },
+  {
+    "id": "loadMatch",
+    "tag": "button",
+    "type": "",
+    "form": "matchForm"
+  },
+  {
+    "id": "leagueDetails",
+    "tag": "details"
+  },
+  {
+    "id": "clubInput",
+    "tag": "input",
+    "type": "",
+    "form": "matchForm"
+  },
+  {
+    "id": "clubHelp",
+    "tag": "p"
+  },
+  {
+    "id": "matchFailure",
+    "tag": "p"
+  },
+  {
+    "id": "matchConnectionHelp",
+    "tag": "p"
+  },
+  {
+    "id": "matchConnect",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "matchSummary",
+    "tag": "div"
+  },
+  {
+    "id": "matchTitle",
+    "tag": "strong"
+  },
+  {
+    "id": "matchStatus",
+    "tag": "p"
+  },
+  {
+    "id": "scoreFreshness",
+    "tag": "p"
+  },
+  {
+    "id": "showBatting",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "showBowling",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "scoreTabs",
+    "tag": "div"
+  },
+  {
+    "id": "inningsSelect",
+    "tag": "select",
+    "type": "",
+    "form": "",
+    "options": [
+      "current"
+    ]
+  },
+  {
+    "id": "scoreTables",
+    "tag": "div"
+  },
+  {
+    "id": "sourceNote",
+    "tag": "p"
+  },
+  {
+    "id": "videoDot",
+    "tag": "i"
+  },
+  {
+    "id": "videoHealth",
+    "tag": "span"
+  },
+  {
+    "id": "scoreDot",
+    "tag": "i"
+  },
+  {
+    "id": "scoreHealth",
+    "tag": "span"
+  },
+  {
+    "id": "uploadDot",
+    "tag": "i"
+  },
+  {
+    "id": "uploadHealth",
+    "tag": "span"
+  },
+  {
+    "id": "sessionStats",
+    "tag": "dl"
+  },
+  {
+    "id": "statsTabs",
+    "tag": "div"
+  },
+  {
+    "id": "statsTables",
+    "tag": "div"
+  },
+  {
+    "id": "ytAccountState",
+    "tag": "span"
+  },
+  {
+    "id": "ytChannel",
+    "tag": "p"
+  },
+  {
+    "id": "ytAuthStatus",
+    "tag": "p"
+  },
+  {
+    "id": "ytSetupHelp",
+    "tag": "p"
+  },
+  {
+    "id": "ytConnect",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytCancelAuth",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytDisconnect",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytConfiguration",
+    "tag": "details"
+  },
+  {
+    "id": "ytCallback",
+    "tag": "input",
+    "type": "url",
+    "form": ""
+  },
+  {
+    "id": "ytCopyCallback",
+    "tag": "button",
+    "type": "button",
+    "form": ""
+  },
+  {
+    "id": "ytCallbackHelp",
+    "tag": "p"
+  },
+  {
+    "id": "ytBroadcastForm",
+    "tag": "form"
+  },
+  {
+    "id": "ytTitle",
+    "tag": "input",
+    "type": "",
+    "form": "ytBroadcastForm"
+  },
+  {
+    "id": "ytDescription",
+    "tag": "textarea",
+    "type": "",
+    "form": "ytBroadcastForm"
+  },
+  {
+    "id": "ytStartMode",
+    "tag": "select",
+    "type": "",
+    "form": "ytBroadcastForm",
+    "options": [
+      "now",
+      "scheduled"
+    ]
+  },
+  {
+    "id": "ytPrivacy",
+    "tag": "select",
+    "type": "",
+    "form": "ytBroadcastForm",
+    "options": [
+      "unlisted",
+      "private",
+      "public"
+    ]
+  },
+  {
+    "id": "ytScheduleRow",
+    "tag": "div"
+  },
+  {
+    "id": "ytSchedule",
+    "tag": "input",
+    "type": "datetime-local",
+    "form": "ytBroadcastForm"
+  },
+  {
+    "id": "ytTimezone",
+    "tag": "small"
+  },
+  {
+    "id": "ytAudience",
+    "tag": "select",
+    "type": "",
+    "form": "ytBroadcastForm",
+    "options": [
+      "",
+      "false",
+      "true"
+    ]
+  },
+  {
+    "id": "ytCapture",
+    "tag": "p"
+  },
+  {
+    "id": "ytCreate",
+    "tag": "button",
+    "type": "",
+    "form": "ytBroadcastForm"
+  },
+  {
+    "id": "ytEvent",
+    "tag": "div"
+  },
+  {
+    "id": "ytEventTitle",
+    "tag": "h3"
+  },
+  {
+    "id": "ytEventState",
+    "tag": "span"
+  },
+  {
+    "id": "ytEventPrivacy",
+    "tag": "dd"
+  },
+  {
+    "id": "ytSignal",
+    "tag": "dd"
+  },
+  {
+    "id": "ytHealth",
+    "tag": "dd"
+  },
+  {
+    "id": "ytKeyState",
+    "tag": "dd"
+  },
+  {
+    "id": "ytIssues",
+    "tag": "p"
+  },
+  {
+    "id": "ytUseSetup",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytRefresh",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytPreview",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytGoLive",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytWatch",
+    "tag": "a"
+  },
+  {
+    "id": "ytStudio",
+    "tag": "a"
+  },
+  {
+    "id": "ytEnd",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytEndConfirm",
+    "tag": "div"
+  },
+  {
+    "id": "ytEndYes",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytEndNo",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytOperation",
+    "tag": "p"
+  },
+  {
+    "id": "ytError",
+    "tag": "p"
+  },
+  {
+    "id": "ytNew",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytNewConfirm",
+    "tag": "div"
+  },
+  {
+    "id": "ytReviewed",
+    "tag": "input",
+    "type": "checkbox",
+    "form": ""
+  },
+  {
+    "id": "ytNewYes",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "ytNewNo",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "watchUrl",
+    "tag": "input",
+    "type": "url",
+    "form": ""
+  },
+  {
+    "id": "copyWatch",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "shareWatch",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  },
+  {
+    "id": "castHelp",
+    "tag": "p"
+  },
+  {
+    "id": "batteryScreen",
+    "tag": "div"
+  },
+  {
+    "id": "dimTimer",
+    "tag": "strong"
+  },
+  {
+    "id": "dimScore",
+    "tag": "p"
+  },
+  {
+    "id": "exitBattery",
+    "tag": "button",
+    "type": "",
+    "form": ""
+  }
+]
