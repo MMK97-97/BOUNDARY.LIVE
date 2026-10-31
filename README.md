@@ -1,6 +1,6 @@
 # MK97 — phone-first live cricket streaming
 
-**Version 1.8.0: account sign-in across devices, native portrait capture, and bottom-aligned responsive score graphics.**
+**Version 1.9.0: the supplied ten-screen frontend, new attached logo and preserved live-stream functionality.** See [UI_MAPPING.md](docs/UI_MAPPING.md) for the complete design/control mapping.
 
 Start with **[the account and mobile upgrade guide](docs/ACCOUNT_SIGNIN.md)**. Create your private MK97 account once, then use its email/password on any device to restore the same saved studio. Existing Supabase/Render saved-storage settings can stay unchanged. Portrait and landscape studios follow the supplied references, using the original MK97 logo. The third tool is now **Stream**; replay, clip capture, video history and exports have been removed from the app and server.
 

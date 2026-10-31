@@ -1,3 +1,4 @@
+import { installInterface } from './interface.mjs';
 import { openNativeCamera, captureProfile, programSize } from './capture.mjs';
 import { PROFILES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, preflight } from './core.mjs';
 import { installStudio } from './studio.mjs';
@@ -17,6 +18,7 @@ let setupUI = null;
 let matchUI = null;
 let savedUI = null;
 let accountUI = null;
+let interfaceUI = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
@@ -71,6 +73,7 @@ function updateControls() {
   matchUI?.update();
   savedUI?.update();
   accountUI?.update();
+  interfaceUI?.update();
 }
 async function api(path, options = {}, authToken = state.session) {
   const deviceRequest = ['/api/device/restore', '/api/device/link','/api/account/status','/api/account/login','/api/account/register','/api/account/recover'].includes(path);
@@ -94,7 +97,7 @@ function renderRelay() {
   accountUI?.accept(state.info);
   const connected = Boolean(state.session);
   const cloudVersion = state.info?.version;
-  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.8.0${cloudVersion !== '1.8.0' ? ' · Deploy v1.8.0 to Render to use the matching update.' : ''}` : '';
+  $('relayVersion').textContent = connected ? `Cloud reader ${cloudVersion || 'unknown version'} · MK97 website 1.9.0${cloudVersion !== '1.9.0' ? ' · Deploy v1.9.0 to Render to use the matching update.' : ''}` : '';
   $('relayForm').hidden = connected; $('relayConnected').hidden = !connected;
   $('connectionBadge').replaceChildren(); const i = document.createElement('i');
   $('connectionBadge').append(i, document.createTextNode(connected ? ' Secure relay connected' : ' Relay disconnected'));
@@ -451,17 +454,18 @@ window.addEventListener('pagehide', event => { if (event.persisted) feed.pause()
 window.addEventListener('pageshow', event => { if (event.persisted && feed.ids) feed.visibilityChanged(); });
 function toggleGuide(show) { $('guide').hidden = !show; $('guideToggle').setAttribute('aria-expanded', String(show)); if (show) $('guide').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 $('guideToggle').addEventListener('click', () => toggleGuide($('guide').hidden)); $('closeGuide').addEventListener('click', () => toggleGuide(false));
-ui = installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview });
+ui = installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview, onPanel: name => interfaceUI?.opened(name), onClosePanel: () => interfaceUI?.closed(), onBackPanel: () => interfaceUI?.back() });
 async function refreshInfo() {
   const owner = state.session, next = await api('/api/info');
   if (owner === state.session) { state.info = next; renderRelay(); }
 }
-youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, closePanel: () => ui.closeDrawer() });
-homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera });
-setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera, refreshInfo });
+youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, closePanel: () => homeUI.openStudio() });
+homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera, onView: view => interfaceUI?.viewChanged(view) });
+setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera: () => { homeUI.openStudio(); return openCamera(); }, returnToStudio: () => homeUI.openStudio(), refreshInfo });
 matchUI = installMatchSelection({ state });
 accountUI=installStudioAccount({state,api,notice,updateControls,connectIdentity});
 savedUI = installSavedStudio({state,api,notice,updateControls,connectIdentity,clearConnection,refreshInfo,onConfig:(config,eligible)=>accountUI.configure(config,eligible)});
+interfaceUI = installInterface({ state, ui, home: homeUI, notice });
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';
 savedUI.discover();

@@ -1,14 +1,14 @@
-# MK97 account sign-in — version 1.8.0
+# MK97 account sign-in — version 1.9.0
 
 Create one private MK97 studio account. Then sign in with that email and password on each phone or computer to restore the same cloud connection, saved platform keys, YouTube authorization and match preferences. Remembered browsers reconnect automatically for 30 days. You do not enter the studio token on each device.
 
 ## Update your existing app
 
-1. Download `MK97_v1.8_Account_Mobile_Fixes_Source.zip` and extract it.
+1. Download `MK97_v1.9_Updated_Frontend_Source.zip` and extract it.
 2. Open your existing GitHub repository `MMK97-97/BOUNDARY.LIVE`. Upload the **contents of the MK97 folder** into the repository root, replacing the corresponding files. Include `web/`, `relay/`, `scripts/`, documentation, package files, `Dockerfile`, `render.yaml` and `.github/workflows/`. Upload source files, rather than the ZIP itself. Remove an old `relay/lib/replay-ring.mjs` if it remains.
 3. Commit the upload. Let the validation workflow finish.
 4. In Render, open your existing `boundary-live` Web Service. Choose **Manual Deploy → Deploy latest commit** and wait for the Docker deployment to finish.
-5. Open `https://boundary-live.onrender.com/` directly on the phone and reload. In Stream settings, both the website and cloud reader must show **1.8.0**. An old cached frontend or old server will not have the new account routes.
+5. Open `https://boundary-live.onrender.com/` directly on the phone and reload. In Stream settings, both the website and cloud reader must show **1.9.0**. An old cached frontend or old server will not have the new account routes.
 6. Keep your existing `DATABASE_URL`, `DATABASE_CA_CERT` (if configured), `STUDIO_ENCRYPTION_KEY`, `RELAY_TOKEN` and Google environment settings. This upgrade does not require new account environment variables or a new encryption key. Do not change the encryption key for an existing saved database.
 
 If saved storage is not yet configured, first complete [SUPABASE_SETUP.md](SUPABASE_SETUP.md). Supabase holds the encrypted PostgreSQL record; Render still runs the website and encoder. Never put a database password, Google secret, encryption key or relay token in GitHub source.

@@ -1,7 +1,7 @@
 import { captureReady } from './core.mjs';
 const $ = id => document.getElementById(id);
 const defaults = { youtube: 'rtmps://a.rtmps.youtube.com/live2', facebook: 'rtmps://live-api-s.facebook.com:443/rtmp/', instagram: '' };
-export function installStreamSetup({ state, api, ui, updateControls, refreshInfo, openCamera }) {
+export function installStreamSetup({ state, api, ui, updateControls, refreshInfo, openCamera, returnToStudio = () => ui.closeDrawer() }) {
   let identity = state.session, operation = 0;
   const locked = () => Boolean(state.live || state.starting || state.stopping || state.destinationBusy || state.youtubeBusy);
   function fieldDefaults() {
@@ -28,9 +28,9 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
     $('setupCameraStep').disabled = locked() || state.cameraBusy;
   }
   $('setupConnectionStep').addEventListener('click', () => { $('cloudConnectionPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); if(!state.session){ const field=!$('accountPanel').hidden?(!$('accountLoginForm').hidden?$('accountEmail'):!$('accountCreateForm').hidden?$('accountCreateEmail'):null):null; if(field)field.focus({preventScroll:true});else{$('legacyConnectionDetails').open=true;$('relayToken').focus({preventScroll:true});} } });
-  $('setupDestinationStep').addEventListener('click', () => { $('destinationPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  $('setupDestinationStep').addEventListener('click', () => ui.panel('quality', 'destinationPanel'));
   $('setupCameraStep').addEventListener('click', () => { ui.closeDrawer(); if (!state.stream) openCamera(); });
-  $('returnToStudio').addEventListener('click', () => ui.closeDrawer());
+  $('returnToStudio').addEventListener('click', returnToStudio);
   async function change(clear = false) {
     if (!state.session || locked()) return;
     const owner = state.session, id = $('destinationPlatform').value, generation = ++operation;

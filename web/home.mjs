@@ -1,12 +1,13 @@
 const $ = id => document.getElementById(id);
-export function installHome({ state, ui, loadMatch, notice }) {
+export function installHome({ state, ui, loadMatch, notice, onView = () => {} }) {
   function openStudio(panel) {
+    if (!panel) ui.closeDrawer();
     $('home').hidden = true; $('studio').hidden = false; document.body.classList.remove('at-home');
-    $('openCamera').focus(); if (panel) ui.panel(panel);
+    onView('studio'); $('openCamera').focus(); if (panel) ui.panel(panel);
   }
   function home() {
     if (state.live || state.starting || state.stopping) { notice('Keep the camera studio open during upload. Use the side tools for score, stats and stream controls.'); return; }
-    ui.closeDrawer(); $('home').hidden = false; $('studio').hidden = true; document.body.classList.add('at-home'); $('homeMatchInput').focus();
+    ui.closeDrawer(); $('home').hidden = false; $('studio').hidden = true; document.body.classList.add('at-home'); onView('home'); $('enterStudio').focus();
   }
   $('enterStudio').addEventListener('click', () => openStudio());
   $('backButton').addEventListener('click', home);
@@ -34,9 +35,9 @@ export function installHome({ state, ui, loadMatch, notice }) {
     $('homeRelayState').textContent = state.session ? state.info?.encoder.ready ? 'Relay connected' : 'Encoder needs attention' : 'Connect your cloud studio';
     const ready = state.info?.destinations?.filter(d => d.configured).map(d => d.id) || [];
     $('homePlatformState').textContent = ready.length ? `Ready: ${ready.join(', ')}` : 'Choose your destinations';
-    $('homeCameraState').textContent = state.camera ? `${state.camera.width} × ${state.camera.height} · camera ready` : '1080p target · camera off';
+    $('homeCameraState').textContent = state.camera ? `${state.camera.width} × ${state.camera.height} · camera ready` : `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · camera off`;
     $('homeConnection').textContent = state.live ? 'Sending video' : state.session ? 'Relay online' : 'Studio offline';
   }
   update();
-  return { update, openStudio };
+  return { update, openStudio, home };
 }

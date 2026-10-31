@@ -47,7 +47,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCallbackHelp').textContent = mismatch ? 'Callback mismatch. Set YOUTUBE_REDIRECT_URI to ' + recommended + ' in Render and register the identical URL in Google Cloud.' : 'Register this exact URL as an authorized redirect URI for your Google Web application client.';
     $('ytAccountState').textContent = !state.session ? 'Connect cloud studio first' : pending || data?.authorizing ? 'Connecting…' : connected ? 'Account connected' : 'Not connected';
     $('ytChannel').textContent = data?.channel?.title || 'Your channel. Your broadcast.';
-    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in cloud studio memory.';
+    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in your private cloud studio.';
     $('ytAuthStatus').textContent = pending ? 'Finish Google sign-in in the opened tab, then return here. MK97 checks the secure result automatically.' : '';
     for (const name of ['ytTitle', 'ytDescription', 'ytPrivacy', 'ytStartMode', 'ytAudience']) $(name).disabled = Boolean(disabled || !connected || data?.setup || data?.authorizing);
     $('ytScheduleRow').hidden = $('ytStartMode').value !== 'scheduled' && !data?.setup;
@@ -129,7 +129,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     if (!pending || pending.callbackMode === 'server' || v?.type !== 'boundary:youtube-oauth' || v.state !== pending.state || pending.session !== state.session) return;
     const returned = { state: pending.state, ...(v.error ? { error: 'denied' } : { code: typeof v.code === 'string' ? v.code.slice(0, 4097) : '' }) };
     clearAuth(); setBusy(false);
-    await action(() => post('auth/complete', returned), 'YouTube connected. Complete your broadcast details below.');
+    await action(() => post('auth/complete', returned), 'YouTube connected. Open Create live setup to enter your broadcast details.');
   }
   window.addEventListener('message', event => { if (event.origin === location.origin && event.source === popup) completeSignIn(event.data); });
   async function pollAuthorization() {
@@ -143,7 +143,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       data = next; clearAuth();
       await refreshInfo(); if (state.session !== flow.session) return;
       setBusy(false);
-      notice(result.status === 'connected' ? 'YouTube connected. Complete your broadcast details below.' : result.error || 'Google sign-in failed. Check your Google setup and reconnect.', result.status === 'connected' ? 'success' : 'error');
+      notice(result.status === 'connected' ? 'YouTube connected. Open Create live setup to enter your broadcast details.' : result.error || 'Google sign-in failed. Check your Google setup and reconnect.', result.status === 'connected' ? 'success' : 'error');
     } catch (e) { if (pending === flow) $('ytAuthStatus').textContent = 'Waiting for your cloud studio. Return here after Google sign-in; you can retry if the connection fails.'; }
     finally { authPolling = false; }
   }

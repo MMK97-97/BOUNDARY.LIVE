@@ -8,10 +8,10 @@ For account creation, sign-in and password recovery, follow **[ACCOUNT_SIGNIN.md
 
 ## 1. Update your existing GitHub/Render service
 
-1. Download and extract `MK97_v1.8_Account_Mobile_Fixes_Source.zip`.
+1. Download and extract `MK97_v1.9_Updated_Frontend_Source.zip`.
 2. Open your existing repository, `MMK97-97/BOUNDARY.LIVE`. Upload the **contents inside `MK97`**, including `web`, `relay`, `scripts`, package files, `Dockerfile`, `render.yaml`, documentation and hidden `.github/workflows` files. Do not upload the ZIP as the application. Commit the update.
 3. In the [Render dashboard](https://dashboard.render.com), open the existing **Web Service** for `boundary-live`. Open **Manual Deploy → Deploy latest commit**. Let the Docker build finish. Keep your existing `RELAY_TOKEN` and Google settings.
-4. Open [your hosted studio](https://boundary-live.onrender.com/) on the phone. The website and cloud-reader versions should both show **1.8.0**. If your host is different, use its actual HTTPS address and update the public `studioUrl` in `web/studio-config.json`. That file contains the address only, never a token.
+4. Open [your hosted studio](https://boundary-live.onrender.com/) on the phone. The website and cloud-reader versions should both show **1.9.0**. If your host is different, use its actual HTTPS address and update the public `studioUrl` in `web/studio-config.json`. That file contains the address only, never a token.
 
 Updating `render.yaml` does not add environment variables to an independently created existing service. Complete the next two sections once. No GitHub access token is needed in MK97.
 

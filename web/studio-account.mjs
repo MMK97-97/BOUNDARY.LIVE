@@ -13,7 +13,7 @@ export function installStudioAccount({state,api,notice,updateControls,connectIde
     $('accountIdentity').hidden=!signedIn;
     $('accountIdentity').textContent=signedIn?'Signed in as '+(state.info?.savedStudio?.account?.email||'studio owner'):'';
     $('accountHeading').textContent=signedIn?'Your MK97 account':registered===false?'Create your MK97 account':'Sign in to MK97';
-    $('accountHelp').textContent=configurationMessage||(registered===false?'Create one studio account. Use its email and password on every device.':signedIn?'Your studio connections are saved. Other devices can sign in with the same account.':'Sign in with your studio account. This device stays signed in for 30 days.');
+    $('accountHelp').textContent=configurationMessage||(registered===false?'Create one studio account. Use its email and password on every device.':signedIn?'Your studio connections are saved. Other devices can sign in with the same account.':'Sign in to restore your studio and saved connections.');
     if(available&&registered!==null)$('cloudDiscovery').textContent=state.session?'Your studio is connected. Manage your account and remembered devices below.':registered?'Sign in with your MK97 email and password to connect this device.':'Create your MK97 account once, then use it on every device.';
     $('accountSetupTokenRow').hidden=Boolean(state.session);$('accountSetupToken').required=!state.session;
     for(const id of fields)$(id).disabled=!available||locked()||registered===null&&!id.startsWith('accountRecovery')&&id!=='accountRecover';
@@ -31,7 +31,7 @@ export function installStudioAccount({state,api,notice,updateControls,connectIde
     if(!available){registered=null;update();return;}
     const generation=revision;update();
     try {const result=await api('/api/account/status',{},null);if(generation===revision)registered=Boolean(result.configured);}
-    catch(e){if(generation===revision)configurationMessage=e.status===404?'Deploy MK97 1.8.0 on the cloud service to enable account sign-in.':e.message;}
+    catch(e){if(generation===revision)configurationMessage=e.status===404?'Deploy MK97 1.9.0 on the cloud service to enable account sign-in.':e.message;}
     update();
   }
   async function run(path,value,authorization,secretIds,message) {

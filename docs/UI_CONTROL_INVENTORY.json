@@ -1,0 +1,1206 @@
+[
+  {
+    "selector": "#authUseToken",
+    "label": "Use studio access token instead →",
+    "binding": {
+      "controllerId": "authUseToken"
+    }
+  },
+  {
+    "selector": "#authUseAccount",
+    "label": "Use account sign-in instead →",
+    "binding": {
+      "controllerId": "authUseAccount"
+    }
+  },
+  {
+    "selector": "#authPreview",
+    "label": "Open camera preview →",
+    "binding": {
+      "controllerId": "authPreview"
+    }
+  },
+  {
+    "selector": "#homeMenuButton",
+    "label": "Open navigation",
+    "binding": {
+      "controllerId": "homeMenuButton"
+    }
+  },
+  {
+    "selector": "[data-route=\"stats\"]",
+    "label": "Studio health",
+    "binding": {
+      "target": "stats"
+    }
+  },
+  {
+    "selector": "[data-route=\"account\"]",
+    "label": "Studio account",
+    "binding": {
+      "target": "account"
+    }
+  },
+  {
+    "selector": "[data-route=\"match\"]",
+    "label": "Match setup›",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"]",
+    "label": "Stream setup›",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-route=\"streamSettings\"]",
+    "label": "Stream settings›",
+    "binding": {
+      "target": "streamSettings"
+    }
+  },
+  {
+    "selector": "[data-route=\"quality\"]",
+    "label": "Quality & destinations›",
+    "binding": {
+      "target": "quality"
+    }
+  },
+  {
+    "selector": "[data-route=\"youtube\"]",
+    "label": "YouTube account›",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "[data-route=\"events\"]",
+    "label": "My event›",
+    "binding": {
+      "target": "events"
+    }
+  },
+  {
+    "selector": "[data-route=\"stats\"]",
+    "label": "Health & statistics›",
+    "binding": {
+      "target": "stats"
+    }
+  },
+  {
+    "selector": "[data-route=\"share\"]",
+    "label": "Share broadcast›",
+    "binding": {
+      "target": "share"
+    }
+  },
+  {
+    "selector": "[data-route=\"account\"]",
+    "label": "Studio account›",
+    "binding": {
+      "target": "account"
+    }
+  },
+  {
+    "selector": "[data-route=\"match\"]",
+    "label": "Match SetupSelect league, fetchCricClubs match",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"]",
+    "label": "Stream SetupConnect cloud studio& destinations",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "#enterStudio",
+    "label": "StudioOpen live studio,preview & stream",
+    "binding": {
+      "controllerId": "enterStudio"
+    }
+  },
+  {
+    "selector": "[data-route=\"events\"]",
+    "label": "My EventsYour saved YouTubeevent & live controls",
+    "binding": {
+      "target": "events"
+    }
+  },
+  {
+    "selector": "[data-route=\"graphics\"]",
+    "label": "Score graphics",
+    "binding": {
+      "target": "graphics"
+    }
+  },
+  {
+    "selector": "[data-route=\"score\"]",
+    "label": "Scorecard & commentary",
+    "binding": {
+      "target": "score"
+    }
+  },
+  {
+    "selector": "[data-route=\"share\"]",
+    "label": "Share",
+    "binding": {
+      "target": "share"
+    }
+  },
+  {
+    "selector": "#openCamera",
+    "label": "Open camera",
+    "binding": {
+      "controllerId": "openCamera"
+    }
+  },
+  {
+    "selector": "#quickSetup",
+    "label": "Set up stream",
+    "binding": {
+      "controllerId": "quickSetup"
+    }
+  },
+  {
+    "selector": "#showPreview",
+    "label": "Resume monitor",
+    "binding": {
+      "controllerId": "showPreview"
+    }
+  },
+  {
+    "selector": "#zoomPlus",
+    "label": "Zoom in",
+    "binding": {
+      "controllerId": "zoomPlus"
+    }
+  },
+  {
+    "selector": "#zoomMinus",
+    "label": "Zoom out",
+    "binding": {
+      "controllerId": "zoomMinus"
+    }
+  },
+  {
+    "selector": "#fitButton",
+    "label": "Fit",
+    "binding": {
+      "controllerId": "fitButton"
+    }
+  },
+  {
+    "selector": "#monitorInfo",
+    "label": "About the local camera monitor",
+    "binding": {
+      "controllerId": "monitorInfo"
+    }
+  },
+  {
+    "selector": "#backButton",
+    "label": "Return to MK97 home",
+    "binding": {
+      "controllerId": "backButton"
+    }
+  },
+  {
+    "selector": "#viewersButton",
+    "label": "Open broadcast statistics",
+    "binding": {
+      "controllerId": "viewersButton"
+    }
+  },
+  {
+    "selector": "[data-resolution=\"auto\"]",
+    "label": "Auto",
+    "binding": {
+      "target": "auto"
+    }
+  },
+  {
+    "selector": "[data-resolution=\"1080\"]",
+    "label": "1080p",
+    "binding": {
+      "target": "1080"
+    }
+  },
+  {
+    "selector": "[data-resolution=\"720\"]",
+    "label": "720p",
+    "binding": {
+      "target": "720"
+    }
+  },
+  {
+    "selector": "[data-resolution=\"480\"]",
+    "label": "480p",
+    "binding": {
+      "target": "480"
+    }
+  },
+  {
+    "selector": "#castButton",
+    "label": "Cast or AirPlay",
+    "binding": {
+      "controllerId": "castButton"
+    }
+  },
+  {
+    "selector": "#settingsButton",
+    "label": "Stream settings",
+    "binding": {
+      "controllerId": "settingsButton"
+    }
+  },
+  {
+    "selector": "#moreButton",
+    "label": "More studio controls",
+    "binding": {
+      "controllerId": "moreButton"
+    }
+  },
+  {
+    "selector": "[data-route=\"match\"][data-step=\"match\"]",
+    "label": "1Match",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"][data-step=\"stream\"]",
+    "label": "2Stream",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-route=\"studio\"][data-step=\"studio\"]",
+    "label": "3Studio",
+    "binding": {
+      "target": "studio"
+    }
+  },
+  {
+    "selector": "#previewToggle",
+    "label": "Pause local monitor",
+    "binding": {
+      "controllerId": "previewToggle"
+    }
+  },
+  {
+    "selector": "#fullscreenTop",
+    "label": "Enter fullscreen",
+    "binding": {
+      "controllerId": "fullscreenTop"
+    }
+  },
+  {
+    "selector": "#accountMenuOpen",
+    "label": "Sign in to MK97",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-panel=\"settings\"]",
+    "label": "Stream setup & camera",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-panel=\"youtube\"]",
+    "label": "YouTube live controls",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "[data-panel=\"share\"]",
+    "label": "Share broadcast",
+    "binding": {
+      "target": "share"
+    }
+  },
+  {
+    "selector": "[data-panel=\"match\"]",
+    "label": "Match setup",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "[data-panel=\"score\"]",
+    "label": "Scorecard & commentary",
+    "binding": {
+      "target": "score"
+    }
+  },
+  {
+    "selector": "[data-panel=\"graphics\"]",
+    "label": "Live score graphics",
+    "binding": {
+      "target": "graphics"
+    }
+  },
+  {
+    "selector": "[data-panel=\"quality\"]",
+    "label": "Quality & destinations",
+    "binding": {
+      "target": "quality"
+    }
+  },
+  {
+    "selector": "[data-panel=\"advanced\"]",
+    "label": "Camera, audio & battery",
+    "binding": {
+      "target": "advanced"
+    }
+  },
+  {
+    "selector": "[data-panel=\"stats\"]",
+    "label": "Health & statistics",
+    "binding": {
+      "target": "stats"
+    }
+  },
+  {
+    "selector": "[data-panel=\"events\"]",
+    "label": "YouTube event & publication",
+    "binding": {
+      "target": "events"
+    }
+  },
+  {
+    "selector": "[data-panel=\"streamSettings\"]",
+    "label": "Stream Settings",
+    "binding": {
+      "target": "streamSettings"
+    }
+  },
+  {
+    "selector": "[data-panel=\"graphics\"]",
+    "label": "Score Graphics",
+    "binding": {
+      "target": "graphics"
+    }
+  },
+  {
+    "selector": "[data-panel=\"quality\"][data-panel-target=\"destinationPanel\"]",
+    "label": "Destinations",
+    "binding": {
+      "target": "quality"
+    }
+  },
+  {
+    "selector": "[data-panel=\"advanced\"][data-panel-target=\"cameraSettingsPanel\"]",
+    "label": "Audio & Camera",
+    "binding": {
+      "target": "advanced"
+    }
+  },
+  {
+    "selector": "#goLive",
+    "label": "Start stream",
+    "binding": {
+      "controllerId": "goLive"
+    }
+  },
+  {
+    "selector": "#stopLive",
+    "label": "STOP",
+    "binding": {
+      "controllerId": "stopLive"
+    }
+  },
+  {
+    "selector": "#jumpLive",
+    "label": "Resume live camera monitor",
+    "binding": {
+      "controllerId": "jumpLive"
+    }
+  },
+  {
+    "selector": "#volumeButton",
+    "label": "Mute live microphone",
+    "binding": {
+      "controllerId": "volumeButton"
+    }
+  },
+  {
+    "selector": "#fullscreenBottom",
+    "label": "Enter fullscreen",
+    "binding": {
+      "controllerId": "fullscreenBottom"
+    }
+  },
+  {
+    "selector": "#dismissNotice",
+    "label": "Dismiss message",
+    "binding": {
+      "controllerId": "dismissNotice"
+    }
+  },
+  {
+    "selector": "#confirmStop",
+    "label": "Yes, stop streaming",
+    "binding": {
+      "controllerId": "confirmStop"
+    }
+  },
+  {
+    "selector": "#cancelStop",
+    "label": "Keep streaming",
+    "binding": {
+      "controllerId": "cancelStop"
+    }
+  },
+  {
+    "selector": "#drawerBack",
+    "label": "Back to previous screen",
+    "binding": {
+      "controllerId": "drawerBack"
+    }
+  },
+  {
+    "selector": "#closeDrawer",
+    "label": "Close panel",
+    "binding": {
+      "controllerId": "closeDrawer"
+    }
+  },
+  {
+    "selector": "[data-route=\"match\"][data-step=\"match\"]",
+    "label": "1Match",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"][data-step=\"stream\"]",
+    "label": "2Stream",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-route=\"studio\"][data-step=\"studio\"]",
+    "label": "3Studio",
+    "binding": {
+      "target": "studio"
+    }
+  },
+  {
+    "selector": "#setupConnectionStep",
+    "label": "1Cloud studioConnect securely↗",
+    "binding": {
+      "controllerId": "setupConnectionStep"
+    }
+  },
+  {
+    "selector": "#setupDestinationStep",
+    "label": "2DestinationsChoose where to stream↗",
+    "binding": {
+      "controllerId": "setupDestinationStep"
+    }
+  },
+  {
+    "selector": "[data-panel=\"match\"]",
+    "label": "3CricClubs matchLoad Match ID↗",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "#setupCameraStep",
+    "label": "4CameraOpen rear camera↗",
+    "binding": {
+      "controllerId": "setupCameraStep"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountPassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountPassword"
+    }
+  },
+  {
+    "selector": "#accountSignIn",
+    "label": "Sign in",
+    "binding": {
+      "submit": "accountLoginForm"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountCreatePassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountCreatePassword"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountConfirmPassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountConfirmPassword"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountSetupToken\"]",
+    "label": "Show studio token",
+    "binding": {
+      "target": "accountSetupToken"
+    }
+  },
+  {
+    "selector": "#accountCreate",
+    "label": "Create account & sign in",
+    "binding": {
+      "submit": "accountCreateForm"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountRecoveryToken\"]",
+    "label": "Show studio token",
+    "binding": {
+      "target": "accountRecoveryToken"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountRecoveryPassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountRecoveryPassword"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountRecoveryConfirm\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountRecoveryConfirm"
+    }
+  },
+  {
+    "selector": "#accountRecover",
+    "label": "Recover account & sign in",
+    "binding": {
+      "submit": "accountRecoveryForm"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountCurrentPassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountCurrentPassword"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountNewPassword\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountNewPassword"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"accountNewConfirm\"]",
+    "label": "Show password",
+    "binding": {
+      "target": "accountNewConfirm"
+    }
+  },
+  {
+    "selector": "#accountChangePassword",
+    "label": "Change password",
+    "binding": {
+      "submit": "accountPasswordForm"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"relayToken\"]",
+    "label": "Show studio token",
+    "binding": {
+      "target": "relayToken"
+    }
+  },
+  {
+    "selector": "#connectRelay",
+    "label": "Connect securely",
+    "binding": {
+      "submit": "relayForm"
+    }
+  },
+  {
+    "selector": "#linkDevice",
+    "label": "Link & remember this device",
+    "binding": {
+      "submit": "linkDeviceForm"
+    }
+  },
+  {
+    "selector": "#generateEncryptionKey",
+    "label": "Generate private encryption key",
+    "binding": {
+      "controllerId": "generateEncryptionKey"
+    }
+  },
+  {
+    "selector": "#copyEncryptionKey",
+    "label": "Copy encryption key",
+    "binding": {
+      "controllerId": "copyEncryptionKey"
+    }
+  },
+  {
+    "selector": "#disconnectRelay",
+    "label": "Sign out this device",
+    "binding": {
+      "controllerId": "disconnectRelay"
+    }
+  },
+  {
+    "selector": "#createDeviceCode",
+    "label": "Link another device",
+    "binding": {
+      "controllerId": "createDeviceCode"
+    }
+  },
+  {
+    "selector": "#copyDeviceCode",
+    "label": "Copy one-time code",
+    "binding": {
+      "controllerId": "copyDeviceCode"
+    }
+  },
+  {
+    "selector": "#returnToStudio",
+    "label": "Return to studio",
+    "binding": {
+      "controllerId": "returnToStudio"
+    }
+  },
+  {
+    "selector": "#guideToggle",
+    "label": "Phone-only hosting guide ↗",
+    "binding": {
+      "controllerId": "guideToggle"
+    }
+  },
+  {
+    "selector": "#closeGuide",
+    "label": "Close guide",
+    "binding": {
+      "controllerId": "closeGuide"
+    }
+  },
+  {
+    "selector": "#loadMatch",
+    "label": "Load",
+    "binding": {
+      "submit": "matchForm"
+    }
+  },
+  {
+    "selector": "#matchConnect",
+    "label": "Connect cloud reader",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "[data-score-tab=\"batting\"]",
+    "label": "Batting",
+    "binding": {
+      "target": "batting"
+    }
+  },
+  {
+    "selector": "[data-score-tab=\"bowling\"]",
+    "label": "Bowling",
+    "binding": {
+      "target": "bowling"
+    }
+  },
+  {
+    "selector": "[data-score-tab=\"commentary\"]",
+    "label": "Commentary",
+    "binding": {
+      "target": "commentary"
+    }
+  },
+  {
+    "selector": "[data-stat-tab=\"overview\"]",
+    "label": "Overview",
+    "binding": {
+      "target": "overview"
+    }
+  },
+  {
+    "selector": "[data-stat-tab=\"partnership\"]",
+    "label": "Partnership",
+    "binding": {
+      "target": "partnership"
+    }
+  },
+  {
+    "selector": "[data-stat-tab=\"runs\"]",
+    "label": "Runs",
+    "binding": {
+      "target": "runs"
+    }
+  },
+  {
+    "selector": "[data-stat-tab=\"wickets\"]",
+    "label": "Wickets",
+    "binding": {
+      "target": "wickets"
+    }
+  },
+  {
+    "selector": "#ytConnect",
+    "label": "Connect YouTube",
+    "binding": {
+      "controllerId": "ytConnect"
+    }
+  },
+  {
+    "selector": "#ytCancelAuth",
+    "label": "Cancel sign-in",
+    "binding": {
+      "controllerId": "ytCancelAuth"
+    }
+  },
+  {
+    "selector": "#ytDisconnect",
+    "label": "Disconnect account",
+    "binding": {
+      "controllerId": "ytDisconnect"
+    }
+  },
+  {
+    "selector": "#ytCopyCallback",
+    "label": "Copy",
+    "binding": {
+      "controllerId": "ytCopyCallback"
+    }
+  },
+  {
+    "selector": "[data-panel=\"settings\"]",
+    "label": "Open stream setup",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "#openYouTubeCreate",
+    "label": "Create live setup →",
+    "binding": {
+      "target": "youtubecreate"
+    }
+  },
+  {
+    "selector": "[data-panel=\"events\"]",
+    "label": "My saved event & live controls →",
+    "binding": {
+      "target": "events"
+    }
+  },
+  {
+    "selector": "#copyWatch",
+    "label": "Copy link",
+    "binding": {
+      "controllerId": "copyWatch"
+    }
+  },
+  {
+    "selector": "#shareWatch",
+    "label": "Share",
+    "binding": {
+      "controllerId": "shareWatch"
+    }
+  },
+  {
+    "selector": "#micToggle",
+    "label": "Mic on",
+    "binding": {
+      "controllerId": "micToggle"
+    }
+  },
+  {
+    "selector": "#gridToggle",
+    "label": "Pitch guide",
+    "binding": {
+      "controllerId": "gridToggle"
+    }
+  },
+  {
+    "selector": "#closeCamera",
+    "label": "Close camera",
+    "binding": {
+      "controllerId": "closeCamera"
+    }
+  },
+  {
+    "selector": "[data-zoom=\"1\"]",
+    "label": "1×",
+    "binding": {
+      "target": "1"
+    }
+  },
+  {
+    "selector": "[data-zoom=\"1.5\"]",
+    "label": "1.5×",
+    "binding": {
+      "target": "1.5"
+    }
+  },
+  {
+    "selector": "[data-zoom=\"2\"]",
+    "label": "2×",
+    "binding": {
+      "target": "2"
+    }
+  },
+  {
+    "selector": "[data-zoom=\"3\"]",
+    "label": "3×",
+    "binding": {
+      "target": "3"
+    }
+  },
+  {
+    "selector": "#dimScreen",
+    "label": "Battery screen",
+    "binding": {
+      "controllerId": "dimScreen"
+    }
+  },
+  {
+    "selector": "[data-panel=\"match\"]",
+    "label": "Choose CricClubs match →",
+    "binding": {
+      "target": "match"
+    }
+  },
+  {
+    "selector": "#showBatting",
+    "label": "Batting · 2s",
+    "binding": {
+      "controllerId": "showBatting"
+    }
+  },
+  {
+    "selector": "#showBowling",
+    "label": "Bowling · 2s",
+    "binding": {
+      "controllerId": "showBowling"
+    }
+  },
+  {
+    "selector": "[data-resolution-proxy=\"auto\"]",
+    "label": "AutoBest supported",
+    "binding": {
+      "target": "auto"
+    }
+  },
+  {
+    "selector": "[data-resolution-proxy=\"1080\"]",
+    "label": "1080p30 FPS",
+    "binding": {
+      "target": "1080"
+    }
+  },
+  {
+    "selector": "[data-resolution-proxy=\"720\"]",
+    "label": "720p30 FPS",
+    "binding": {
+      "target": "720"
+    }
+  },
+  {
+    "selector": "[data-resolution-proxy=\"480\"]",
+    "label": "480p30 FPS",
+    "binding": {
+      "target": "480"
+    }
+  },
+  {
+    "selector": "[data-panel=\"advanced\"]",
+    "label": "Camera, optical zoom & audio →",
+    "binding": {
+      "target": "advanced"
+    }
+  },
+  {
+    "selector": "[data-configure-destination=\"youtube\"]",
+    "label": "Configure Youtube",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "[data-configure-destination=\"facebook\"]",
+    "label": "Configure Facebook",
+    "binding": {
+      "target": "facebook"
+    }
+  },
+  {
+    "selector": "[data-configure-destination=\"instagram\"]",
+    "label": "Configure Instagram",
+    "binding": {
+      "target": "instagram"
+    }
+  },
+  {
+    "selector": "[data-panel=\"youtube\"]",
+    "label": "YouTube account & live setup →",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "[data-password-toggle=\"destinationKey\"]",
+    "label": "Show stream key",
+    "binding": {
+      "target": "destinationKey"
+    }
+  },
+  {
+    "selector": "#saveDestination",
+    "label": "Save securely",
+    "binding": {
+      "submit": "destinationForm"
+    }
+  },
+  {
+    "selector": "#clearDestination",
+    "label": "Remove key",
+    "binding": {
+      "controllerId": "clearDestination"
+    }
+  },
+  {
+    "selector": "[data-route=\"graphics\"]",
+    "label": "Live Score GraphicsOverlay preview and live scorebar›",
+    "binding": {
+      "target": "graphics"
+    }
+  },
+  {
+    "selector": "[data-route=\"matchEvents\"]",
+    "label": "Match EventsMilestones, end of over, scorecards›",
+    "binding": {
+      "target": "matchEvents"
+    }
+  },
+  {
+    "selector": "[data-route=\"quality\"]",
+    "label": "QualityResolution, frame rate, encoding profile›",
+    "binding": {
+      "target": "quality"
+    }
+  },
+  {
+    "selector": "[data-route=\"destinations\"]",
+    "label": "DestinationsYouTube, Facebook, Instagram›",
+    "binding": {
+      "target": "destinations"
+    }
+  },
+  {
+    "selector": "[data-route=\"advanced\"]",
+    "label": "AdvancedAudio, optical zoom and battery screen›",
+    "binding": {
+      "target": "advanced"
+    }
+  },
+  {
+    "selector": "[data-route=\"score\"]",
+    "label": "Scorecard & commentary›",
+    "binding": {
+      "target": "score"
+    }
+  },
+  {
+    "selector": "[data-route=\"stats\"]",
+    "label": "Health & match statistics›",
+    "binding": {
+      "target": "stats"
+    }
+  },
+  {
+    "selector": "[data-route=\"share\"]",
+    "label": "Share broadcast›",
+    "binding": {
+      "target": "share"
+    }
+  },
+  {
+    "selector": "[data-route=\"account\"]",
+    "label": "Account & saved devices›",
+    "binding": {
+      "target": "account"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"]",
+    "label": "Cloud connection & hosting›",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "#ytCreate",
+    "label": "Create YouTube setup",
+    "binding": {
+      "submit": "ytBroadcastForm"
+    }
+  },
+  {
+    "selector": "#createEventLink",
+    "label": "My saved event & live controls →",
+    "binding": {
+      "target": "events"
+    }
+  },
+  {
+    "selector": "[data-panel=\"youtube\"]",
+    "label": "YouTube account & live setup →",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "#ytUseSetup",
+    "label": "Use YouTube & return to studio",
+    "binding": {
+      "controllerId": "ytUseSetup"
+    }
+  },
+  {
+    "selector": "#ytRefresh",
+    "label": "Refresh status",
+    "binding": {
+      "controllerId": "ytRefresh"
+    }
+  },
+  {
+    "selector": "#ytPreview",
+    "label": "Preview",
+    "binding": {
+      "controllerId": "ytPreview"
+    }
+  },
+  {
+    "selector": "#ytGoLive",
+    "label": "Go live",
+    "binding": {
+      "controllerId": "ytGoLive"
+    }
+  },
+  {
+    "selector": "#ytEnd",
+    "label": "End YouTube broadcast",
+    "binding": {
+      "controllerId": "ytEnd"
+    }
+  },
+  {
+    "selector": "#ytEndYes",
+    "label": "Yes, end YouTube",
+    "binding": {
+      "controllerId": "ytEndYes"
+    }
+  },
+  {
+    "selector": "#ytEndNo",
+    "label": "Keep broadcasting",
+    "binding": {
+      "controllerId": "ytEndNo"
+    }
+  },
+  {
+    "selector": "#ytNew",
+    "label": "New setup",
+    "binding": {
+      "controllerId": "ytNew"
+    }
+  },
+  {
+    "selector": "#ytNewYes",
+    "label": "Create another setup",
+    "binding": {
+      "controllerId": "ytNewYes"
+    }
+  },
+  {
+    "selector": "#ytNewNo",
+    "label": "Keep current setup",
+    "binding": {
+      "controllerId": "ytNewNo"
+    }
+  },
+  {
+    "selector": "[data-panel=\"youtube\"]",
+    "label": "YouTube account settings →",
+    "binding": {
+      "target": "youtube"
+    }
+  },
+  {
+    "selector": "#homeLoad",
+    "label": "Fetch match",
+    "binding": {
+      "submit": "homeMatchForm"
+    }
+  },
+  {
+    "selector": "#homeExample",
+    "label": "Load FWCWL example · Match 986 / Club 300 ↗",
+    "binding": {
+      "controllerId": "homeExample"
+    }
+  },
+  {
+    "selector": "[data-home-panel=\"score\"]",
+    "label": "Scorecard ↗",
+    "binding": {
+      "target": "score"
+    }
+  },
+  {
+    "selector": "[data-home-panel=\"score\"][data-home-tab=\"commentary\"]",
+    "label": "Commentary ↗",
+    "binding": {
+      "target": "score"
+    }
+  },
+  {
+    "selector": "[data-home-panel=\"stats\"]",
+    "label": "Stats ↗",
+    "binding": {
+      "target": "stats"
+    }
+  },
+  {
+    "selector": "[data-route=\"settings\"]",
+    "label": "Continue to stream setup →",
+    "binding": {
+      "target": "settings"
+    }
+  },
+  {
+    "selector": "#exitBattery",
+    "label": "Return to camera",
+    "binding": {
+      "controllerId": "exitBattery"
+    }
+  }
+]

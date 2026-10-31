@@ -1,4 +1,6 @@
-# Upgrade to MK97 1.8.0
+# Upgrade to MK97 1.9.0
+
+Version 1.9 applies the supplied ten-screen layout and attached logo. See [UI_MAPPING.md](UI_MAPPING.md). Keep the same hosting secrets, saved database and encryption key. Existing authentication, score fetching, output and security behavior remains.
 
 Follow [ACCOUNT_SIGNIN.md](ACCOUNT_SIGNIN.md) for the exact GitHub/Render upload, first account creation and subsequent sign-in steps. This upgrade adds email/password access to the existing encrypted studio without changing its database or encryption key.
 

@@ -1,11 +1,11 @@
 import { programRect, programSize, captureProfile } from './capture.mjs';
 import { graphicSvg } from './score-graphic.mjs';
 const $ = id => document.getElementById(id);
-const label = { settings: 'Stream settings', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
+const label = { match: 'Match Setup', streamSettings: 'Stream Settings', graphics: 'Live Score Graphics', quality: 'Quality & Destinations', advanced: 'Camera, Audio & Advanced', youtubecreate: 'Create Live Setup', events: 'My Event & Live Controls', settings: 'Stream Setup', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
 const el = (tag, content, className) => { const n = document.createElement(tag); if (content != null) n.textContent = String(content); if (className) n.className = className; return n; };
 const icon = id => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', '#i-' + id); svg.append(use); return svg; };
 const safeWatch = value => { const u = new URL(value); if (u.protocol !== 'https:' || u.username || u.password || !['youtube.com', 'youtu.be', 'facebook.com', 'fb.watch', 'instagram.com'].some(h => u.hostname === h || u.hostname.endsWith('.' + h))) throw new Error('Enter your public YouTube, Facebook or Instagram watch URL.'); return u.href; };
-export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview }) {
+export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview, onPanel = () => {}, onClosePanel = () => {}, onBackPanel }) {
   let lastFocus = null, lastGraphic = null;
   let scoreTab = 'batting', statsTab = 'overview';
   let monitorCanvas = programSize(state.camera);
@@ -46,22 +46,26 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) { e.preventDefault(); const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length; buttons[next]?.focus(); }
   });
   $('monitorInfo').addEventListener('click', () => { panel('stats'); });
-  function closeDrawer() { document.body.append($('notice'), $('dismissNotice')); $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; lastFocus?.focus(); }
-  function panel(name) {
+  function closeDrawer() { document.body.append($('notice'), $('dismissNotice')); $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; onClosePanel(); lastFocus?.focus(); }
+  function panel(name, target) {
+    if (!Object.hasOwn(label, name)) return;
     const focus = document.activeElement;
     if (!$('drawer').contains(focus)) lastFocus = $('studioMenu').contains(focus) ? $('moreButton') : focus;
     closeMenu();
+    onPanel(name);
     $('drawerFeedback').append($('notice'), $('dismissNotice'));
     for (const p of document.querySelectorAll('[data-drawer]')) p.hidden = p.dataset.drawer !== name;
     $('drawerTitle').textContent = label[name]; $('drawer').hidden = false; $('drawerScrim').hidden = false; $('studio').inert = true;
     $('closeDrawer').focus(); $('drawer').scrollTop = 0;
     if (name === 'stats' || name === 'score') tables();
+    if (target && !$(target)?.hidden) $(target)?.scrollIntoView({ block: 'start' });
   }
-  for (const b of document.querySelectorAll('[data-panel]')) b.addEventListener('click', () => panel(b.dataset.panel));
-  for (const id of ['settingsButton', 'quickSetup']) $(id).addEventListener('click', () => panel('settings'));
+  for (const b of document.querySelectorAll('[data-panel]')) b.addEventListener('click', () => panel(b.dataset.panel, b.dataset.panelTarget));
+  $('settingsButton').addEventListener('click', () => panel('streamSettings'));
+  $('quickSetup').addEventListener('click', () => panel('settings'));
   $('viewersButton').addEventListener('click', () => panel('stats'));
   $('closeDrawer').addEventListener('click', closeDrawer); $('drawerScrim').addEventListener('click', closeDrawer);
-  $('drawerBack').addEventListener('click', closeDrawer);
+  $('drawerBack').addEventListener('click', () => onBackPanel ? onBackPanel() : closeDrawer());
   $('drawer').addEventListener('keydown', e => {
     if (e.key === 'Escape') closeDrawer();
     if (e.key === 'Tab') {

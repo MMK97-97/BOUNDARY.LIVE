@@ -24,7 +24,7 @@ function portraitScore(score, status, width, height) {
 }
 export function graphicSvg(score, event = null, showScore = true, brandLogo = '', { width = 1920, height = 1080 } = {}) {
   const scale = width / 1920;
-  let g = brandLogo ? `<image href="${xml(brandLogo)}" x="${width - 160 * scale}" y="${35 * scale}" width="${110 * scale}" height="${104 * scale}" preserveAspectRatio="xMidYMid meet" opacity="0.94"/>` : '';
+  let g = brandLogo ? `<image href="${xml(brandLogo)}" x="${width - 196 * scale}" y="${30 * scale}" width="${150 * scale}" height="${76 * scale}" preserveAspectRatio="xMidYMid slice" opacity="0.94"/>` : '';
   if (showScore && score) {
     const status = score.stale || Date.now() - score.fetchedAt > 30000 ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';
     if (height > width) g += portraitScore(score, status, width, height);
