@@ -62,12 +62,12 @@ function renderGoldTheme(score, status, width, height, scale) {
   g += `<rect x="24" y="958" width="1872" height="60" rx="4" fill="#0b1528" fill-opacity="0.96"/>`;
 
   // Left wing (Batters)
-  g += `<polygon points="120,830 735,830 705,945 190,945" fill="url(#darkPod)" stroke="url(#goldBeam)" stroke-width="2.5"/>`;
+  g += `<polygon points="30,830 735,830 705,945 95,945" fill="url(#darkPod)" stroke="url(#goldBeam)" stroke-width="2.5"/>`;
   // Left Team monogram / logo container
-  g += `<rect x="140" y="842" width="75" height="75" rx="6" fill="#18191f" stroke="url(#goldBeam)" stroke-width="1.5"/>`;
-  g += `<polygon points="152,895 167,870 182,895" fill="#fbf5b7" opacity="0.6"/>`;
-  g += text('TEAM 1', 230, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
-  g += text(team1, 230, 905, 36, '#ffffff', 'font-weight="800"');
+  g += `<rect x="52" y="838" width="76" height="76" rx="6" fill="#0055bb" stroke="url(#goldBeam)" stroke-width="2"/>`;
+  g += `<polygon points="75,902 90,876 105,902" fill="#fbf5b7" opacity="0.85"/>`;
+  g += text('TEAM 1', 150, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
+  g += text(team1, 150, 905, 36, '#ffffff', 'font-weight="800"');
   // Batter 1
   g += text('▶', 370, 874, 16, '#f5d061');
   g += text(a ? short(a.name, 14).toUpperCase() : 'BATTER 1', 395, 874, 25, '#ffffff', 'font-weight="700"');
@@ -156,7 +156,7 @@ function renderShieldTheme(score, status, width, height, scale) {
   // Left Blue Heraldic Shield & Wing
   g += `<path d="M120,830 L730,830 L700,945 L170,945 Z" fill="url(#blueWing)" stroke="url(#shieldGold)" stroke-width="2.5"/>`;
   // Heraldic Shield Crest
-  g += `<path d="M110,830 Q160,830 160,865 Q160,920 110,950 Q60,920 60,865 Q60,830 110,830 Z" fill="#042247" stroke="url(#shieldGold)" stroke-width="3"/>`;
+  g += `<path d="M110,830 Q160,830 160,865 Q160,920 110,950 Q60,920 60,865 Q60,830 110,830 Z" fill="#0055bb" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="92,878 96,856 105,866 110,852 115,866 124,856 128,878" fill="#f7df8b"/>`;
   g += text(team1, 110, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
   g += text(team1, 230, 860, 22, '#96c8ff', 'font-weight="800"');
@@ -236,7 +236,8 @@ function renderDualTheme(score, status, width, height, scale) {
 
   // Left MK97 Emblem
   g += `<polygon points="60,820 280,820 250,950 30,950" fill="#090a0d" stroke="url(#dualGold)" stroke-width="3"/>`;
-  g += text('MK97', 150, 895, 50, '#f5d061', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
+  g += `<rect x="68" y="835" width="32" height="32" rx="4" fill="#0055bb"/>`;
+  g += text('MK97', 165, 895, 46, '#f5d061', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
 
   // Innings 1 & Innings 2 Dual Box
   g += `<rect x="295" y="820" width="460" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
@@ -314,7 +315,8 @@ function renderCyanTheme(score, status, width, height, scale) {
 
   // Left MK97 Pod
   g += `<path d="M50,830 Q50,820 65,820 L270,820 Q285,820 285,835 L270,950 Q265,955 250,955 L50,955 Z" fill="#030c17" stroke="url(#cyanGlow)" stroke-width="2.5"/>`;
-  g += text('MK97', 160, 895, 46, '#ffffff', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
+  g += `<rect x="68" y="838" width="32" height="32" rx="4" fill="#0055bb"/>`;
+  g += text('MK97', 175, 895, 44, '#ffffff', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
 
   // Left Wing (Team 1 + Batters)
   g += `<path d="M295,830 L800,830 L760,955 L280,955 Z" fill="url(#cyanDark)" stroke="url(#cyanGlow)" stroke-width="2"/>`;
