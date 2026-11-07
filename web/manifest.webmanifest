@@ -1,14 +1,41 @@
 {
+  "id": "./",
   "name": "MK97 Cricket Live Studio",
-  "short_name": "MK97",
-  "description": "Mobile cricket live streaming with CricClubs scores and private studio sign-in",
+  "short_name": "MK97 Studio",
+  "description": "Mobile cricket live streaming with CricClubs scores, YouTube Live, and private studio sign-in",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#000b16",
-  "theme_color": "#001522",
+  "background_color": "#030e17",
+  "theme_color": "#030e17",
+  "categories": ["sports", "video", "entertainment"],
   "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "./assets/mk97.png",
       "sizes": "1246x1263",

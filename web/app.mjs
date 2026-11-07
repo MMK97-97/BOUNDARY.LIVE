@@ -478,3 +478,68 @@ if (typeof navigator !== 'undefined' && navigator.getBattery) {
     b.addEventListener('levelchange', chk); b.addEventListener('chargingchange', chk);
   }).catch(() => {});
 }
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+let deferredInstallPrompt = null;
+function isStandaloneApp() {
+  return Boolean(
+    (typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches) ||
+    (typeof navigator !== 'undefined' && navigator.standalone === true)
+  );
+}
+function syncInstallButtons() {
+  const installed = isStandaloneApp();
+  const ready = Boolean(deferredInstallPrompt);
+  const label = installed ? 'MK97 App Installed ✓' : ready ? 'Install MK97 App Now' : 'Download MK97 App';
+  $('installAppAuthLabel').textContent = label;
+  $('installAppHomeLabel').textContent = installed ? 'Running in MK97 Installed App ✓' : ready ? 'Install MK97 App (1-Tap Install)' : 'Download MK97 App (Phone & Desktop)';
+  $('installAppMenuLabel').textContent = label;
+  $('installAppStudio').textContent = label;
+  $('installAppAuth').hidden = installed;
+  $('installAppHome').hidden = installed;
+}
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  syncInstallButtons();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  $('installAppModal').hidden = true;
+  syncInstallButtons();
+  notice('MK97 Cricket Studio installed! Launch it anytime from your home screen.', 'good');
+});
+async function triggerInstallApp() {
+  $('homeMenu').hidden = true;
+  $('homeMenuButton').setAttribute('aria-expanded', 'false');
+  $('studioMenu').hidden = true;
+  $('moreButton').setAttribute('aria-expanded', 'false');
+  if (deferredInstallPrompt) {
+    try {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice?.outcome === 'accepted') {
+        deferredInstallPrompt = null;
+        syncInstallButtons();
+      }
+      return;
+    } catch {}
+  }
+  if (isStandaloneApp()) {
+    notice('MK97 Cricket Studio is already installed and running as an app.', 'good');
+    return;
+  }
+  $('installAppModal').hidden = false;
+  $('closeInstallModal').focus();
+}
+for (const id of ['installAppAuth', 'installAppHome', 'installAppMenu', 'installAppStudio']) {
+  $(id)?.addEventListener('click', triggerInstallApp);
+}
+$('closeInstallModal')?.addEventListener('click', () => { $('installAppModal').hidden = true; });
+$('installAppModal')?.addEventListener('keydown', e => { if (e.key === 'Escape') $('installAppModal').hidden = true; });
+syncInstallButtons();

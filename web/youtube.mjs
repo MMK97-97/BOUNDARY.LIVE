@@ -4,7 +4,7 @@ const localDate = date => new Date(date.getTime() - date.getTimezoneOffset() * 6
 export function installYouTube({ state, api, notice, refreshInfo, updateControls = () => {}, closePanel = () => {} }) {
   let data = null, busy = false, popup = null, pending = null, authorizationChannel = null, timeout = null;
   let revision = 0;
-  let identity = state.session, polling = false, authPolling = false, epoch = 0, requestId = null, submitted = null, titleTouched = false, autoWatch = null;
+  let identity = state.session, polling = false, authPolling = false, epoch = 0, requestId = null, submitted = null, titleTouched = false, autoWatch = null, autoPrepKey = '';
   const isRealOrigin = !location.origin.endsWith('.test') && !location.origin.includes('fixture');
   $('ytSchedule').value = localDate(new Date(Date.now() + 5 * 60000));
   $('ytTimezone').textContent = 'Schedule timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -19,7 +19,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
   function setBusy(value) { if (value) revision++; busy = value; state.youtubeBusy = value; update(); updateControls(); }
   function accept(value) {
     if (identity !== state.session) {
-      identity = state.session; clearAuth(); requestId = null; submitted = null; busy = false; state.youtubeBusy = false; data = null;
+      identity = state.session; clearAuth(); requestId = null; submitted = null; busy = false; state.youtubeBusy = false; data = null; autoPrepKey = '';
       $('ytEndConfirm').hidden = true; $('ytNewConfirm').hidden = true;
     }
     data = value;
@@ -33,6 +33,17 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       }
     } else if (!busy) { requestId = null; submitted = null; }
     update();
+    if (isRealOrigin && state.session && data?.connected && !data?.authorizing && !data?.error && !busy && !locked()) {
+      const ended = data.broadcast && ['complete', 'revoked'].includes(data.broadcast.state);
+      const key = `${data.channel?.id || 'yt'}:${ended ? data.broadcast.id : 'nosetup'}`;
+      if ((!data.setup || ended) && autoPrepKey !== key) {
+        autoPrepKey = key;
+        setTimeout(() => {
+          if (ended) post('reset').then(() => { requestId = null; submitted = null; return autoPrepareIfConnected(); }).catch(() => {});
+          else autoPrepareIfConnected();
+        }, 50);
+      }
+    }
   }
   function update() {
     const ytDest = state.info?.destinations?.find(d => d.id === 'youtube');
@@ -58,7 +69,9 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     const validOrigins = [location.origin];
     try { if (state.relay) validOrigins.push(new URL(state.relay).origin); } catch {}
     const mismatch = Boolean(data?.redirectUri && !validOrigins.includes(new URL(data.redirectUri).origin));
-    $('ytConnect').disabled = Boolean(disabled || !data?.configured || data?.authorizing || mismatch); $('ytConnect').hidden = connected;
+    $('ytConnect').disabled = Boolean(disabled || !data?.configured || data?.authorizing || mismatch);
+    $('ytConnect').hidden = false;
+    $('ytConnect').textContent = connected ? 'Switch Google / YouTube account' : 'Connect with Google';
     $('ytCancelAuth').hidden = !pending && !data?.authorizing;
     $('ytCancelAuth').disabled = Boolean(!state.session || locked());
     $('ytDisconnect').hidden = !connected; $('ytDisconnect').disabled = Boolean(disabled || data?.authorizing);
@@ -68,7 +81,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCallbackHelp').textContent = mismatch ? 'Callback mismatch. Set YOUTUBE_REDIRECT_URI to ' + recommended + ' in Render and register the identical URL in Google Cloud.' : 'Register this exact URL as an authorized redirect URI for your Google Web application client.';
     $('ytAccountState').textContent = !state.session ? 'Connect cloud studio first' : pending || data?.authorizing ? 'Connecting…' : connected ? 'Account connected' : hasManualKey ? 'Stream key configured' : 'Not connected';
     $('ytChannel').textContent = data?.channel?.title || (hasManualKey ? 'YouTube Live · Stream Key' : 'Your channel. Your broadcast.');
-    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in your private cloud studio.';
+    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to any YouTube channel you want to stream. Tokens and ingestion keys stay in your private cloud studio.';
     $('ytAuthStatus').textContent = pending ? 'Finish Google sign-in in the opened tab, then return here. MK97 checks the secure result automatically.' : '';
     for (const name of ['ytTitle', 'ytDescription', 'ytPrivacy', 'ytStartMode', 'ytAudience']) $(name).disabled = Boolean(disabled || !connected || data?.setup || data?.authorizing);
     $('ytScheduleRow').hidden = $('ytStartMode').value !== 'scheduled' && !data?.setup;
@@ -225,8 +238,8 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
   async function completeSignIn(v) {
     if (!pending || pending.callbackMode === 'server' || v?.type !== 'boundary:youtube-oauth' || v.state !== pending.state || pending.session !== state.session) return;
     const returned = { state: pending.state, ...(v.error ? { error: 'denied' } : { code: typeof v.code === 'string' ? v.code.slice(0, 4097) : '' }) };
-    clearAuth(); setBusy(false);
-    await action(() => post('auth/complete', returned), 'YouTube connected. Open Create live setup to enter your broadcast details.');
+    clearAuth(); setBusy(false); autoPrepKey = '';
+    await action(() => post('auth/complete', returned), 'YouTube connected. Preparing live setup…');
     await autoPrepareIfConnected();
   }
   window.addEventListener('message', event => { if (event.origin === location.origin && event.source === popup) completeSignIn(event.data); });
@@ -238,10 +251,10 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       if (pending !== flow || state.session !== flow.session || epoch !== flow.epoch) return;
       const result = next.authorization;
       if (result?.state !== flow.state || !['connected', 'failed'].includes(result.status)) return;
-      data = next; clearAuth();
+      data = next; clearAuth(); autoPrepKey = '';
       await refreshInfo(); if (state.session !== flow.session) return;
       setBusy(false);
-      notice(result.status === 'connected' ? 'YouTube connected. Open Create live setup to enter your broadcast details.' : result.error || 'Google sign-in failed. Check your Google setup and reconnect.', result.status === 'connected' ? 'success' : 'error');
+      notice(result.status === 'connected' ? 'YouTube connected. Preparing live setup…' : result.error || 'Google sign-in failed. Check your Google setup and reconnect.', result.status === 'connected' ? 'success' : 'error');
       if (result.status === 'connected') await autoPrepareIfConnected();
     } catch (e) { if (pending === flow) $('ytAuthStatus').textContent = 'Waiting for your cloud studio. Return here after Google sign-in; you can retry if the connection fails.'; }
     finally { authPolling = false; }
@@ -264,7 +277,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
   $('ytUseSetup').addEventListener('click', () => { if (locked() || !data?.broadcast?.keyReady) return; $('dest-youtube').checked = true; updateControls(); closePanel(); });
   $('ytDisconnect').addEventListener('click', () => { const owner = state.session; return action(async () => {
     const result = await post('disconnect'); if (state.session !== owner) return;
-    clearAuth(); data = null; requestId = null; submitted = null;
+    clearAuth(); data = null; requestId = null; submitted = null; autoPrepKey = '';
     if (!result.revoked) notice('Disconnected locally. Google revocation could not be confirmed; remove this app in your Google account connections if needed.');
   }); });
   $('ytRefresh').addEventListener('click', () => action(() => api('/api/youtube/status?refresh=1')));

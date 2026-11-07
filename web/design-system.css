@@ -348,3 +348,10 @@ body.at-auth>.notice,body.at-auth>.dismiss-notice{top:max(12px,env(safe-area-ins
 .design-v19 .drawer{scrollbar-width:thin;scrollbar-color:#2c7596 transparent}
 .design-v19 .graphics-preview img{height:auto;max-height:150px;object-fit:contain}
 .design-v19 [data-drawer="youtubecreate"] #ytBroadcastForm>h3{display:none}
+.design-v19 .install-app-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;border:1px solid rgba(49,212,255,.45);background:linear-gradient(135deg,rgba(11,36,59,.92),rgba(4,20,34,.95));color:#e6f6ff;font-weight:700;letter-spacing:.02em;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.design-v19 .install-app-btn svg{width:18px;height:18px;stroke:#31d4ff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.design-v19 .install-app-btn:hover{border-color:#31d4ff;background:linear-gradient(135deg,rgba(18,54,86,.95),rgba(7,29,48,.98))}
+.design-v19 .install-app-card{border-color:rgba(49,212,255,.35)}
+.design-v19 .install-modal{z-index:120;max-width:420px;text-align:left}
+.design-v19 .install-steps{margin:10px 0 14px;padding-left:18px;display:grid;gap:8px;font-size:12px;line-height:1.45;color:#cfe7f5}
+.design-v19 .install-steps strong{color:#fff}
