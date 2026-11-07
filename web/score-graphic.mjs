@@ -43,7 +43,7 @@ function renderGoldTheme(score, status, width, height, scale) {
   const team2 = short(score.bowling || 'TEAM 2', 10).toUpperCase();
   const balls = (score.balls || []).slice(-6);
 
-  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})">`;
+  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 62)">`;
   // SVG Defs for gradients & filters
   g += `<defs>
     <linearGradient id="goldBeam" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -56,9 +56,10 @@ function renderGoldTheme(score, status, width, height, scale) {
       <stop offset="0%" stop-color="#141417"/><stop offset="100%" stop-color="#050608"/>
     </linearGradient>
     <linearGradient id="ribbonDark" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#000000"/><stop offset="50%" stop-color="#0e0f12"/><stop offset="100%" stop-color="#000000"/>
+      <stop offset="0%" stop-color="#0a1220"/><stop offset="50%" stop-color="#0e1524"/><stop offset="100%" stop-color="#0a1220"/>
     </linearGradient>
   </defs>`;
+  g += `<rect x="24" y="958" width="1872" height="60" rx="4" fill="#0b1528" fill-opacity="0.96"/>`;
 
   // Left wing (Batters)
   g += `<polygon points="120,830 735,830 705,945 190,945" fill="url(#darkPod)" stroke="url(#goldBeam)" stroke-width="2.5"/>`;
@@ -123,7 +124,7 @@ function renderGoldTheme(score, status, width, height, scale) {
   const targetText = eq.target ? `TARGET  ${eq.target}` : 'TARGET  —';
   g += text(`${reqText}    |    ${targetText}`, 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
 
-  g += '</g>';
+  g += '</g></g>';
   return g;
 }
 
@@ -135,7 +136,7 @@ function renderShieldTheme(score, status, width, height, scale) {
   const team2 = short(score.bowling || 'TEAM B', 10).toUpperCase();
   const balls = (score.balls || []).slice(-6);
 
-  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})">`;
+  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 62)">`;
   g += `<defs>
     <linearGradient id="shieldGold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#f7df8b"/><stop offset="50%" stop-color="#cf9b27"/><stop offset="100%" stop-color="#8c6110"/>
@@ -150,12 +151,13 @@ function renderShieldTheme(score, status, width, height, scale) {
       <stop offset="0%" stop-color="#fbe495"/><stop offset="100%" stop-color="#cb9626"/>
     </linearGradient>
   </defs>`;
+  g += `<rect x="24" y="958" width="1872" height="60" rx="4" fill="#0b1528" fill-opacity="0.96"/>`;
 
   // Left Blue Heraldic Shield & Wing
   g += `<path d="M120,830 L730,830 L700,945 L170,945 Z" fill="url(#blueWing)" stroke="url(#shieldGold)" stroke-width="2.5"/>`;
   // Heraldic Shield Crest
   g += `<path d="M110,830 Q160,830 160,865 Q160,920 110,950 Q60,920 60,865 Q60,830 110,830 Z" fill="#042247" stroke="url(#shieldGold)" stroke-width="3"/>`;
-  g += text('♛', 110, 875, 30, '#f7df8b', 'text-anchor="middle"');
+  g += `<polygon points="92,878 96,856 105,866 110,852 115,866 124,856 128,878" fill="#f7df8b"/>`;
   g += text(team1, 110, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
   g += text(team1, 230, 860, 22, '#96c8ff', 'font-weight="800"');
   // Batters
@@ -167,7 +169,7 @@ function renderShieldTheme(score, status, width, height, scale) {
   // Right Crimson Heraldic Shield & Wing
   g += `<path d="M1190,830 L1800,830 L1750,945 L1220,945 Z" fill="url(#redWing)" stroke="url(#shieldGold)" stroke-width="2.5"/>`;
   g += `<path d="M1810,830 Q1860,830 1860,865 Q1860,920 1810,950 Q1760,920 1760,865 Q1760,830 1810,830 Z" fill="#4d0812" stroke="url(#shieldGold)" stroke-width="3"/>`;
-  g += text('🦁', 1810, 875, 28, '#f7df8b', 'text-anchor="middle"');
+  g += `<polygon points="1810,850 1826,866 1810,882 1794,866" fill="#f7df8b"/>`;
   g += text(team2, 1810, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
   g += text(team2, 1670, 860, 22, '#ff96a6', 'text-anchor="end" font-weight="800"');
   // Bowler & This Over
@@ -194,7 +196,8 @@ function renderShieldTheme(score, status, width, height, scale) {
   // Bottom Target & Ball Tracker Ribbon
   g += `<polygon points="100,960 1820,960 1760,1015 160,1015" fill="#0d1117" stroke="url(#shieldGold)" stroke-width="2"/>`;
   const tText = eq.target ? `TARGET ${eq.target}` : 'TARGET —';
-  g += text(`⌖ ${tText}`, 240, 996, 21, '#f7df8b', 'font-weight="800"');
+  g += `<circle cx="222" cy="989" r="8" fill="none" stroke="#f7df8b" stroke-width="2"/><circle cx="222" cy="989" r="2.5" fill="#f7df8b"/>`;
+  g += text(tText, 240, 996, 21, '#f7df8b', 'font-weight="800"');
   const needText = eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : score.detail || 'LIVE CRICKET MATCH';
   g += text(needText, 660, 996, 21, '#ffffff', 'font-weight="700"');
   g += text(`REQ. RR  ${eq.rrr || '—'}`, 1120, 996, 21, '#f7df8b', 'font-weight="800"');
@@ -206,7 +209,7 @@ function renderShieldTheme(score, status, width, height, scale) {
     g += text(val, bx, 995, 14, '#ffffff', 'text-anchor="middle" font-weight="700"');
   }
 
-  g += '</g>';
+  g += '</g></g>';
   return g;
 }
 
@@ -220,7 +223,7 @@ function renderDualTheme(score, status, width, height, scale) {
   const secondWickets = score.teams?.[1]?.wickets ?? 7;
   const secondOvers = score.teams?.[1]?.overs ?? '20.0';
 
-  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})">`;
+  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 62)">`;
   g += `<defs>
     <linearGradient id="dualGold" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#e8be56"/><stop offset="50%" stop-color="#fff1be"/><stop offset="100%" stop-color="#be8f28"/>
@@ -229,10 +232,11 @@ function renderDualTheme(score, status, width, height, scale) {
       <stop offset="0%" stop-color="#181c22"/><stop offset="100%" stop-color="#090a0d"/>
     </linearGradient>
   </defs>`;
+  g += `<rect x="24" y="958" width="1872" height="60" rx="4" fill="#0b1528" fill-opacity="0.96"/>`;
 
   // Left MK97 Emblem
   g += `<polygon points="60,820 280,820 250,950 30,950" fill="#090a0d" stroke="url(#dualGold)" stroke-width="3"/>`;
-  g += text('MK97', 150, 895, 50, 'url(#dualGold)', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
+  g += text('MK97', 150, 895, 50, '#f5d061', 'text-anchor="middle" font-weight="900" font-family="serif" letter-spacing="2"');
 
   // Innings 1 & Innings 2 Dual Box
   g += `<rect x="295" y="820" width="460" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
@@ -282,7 +286,7 @@ function renderDualTheme(score, status, width, height, scale) {
   g += `<rect x="1350" y="965" width="500" height="45" rx="8" fill="url(#dualGold)"/>`;
   g += text(`REQ. RR  ${eq.rrr || '—'}`, 1600, 996, 24, '#000000', 'text-anchor="middle" font-weight="900"');
 
-  g += '</g>';
+  g += '</g></g>';
   return g;
 }
 
@@ -294,7 +298,7 @@ function renderCyanTheme(score, status, width, height, scale) {
   const team2 = short(score.bowling || 'CITY STRIKERS', 12).toUpperCase();
   const balls = (score.balls || []).slice(-6);
 
-  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})">`;
+  let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 58)">`;
   g += `<defs>
     <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#00f0ff"/><stop offset="100%" stop-color="#0066ff"/>
@@ -306,6 +310,7 @@ function renderCyanTheme(score, status, width, height, scale) {
       <stop offset="0%" stop-color="#ffd54f"/><stop offset="100%" stop-color="#ffb300"/>
     </linearGradient>
   </defs>`;
+  g += `<rect x="24" y="962" width="1872" height="60" rx="4" fill="#0b1528" fill-opacity="0.96"/>`;
 
   // Left MK97 Pod
   g += `<path d="M50,830 Q50,820 65,820 L270,820 Q285,820 285,835 L270,950 Q265,955 250,955 L50,955 Z" fill="#030c17" stroke="url(#cyanGlow)" stroke-width="2.5"/>`;
@@ -314,7 +319,7 @@ function renderCyanTheme(score, status, width, height, scale) {
   // Left Wing (Team 1 + Batters)
   g += `<path d="M295,830 L800,830 L760,955 L280,955 Z" fill="url(#cyanDark)" stroke="url(#cyanGlow)" stroke-width="2"/>`;
   g += `<rect x="310" y="842" width="75" height="75" rx="8" fill="url(#cyanGlow)"/>`;
-  g += text('🐅', 347, 888, 36, '#ffffff', 'text-anchor="middle"');
+  g += `<polygon points="347,854 367,878 347,902 327,878" fill="#ffffff" opacity="0.92"/>`;
   g += text(team1, 347, 930, 11, '#ffffff', 'text-anchor="middle" font-weight="900"');
   // Batters
   g += text('▶ ' + (a ? short(a.name, 12) : 'BATTER 1'), 415, 880, 24, '#ffffff', 'font-weight="700"');
@@ -342,7 +347,7 @@ function renderCyanTheme(score, status, width, height, scale) {
   // Right Team 2 Emblem
   g += `<path d="M1695,830 L1870,830 Q1885,830 1885,845 L1870,950 Q1865,955 1850,955 L1680,955 Z" fill="#030c17" stroke="url(#cyanGlow)" stroke-width="2"/>`;
   g += `<rect x="1715" y="842" width="75" height="75" rx="8" fill="url(#cyanGlow)"/>`;
-  g += text('🦅', 1752, 888, 36, '#ffffff', 'text-anchor="middle"');
+  g += `<polygon points="1752,854 1772,878 1752,902 1732,878" fill="#ffffff" opacity="0.92"/>`;
   g += text(team2, 1752, 930, 11, '#ffffff', 'text-anchor="middle" font-weight="900"');
 
   // Bottom Curved Ribbon
@@ -355,7 +360,7 @@ function renderCyanTheme(score, status, width, height, scale) {
   g += `<circle cx="1700" cy="995" r="7" fill="#ff1744"/>`;
   g += text('LIVE', 1730, 1001, 19, '#ffffff', 'font-weight="900"');
 
-  g += '</g>';
+  g += '</g></g>';
   return g;
 }
 
