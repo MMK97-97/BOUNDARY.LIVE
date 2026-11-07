@@ -35,7 +35,10 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
     if (!state.session || locked()) return;
     const owner = state.session, id = $('destinationPlatform').value, generation = ++operation;
     let key = $('destinationKey').value.trim();
-    const server = $('destinationServer').value.trim();
+    let server = $('destinationServer').value.trim();
+    if (id === 'youtube' && server.startsWith('rtmp://')) {
+      server = server.replace(/^rtmp:\/\/a\.rtmp\.youtube\.com/, 'rtmps://a.rtmps.youtube.com').replace(/^rtmp:\/\//, 'rtmps://');
+    }
     state.destinationBusy = true; $('destinationOperation').textContent = ''; updateControls();
     try {
       await api('/api/destination' + (clear ? '/clear' : ''), { method: 'POST', body: JSON.stringify(clear ? { id } : { id, server, key }) });

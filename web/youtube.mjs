@@ -34,7 +34,25 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     update();
   }
   function update() {
+    const ytDest = state.info?.destinations?.find(d => d.id === 'youtube');
+    const hasManualKey = Boolean(ytDest?.configured && ytDest?.mode !== 'account');
     const b = data?.broadcast, connected = Boolean(data?.connected), disabled = !state.session || busy || data?.busy || locked();
+
+    if ($('ytKeyBadge')) {
+      $('ytKeyBadge').textContent = hasManualKey ? 'Key ready · Kept on studio' : 'No key';
+      $('ytKeyBadge').className = 'status-chip' + (hasManualKey ? ' ready' : '');
+    }
+    if ($('ytSaveKey')) $('ytSaveKey').disabled = disabled;
+    if ($('ytClearKey')) {
+      $('ytClearKey').hidden = !hasManualKey;
+      $('ytClearKey').disabled = disabled;
+    }
+    if ($('ytUseManualKey')) $('ytUseManualKey').disabled = !hasManualKey || disabled;
+    if ($('ytKeyConnectedActions')) $('ytKeyConnectedActions').hidden = !hasManualKey;
+    if (hasManualKey && $('ytKeyFeedback') && !busy) {
+      $('ytKeyFeedback').textContent = 'YouTube stream key is configured and selected. Return to studio, open camera and press START.';
+      $('ytKeyFeedback').className = 'helper good';
+    }
     const recommended = new URL('./youtube-callback.html', document.baseURI).href;
     const mismatch = Boolean(data?.redirectUri && new URL(data.redirectUri).origin !== location.origin);
     $('ytConnect').disabled = Boolean(disabled || !data?.configured || data?.authorizing || mismatch); $('ytConnect').hidden = connected;
@@ -45,8 +63,8 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCallback').value = mismatch ? recommended : data?.redirectUri || recommended;
     $('ytCopyCallback').disabled = !state.session;
     $('ytCallbackHelp').textContent = mismatch ? 'Callback mismatch. Set YOUTUBE_REDIRECT_URI to ' + recommended + ' in Render and register the identical URL in Google Cloud.' : 'Register this exact URL as an authorized redirect URI for your Google Web application client.';
-    $('ytAccountState').textContent = !state.session ? 'Connect cloud studio first' : pending || data?.authorizing ? 'Connecting…' : connected ? 'Account connected' : 'Not connected';
-    $('ytChannel').textContent = data?.channel?.title || 'Your channel. Your broadcast.';
+    $('ytAccountState').textContent = !state.session ? 'Connect cloud studio first' : pending || data?.authorizing ? 'Connecting…' : connected ? 'Account connected' : hasManualKey ? 'Stream key configured' : 'Not connected';
+    $('ytChannel').textContent = data?.channel?.title || (hasManualKey ? 'YouTube Live · Stream Key' : 'Your channel. Your broadcast.');
     $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to the channel you want to stream. Tokens and ingestion keys stay in your private cloud studio.';
     $('ytAuthStatus').textContent = pending ? 'Finish Google sign-in in the opened tab, then return here. MK97 checks the secure result automatically.' : '';
     for (const name of ['ytTitle', 'ytDescription', 'ytPrivacy', 'ytStartMode', 'ytAudience']) $(name).disabled = Boolean(disabled || !connected || data?.setup || data?.authorizing);
@@ -75,6 +93,73 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       $('ytUseSetup').disabled = Boolean(disabled || !b.keyReady);
     }
   }
+  $('ytToggleKeyVisible')?.addEventListener('click', () => {
+    const input = $('ytKeyInput');
+    const isPass = input.type === 'password';
+    input.type = isPass ? 'text' : 'password';
+    $('ytToggleKeyVisible').textContent = isPass ? 'Hide' : 'Show';
+  });
+
+  $('ytKeyForm')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!state.session || locked() || busy) return;
+    let server = $('ytServerInput').value.trim();
+    let key = $('ytKeyInput').value.trim();
+    if (!key) return notice('Enter your YouTube stream key.', 'error');
+    if (server.startsWith('rtmp://a.rtmp.youtube.com')) {
+      server = server.replace(/^rtmp:\/\/a\.rtmp\.youtube\.com/, 'rtmps://a.rtmps.youtube.com');
+    } else if (server.startsWith('rtmp://')) {
+      server = server.replace(/^rtmp:\/\//, 'rtmps://');
+    }
+    setBusy(true);
+    if ($('ytKeyFeedback')) {
+      $('ytKeyFeedback').textContent = 'Saving stream key to cloud studio…';
+      $('ytKeyFeedback').className = 'helper';
+    }
+    try {
+      await api('/api/destination', { method: 'POST', body: JSON.stringify({ id: 'youtube', server, key }) });
+      $('ytKeyInput').value = '';
+      await refreshInfo();
+      $('dest-youtube').checked = true;
+      updateControls();
+      notice('YouTube stream key saved and selected. Open camera and press START.', 'success');
+    } catch (e) {
+      if ($('ytKeyFeedback')) {
+        $('ytKeyFeedback').textContent = e.message;
+        $('ytKeyFeedback').className = 'helper error';
+      }
+      notice(e.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  $('ytClearKey')?.addEventListener('click', async () => {
+    if (!state.session || locked() || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/destination/clear', { method: 'POST', body: JSON.stringify({ id: 'youtube' }) });
+      await refreshInfo();
+      $('dest-youtube').checked = false;
+      updateControls();
+      if ($('ytKeyFeedback')) {
+        $('ytKeyFeedback').textContent = '';
+      }
+      notice('YouTube stream key removed.', 'info');
+    } catch (e) {
+      notice(e.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  $('ytUseManualKey')?.addEventListener('click', () => {
+    if (locked()) return;
+    $('dest-youtube').checked = true;
+    updateControls();
+    closePanel();
+  });
+
   $('ytStartMode').addEventListener('change', update);
   $('ytCopyCallback').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('ytCallback').value); notice('Callback URL copied. Add it to your Google Web application client.'); }

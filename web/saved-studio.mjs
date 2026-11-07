@@ -89,13 +89,50 @@ export function installSavedStudio({ state, api, notice, updateControls, connect
   async function staticHost() {
     try {
       const response = await fetch(new URL('./studio-config.json', document.baseURI), {cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(5000)});
-      if (response.ok) hostedLink((await response.json()).studioUrl);
+      if (response.ok) {
+        const data = await response.json();
+        hostedLink(data.studioUrl);
+        return data.studioUrl;
+      }
     } catch {}
+    return null;
   }
   async function discover() {
     try {
-      const response = await fetch(new URL('./api/public-config', document.baseURI), { cache:'no-store', credentials:'same-origin', redirect:'error', signal:AbortSignal.timeout(15000) });
-      if (!response.ok) { $('rememberDevice').checked = false; await staticHost(); update(); return; }
+      let response;
+      try {
+        response = await fetch(new URL('./api/public-config', document.baseURI), { cache:'no-store', credentials:'same-origin', redirect:'error', signal:AbortSignal.timeout(15000) });
+      } catch {}
+      if (!response || !response.ok) {
+        $('rememberDevice').checked = false;
+        const remoteStudioUrl = await staticHost();
+        if (remoteStudioUrl) {
+          try {
+            const remoteOrigin = new URL(remoteStudioUrl).origin;
+            if (!state.session && !state.connecting) { $('relayUrl').value = remoteOrigin; state.relay = remoteOrigin; }
+            $('cloudDiscovery').textContent = 'Connecting to cloud studio…';
+            const remoteResp = await fetch(remoteOrigin + '/api/public-config', {
+              cache: 'no-store',
+              credentials: 'omit',
+              headers: { 'X-MK97-Origin': location.origin },
+              signal: AbortSignal.timeout(30000)
+            });
+            if (remoteResp.ok) {
+              config = await remoteResp.json();
+              if (config.product === 'mk97') {
+                eligible = Boolean(config.savedStudio?.configured);
+                await onConfig(config, eligible);
+                $('cloudDiscovery').textContent = eligible ? state.session ? 'Your studio is connected.' : 'Sign in to your MK97 account to connect this device.' : 'Studio connected. Connect with studio token.';
+                update();
+                if (!state.session && eligible) await restore();
+                return;
+              }
+            }
+          } catch {}
+        }
+        update();
+        return;
+      }
       config = await response.json();
       if (config.product !== 'mk97') { await staticHost(); return; }
       if (config.studioUrl && new URL(config.studioUrl).origin !== location.origin) { hostedLink(config.studioUrl); $('rememberDevice').checked = false; update(); return; }

@@ -29,7 +29,10 @@ if (token.length < 32 || token.includes('REPLACE_WITH')) {
   console.error('Run npm run setup first, or set a random RELAY_TOKEN of at least 32 characters in relay/.env.');
   process.exit(1);
 }
-const { origins, publicOrigin } = cloudConfig(process.env);
+const defaultOrigins = ['https://mmk97-97.github.io'];
+const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean);
+const mergedOrigins = Array.from(new Set([...configuredOrigins, ...defaultOrigins])).join(',');
+const { origins, publicOrigin } = cloudConfig({ ...process.env, ALLOWED_ORIGINS: mergedOrigins });
 const auth = value => constantTimeEquals(value, token);
 const sessions = new SessionStore();
 let saved = { vault: null, configured: false, backend: null, message: 'Saved studio storage is not configured. See docs/SAVED_STUDIO.md.' };
@@ -56,7 +59,8 @@ const youtube = new YouTubeService({ env: process.env, validSession: validOwner,
 const manualDestinations = new SessionDestinations({ validSession: validOwner });
 const destinationFor = owner => {
   const configured = { ...destinations, ...manualDestinations.get(owner) };
-  return { ...configured, youtube: youtube.destination(owner) || configured.youtube };
+  const ytAccount = youtube.destination(owner);
+  return { ...configured, youtube: (ytAccount?.configured ? ytAccount : configured.youtube) || ytAccount };
 };
 const font = findFont(process.env.FONT_FILE), binary = process.env.FFMPEG_PATH || 'ffmpeg';
 const encoder = probeEncoder(binary, font);
@@ -87,8 +91,7 @@ async function hydrateSavedStudio(origin) {
 }
 function savedOriginAllowed(req) {
   const origin = originOf(req);
-  return publicOrigin ? origin === publicOrigin : ['127.0.0.1', 'localhost'].includes(host) &&
-    [`http://localhost:${server.address()?.port}`, `http://127.0.0.1:${server.address()?.port}`].includes(origin);
+  return origins.has(origin);
 }
 async function requireSaved(req) {
   if (!devices) throw storageError(saved.message);
@@ -281,7 +284,12 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && ['/api/destination', '/api/destination/clear'].includes(url.pathname)) {
         if (active?.owner === owner) return json(res, 409, { error: 'Stop this studio’s camera upload before changing destinations.' });
         const value = await body(req, 8192);
-        if (value?.id === 'youtube' && youtube.destination(owner)) return json(res, 409, { error: 'Disconnect the YouTube account or cancel sign-in before changing a manual YouTube key.' });
+        if (value?.id === 'youtube' && youtube.connections.has(owner) && youtube.destination(owner)?.configured) {
+          return json(res, 409, { error: 'Disconnect the YouTube account in YouTube live controls before setting a manual stream key.' });
+        }
+        if (value?.id === 'youtube' && youtube.authorizing(owner)) {
+          youtube.cancelAuth(owner);
+        }
         let result;
         if (isSavedOwner(owner)) {
           const candidate = new SessionDestinations({validSession:()=>true});

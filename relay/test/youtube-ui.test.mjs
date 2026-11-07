@@ -135,3 +135,34 @@ test('YouTube capture summary reports the native quality for portrait and larger
   h.state.camera={width,height};h.controller.update();assert.match(h.element('ytCapture').textContent,new RegExp('Capture: '+profile+'p'));
  }
 });
+
+test('YouTube stream key input normalizes RTMP to RTMPS, saves destination and toggles visibility', async () => {
+  const h = harness();
+  h.element('ytKeyInput').type = 'password';
+  h.element('ytToggleKeyVisible').emit('click');
+  assert.equal(h.element('ytKeyInput').type, 'text');
+  assert.equal(h.element('ytToggleKeyVisible').textContent, 'Hide');
+
+  h.element('ytServerInput').value = 'rtmp://a.rtmp.youtube.com/live2';
+  h.element('ytKeyInput').value = 'fixture-test-key-1234';
+  await h.element('ytKeyForm').emit('submit');
+
+  const destCall = h.calls.find(c => c.path === '/api/destination');
+  assert.ok(destCall);
+  assert.equal(destCall.value.id, 'youtube');
+  assert.equal(destCall.value.server, 'rtmps://a.rtmps.youtube.com/live2');
+  assert.equal(destCall.value.key, 'fixture-test-key-1234');
+  assert.equal(h.element('dest-youtube').checked, true);
+
+  h.state.info = { destinations: [{ id: 'youtube', configured: true, mode: 'saved' }] };
+  h.controller.update();
+  assert.equal(h.element('ytKeyBadge').textContent, 'Key ready · Kept on studio');
+  assert.equal(h.element('ytClearKey').hidden, false);
+
+  await h.element('ytClearKey').emit('click');
+  const clearCall = h.calls.find(c => c.path === '/api/destination/clear');
+  assert.ok(clearCall);
+  assert.equal(clearCall.value.id, 'youtube');
+  assert.equal(h.element('dest-youtube').checked, false);
+  h.controller.destroy();
+});

@@ -1,6 +1,13 @@
-# YouTube setup — MK97 1.8 on Render
+# YouTube setup — MK97 on Render
 
-MK97 signs in with Google, creates and binds a YouTube event and ingestion stream, and keeps the RTMPS key private on the cloud server. Remembered devices save it with the Google grant and setup progress in encrypted storage; see [SAVED_STUDIO.md](SAVED_STUDIO.md). Camera START sends video; **Go live** is a separate action that publishes it. No laptop is required at the ground.
+MK97 supports two flexible ways to broadcast live to YouTube:
+1. **Direct Stream Key Ingest (Instant Setup — No Google Cloud setup required)**:
+   - In YouTube Studio (`https://studio.youtube.com`), click **Create → Go Live**.
+   - Copy your **Stream Key** (and Stream URL if using a custom server).
+   - In MK97, open **03 / DESTINATIONS → YouTube**, paste your Stream Key into **YouTube Stream Key**, and click **Save & Connect Key**.
+   - YouTube is immediately selected and ready. Open camera and tap **START**!
+2. **Google OAuth Sign-In (Automated Event Creation & Live Publishing)**:
+   - Signs in with Google, creates and binds YouTube events and streams automatically, and keeps credentials private on the cloud server. Follow the steps below to configure your Google Web application client once. Remembered devices save it with the Google grant and setup progress in encrypted storage; see [SAVED_STUDIO.md](SAVED_STUDIO.md). Camera START sends video; **Go live** is a separate action that publishes it. No laptop is required at the ground.
 
 ## 1. Update the app and server together
 
@@ -68,7 +75,7 @@ Setup feedback now stays below the panel heading so it cannot cover the Back or 
 | Google rejects the client ID/secret | Confirm both belong to a Web application client; replace the incorrect private environment value and redeploy. |
 | Google blocks consent or says access denied | Check the consent audience/test users, organization policy and any required verification. Follow Google's requirements. |
 | Channel has no live permission | Enable/verify the channel in YouTube Studio and complete any activation wait or restriction. |
-| Returned to a tab but MK97 still waits | Return to the original MK97 tab, without reloading it. Let it check the result. Check that both server and web are v1.9.0. Cancel and reconnect if the flow expires. |
+| Returned to a tab but MK97 still waits | Return to the original MK97 tab, without reloading it. Let it check the result. Check that both server and web are v1.7.1. Cancel and reconnect if the flow expires. |
 | Setup failed partway | A definite failure keeps confirmed progress; **Retry setup** reuses the request/details. Fix the stated cause first. |
 | Setup result unconfirmed | A write may have succeeded. Inspect YouTube Studio before acknowledging **New setup**. The app blocks automatic duplicate creation. |
 | Go live is disabled | Start camera upload, wait for an active YouTube signal and a ready/testing event; refresh status. |
@@ -88,13 +95,3 @@ If you deliberately open GitHub Pages, use its exact path, for example `https://
 For local development register `http://localhost:8787/youtube-callback.html` and open that origin. Phone localhost points to the phone itself; use the deployed HTTPS app at the ground.
 
 Facebook/Instagram retain their separate eligible Live Producer/key workflows.
-
-## Verification and primary references
-
-Automated checks cover real HTTP callback delivery, one-use/expired/cancelled state, session ownership, simulated Google token exchange, idempotent setup, partial response recovery, retries, race conditions and live transitions. The browser uses an explicitly isolated synthetic Google/YouTube provider. A separate real FFmpeg pipeline writes local test outputs. No actual Google client/account or external YouTube broadcast was used.
-
-- [Google OAuth Web application configuration and exact redirect matching](https://developers.google.com/identity/protocols/oauth2/web-server)
-- [Enable and use YouTube Data API](https://developers.google.com/youtube/data/getting-started)
-- [YouTube live eligibility](https://support.google.com/youtube/answer/2474026)
-- [YouTube RTMPS ingestion](https://developers.google.com/youtube/data/live/guides/rtmps-ingestion)
-- [Preview/live/end transitions](https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/transition)

@@ -9,7 +9,7 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --chown=node:node relay ./relay
 COPY --chown=node:node web ./web
 RUN mkdir -p /appdata && chown node:node /appdata && chmod 700 /appdata
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 TLS_CA_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 TLS_CA_FILE=/etc/ssl/certs/ca-certificates.crt ALLOWED_ORIGINS=https://mmk97-97.github.io
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

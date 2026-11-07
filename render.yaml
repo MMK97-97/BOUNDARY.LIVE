@@ -20,6 +20,8 @@ services:
         value: "0.0.0.0"
       - key: PORT
         value: "10000"
+      - key: ALLOWED_ORIGINS
+        value: "https://mmk97-97.github.io"
       - key: SCORE_POLL_SECONDS
         value: "5"
       - key: CRICCLUBS_CLUB_ID
