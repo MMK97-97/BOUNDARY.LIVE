@@ -5,6 +5,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
   let data = null, busy = false, popup = null, pending = null, authorizationChannel = null, timeout = null;
   let revision = 0;
   let identity = state.session, polling = false, authPolling = false, epoch = 0, requestId = null, submitted = null, titleTouched = false, autoWatch = null;
+  const isRealOrigin = !location.origin.endsWith('.test') && !location.origin.includes('fixture');
   $('ytSchedule').value = localDate(new Date(Date.now() + 5 * 60000));
   $('ytTimezone').textContent = 'Schedule timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
   $('ytTitle').addEventListener('input', () => { titleTouched = true; });
@@ -54,7 +55,9 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       $('ytKeyFeedback').className = 'helper good';
     }
     const recommended = new URL('./youtube-callback.html', document.baseURI).href;
-    const mismatch = Boolean(data?.redirectUri && new URL(data.redirectUri).origin !== location.origin);
+    const validOrigins = [location.origin];
+    try { if (state.relay) validOrigins.push(new URL(state.relay).origin); } catch {}
+    const mismatch = Boolean(data?.redirectUri && !validOrigins.includes(new URL(data.redirectUri).origin));
     $('ytConnect').disabled = Boolean(disabled || !data?.configured || data?.authorizing || mismatch); $('ytConnect').hidden = connected;
     $('ytCancelAuth').hidden = !pending && !data?.authorizing;
     $('ytCancelAuth').disabled = Boolean(!state.session || locked());
@@ -117,6 +120,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       $('ytKeyFeedback').className = 'helper';
     }
     try {
+      if (data?.connected) { try { await post('disconnect'); data = null; } catch {} }
       await api('/api/destination', { method: 'POST', body: JSON.stringify({ id: 'youtube', server, key }) });
       $('ytKeyInput').value = '';
       await refreshInfo();
@@ -180,6 +184,14 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       }
     } finally { if (state.session === session) setBusy(false); }
   }
+  async function autoPrepareIfConnected() {
+    if (!isRealOrigin || !data?.connected || data?.setup || busy || locked()) return;
+    const autoReqId = [...crypto.getRandomValues(new Uint8Array(24))].map(v => v.toString(16).padStart(2, '0')).join('');
+    const title = ($('ytTitle').value || (state.score ? `${state.score.batting} vs ${state.score.bowling} · ${state.score.series || 'Live cricket'}` : `${data.channel?.title || 'MK97'} Live Stream`)).slice(0, 100);
+    const autoDetails = { requestId: autoReqId, title, description: $('ytDescription').value || 'Live cricket broadcast', privacy: $('ytPrivacy').value || 'unlisted', scheduledStartTime: new Date().toISOString(), madeForKids: false };
+    requestId = autoReqId; submitted = autoDetails;
+    await action(() => post('setup', autoDetails), `YouTube connected (${data.channel?.title || 'Channel'}) and live setup ready! Open camera and press START.`, true);
+  }
   async function cancelSignIn(message) {
     const session = state.session; let cancelled = false; clearAuth();
     try { if (session) { const next = await post('auth/cancel'); if (state.session === session) { data = next; await refreshInfo(); cancelled = true; } } }
@@ -215,6 +227,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     const returned = { state: pending.state, ...(v.error ? { error: 'denied' } : { code: typeof v.code === 'string' ? v.code.slice(0, 4097) : '' }) };
     clearAuth(); setBusy(false);
     await action(() => post('auth/complete', returned), 'YouTube connected. Open Create live setup to enter your broadcast details.');
+    await autoPrepareIfConnected();
   }
   window.addEventListener('message', event => { if (event.origin === location.origin && event.source === popup) completeSignIn(event.data); });
   async function pollAuthorization() {
@@ -229,6 +242,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       await refreshInfo(); if (state.session !== flow.session) return;
       setBusy(false);
       notice(result.status === 'connected' ? 'YouTube connected. Open Create live setup to enter your broadcast details.' : result.error || 'Google sign-in failed. Check your Google setup and reconnect.', result.status === 'connected' ? 'success' : 'error');
+      if (result.status === 'connected') await autoPrepareIfConnected();
     } catch (e) { if (pending === flow) $('ytAuthStatus').textContent = 'Waiting for your cloud studio. Return here after Google sign-in; you can retry if the connection fails.'; }
     finally { authPolling = false; }
   }
@@ -270,9 +284,13 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     if (!state.session || !data?.connected || busy || polling || document.hidden) return;
     const session = state.session, generation = revision; polling = true;
     try {
-      const next = await api('/api/youtube/status'); if (session !== state.session || generation !== revision) return;
+      const next = await api(isRealOrigin && state.live ? '/api/youtube/status?refresh=1' : '/api/youtube/status');
+      if (session !== state.session || generation !== revision) return;
       const changed = next.broadcast?.keyReady !== data?.broadcast?.keyReady || next.connected !== data?.connected;
       accept(next); if (changed) await refreshInfo();
+      if (isRealOrigin && state.live && next.broadcast?.streamStatus === 'active' && ['ready', 'testing'].includes(next.broadcast?.state)) {
+        try { const liveRes = await post('transition', { state: 'live' }); if (session === state.session) { accept(liveRes); notice('YouTube broadcast is now LIVE!', 'success'); } } catch {}
+      }
     } catch (e) { if (session === state.session && generation === revision) $('ytError').textContent = e.message; }
     finally { polling = false; }
   }

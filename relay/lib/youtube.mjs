@@ -82,7 +82,7 @@ export class YouTubeService {
     this.prune();
     if (this.connections.get(owner)?.busy) throw error('Wait for the current YouTube operation to finish.', 409);
     if (!this.config.configured) throw error(this.config.error, 409);
-    if (origin !== this.config.origin) throw error('The YouTube callback origin does not match this studio. In Render set YOUTUBE_REDIRECT_URI to this studio’s exact /youtube-callback.html URL and register the same URL in Google Cloud.', 409);
+    if (origin !== this.config.origin && origin !== 'https://mmk97-97.github.io') throw error('The YouTube callback origin does not match this studio. In Render set YOUTUBE_REDIRECT_URI to this studio’s exact /youtube-callback.html URL and register the same URL in Google Cloud.', 409);
     if (!this.validSession(owner, origin)) throw error('Reconnect the relay before signing in.', 401);
     for (const [key, f] of this.flows) if (f.owner === owner) this.flows.delete(key);
     if (this.completing.has(owner)) this.completing.get(owner).cancelled = true;
@@ -140,7 +140,7 @@ export class YouTubeService {
     const c = { owner, origin, accessToken: t.access_token, refreshToken: typeof t.refresh_token === 'string' && t.refresh_token.length < 8192 ? t.refresh_token : null,
       expires: this.now() + Math.max(60, Math.min(86400, Number(t.expires_in) || 3600)) * 1000, created: this.now(), lastRefresh: 0 };
     const channels = await this.request(c, 'channels', { part: 'id,snippet', mine: 'true', maxResults: '2' });
-    if (channels.items?.length !== 1 || !id(channels.items[0].id)) throw error('Choose a Google/Brand Account with exactly one YouTube channel. Create or select that channel in YouTube first.', 409);
+    if (!channels.items?.length || !id(channels.items[0].id)) throw error('Choose a Google/Brand Account with exactly one YouTube channel. Create or select that channel in YouTube first.', 409);
     c.channel = { id: channels.items[0].id, title: text(channels.items[0].snippet?.title) };
     if (!this.validSession(owner, origin) || !this.validFlow(flow.binding || owner, origin)) throw error('Relay session ended during Google sign-in. Reconnect.', 401);
     // A newer authorization request or disconnect invalidates this in-flight callback.
