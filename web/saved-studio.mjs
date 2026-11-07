@@ -124,6 +124,7 @@ export function installSavedStudio({ state, api, notice, updateControls, connect
                 await onConfig(config, eligible);
                 $('cloudDiscovery').textContent = eligible ? state.session ? 'Your studio is connected.' : 'Sign in to your MK97 account to connect this device.' : 'Studio connected. Connect with studio token.';
                 update();
+                updateControls();
                 if (!state.session && eligible) await restore();
                 return;
               }
@@ -131,11 +132,12 @@ export function installSavedStudio({ state, api, notice, updateControls, connect
           } catch {}
         }
         update();
+        updateControls();
         return;
       }
       config = await response.json();
       if (config.product !== 'mk97') { await staticHost(); return; }
-      if (config.studioUrl && new URL(config.studioUrl).origin !== location.origin) { hostedLink(config.studioUrl); $('rememberDevice').checked = false; update(); return; }
+      if (config.studioUrl && new URL(config.studioUrl).origin !== location.origin) { hostedLink(config.studioUrl); $('rememberDevice').checked = false; update(); updateControls(); return; }
       const local = location.protocol === 'http:' && ['localhost','127.0.0.1'].includes(location.hostname);
       if (config.sameOrigin === true && location.protocol === 'https:' || local) {
         if (!state.session && !state.connecting) { $('relayUrl').value = location.origin; state.relay = location.origin; }
@@ -146,9 +148,10 @@ export function installSavedStudio({ state, api, notice, updateControls, connect
       if (!eligible) $('rememberDevice').checked = false;
       await onConfig(config,eligible);
       update();
+      updateControls();
       if (!state.session && eligible) await restore();
       $('cloudDiscovery').textContent = eligible ? state.session ? 'Your remembered device connected automatically.' : 'Create or sign in to your MK97 account to connect this device.' : $('cloudDiscovery').textContent;
-    } catch { await staticHost(); update(); }
+    } catch { await staticHost(); update(); updateControls(); }
   }
   $('rememberDevice').addEventListener('change', update);
   for (const id of ['autoMilestones','autoCards','qualitySelect','overlayToggle','dest-youtube','dest-facebook','dest-instagram']) $(id).addEventListener('change', queuePreferences);

@@ -25,13 +25,14 @@ const state = { stream: null, camera: null, zoom: null, recorder: null, socket: 
   relay: '', info: null, score: null, pollTimer: null, polling: false, live: false, starting: false, stopping: false,
   cameraBusy: false, connecting: false, micMuted: false, previewOff: false, startedAt: 0, uploaded: 0, lastBytes: 0,
   lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false,
-  captureResolution: '1080', graphics: { cards: null, current: null } };
+  captureResolution: '1080', graphics: { cards: null, current: null }, overlayStyle: 'gold' };
 // Remove the obsolete build's browser-stored platform key; new credentials stay in relay memory.
 try { localStorage.removeItem('boundary.ytKey'); } catch {}
 const saved = key => { try { return localStorage.getItem(`mk97.${key}`) || ''; } catch { return ''; } };
 const save = (key, value) => { try { localStorage.setItem(`mk97.${key}`, value); } catch {} };
 $('relayUrl').value = saved('relay'); $('clubInput').value = saved('club') || '300';
 if (saved('match')) $('matchInput').value = saved('match');
+state.overlayStyle = saved('overlayStyle') || 'gold';
 function notice(message, type = 'info') { $('notice').textContent = message; $('notice').className = `notice ${type}`; $('notice').hidden = !message; $('dismissNotice').hidden = !message; }
 function health(id, text, kind = '') { $(id + 'Health').textContent = text; $(id + 'Dot').className = 'health-dot ' + kind; }
 function currentDestinations() { return DESTS.filter(id => $('dest-' + id).checked && state.info?.destinations.find(d => d.id === id)?.configured); }
@@ -363,7 +364,7 @@ async function startStream() {
     recorder.ondataavailable = event => {
       if (!event.data.size || state.socket !== ws) return;
       if (ws.readyState !== WebSocket.OPEN) return abortStream('Upload connection was lost. Start a new stream after reconnecting.');
-      if (ws.bufferedAmount + event.data.size > 8 * 1024 * 1024) return abortStream('Upload cannot keep up with the selected quality. Improve your connection or choose Balanced, then restart.');
+      if (ws.bufferedAmount + event.data.size > 12 * 1024 * 1024) return abortStream('Upload cannot keep up with the selected quality. Improve your connection or choose Balanced, then restart.');
       ws.send(event.data); state.uploaded += event.data.size;
     };
     recorder.onerror = () => abortStream('Camera encoding failed. Reopen the camera or try another current browser.');
@@ -437,6 +438,7 @@ $('dimScreen').addEventListener('click', () => {
   $('exitBattery').focus(); wakeLock();
 });
 $('exitBattery').addEventListener('click', exitBattery);
+$('batteryScreen').addEventListener('click', e => { if (e.target.id === 'batteryScreen') exitBattery(); });
 $('batteryScreen').addEventListener('keydown', e => { if (e.key === 'Tab') { e.preventDefault(); $('exitBattery').focus(); } if (e.key === 'Escape') exitBattery(); });
 setInterval(() => {
   if (!state.live && !state.stopping) return;
@@ -469,3 +471,10 @@ interfaceUI = installInterface({ state, ui, home: homeUI, notice });
 renderRelay(); updateControls();
 document.documentElement.dataset.ready = 'true';
 savedUI.discover();
+
+if (typeof navigator !== 'undefined' && navigator.getBattery) {
+  navigator.getBattery().then(b => {
+    const chk = () => { if (b.level <= 0.20 && !b.charging && state.live) notice(`Battery low (${Math.round(b.level * 100)}%). Tap 'Battery screen' to save power.`, 'warning'); };
+    b.addEventListener('levelchange', chk); b.addEventListener('chargingchange', chk);
+  }).catch(() => {});
+}

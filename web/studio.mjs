@@ -20,7 +20,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     document.documentElement.style.setProperty('--studio-notice-top', `${Math.max(8, box.getBoundingClientRect().top + 10)}px`);
     surface.style.width = `${rect.width}px`; surface.style.height = `${rect.height}px`;
     surface.style.setProperty('--program-unit', `${rect.width / 1920}px`);
-    if (changed) drawScore();
+    if (changed) { lastScoreSig = ""; drawScore(); }
   }
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(frameMonitor).observe($('viewfinder'));
   else window.addEventListener('resize', frameMonitor);
@@ -35,6 +35,20 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   tabs('scoreTabs', 'scoreTab', value => { scoreTab = value; tables(); });
   tabs('statsTabs', 'statTab', value => { statsTab = value; tables(); });
+  if ($('overlayStyleSelect')) {
+    try {
+      const savedTheme = localStorage.getItem('mk97.overlayStyle') || 'gold';
+      state.overlayStyle = savedTheme;
+      $('overlayStyleSelect').value = savedTheme;
+    } catch {}
+    $('overlayStyleSelect').addEventListener('change', () => {
+      state.overlayStyle = $('overlayStyleSelect').value;
+      try { localStorage.setItem('mk97.overlayStyle', state.overlayStyle); } catch {}
+      lastScoreSig = '';
+      drawScore();
+      updateControls();
+    });
+  }
   document.body.append($('notice'), $('dismissNotice'));
   try { $('watchUrl').value = localStorage.getItem('boundary.watch') || ''; } catch {}
   function closeMenu() { $('studioMenu').hidden = true; $('moreButton').setAttribute('aria-expanded', 'false'); }

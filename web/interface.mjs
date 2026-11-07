@@ -109,6 +109,7 @@ export function installInterface({ state, ui, home, notice }) {
     authMode = 'token'; $('legacyConnectionDetails').open = true; update(); $('relayToken').focus();
   });
   $('authUseAccount').addEventListener('click', () => { authMode = 'account'; $('legacyConnectionDetails').open = false; update(); $('accountEmail').focus(); });
+  $('authHome').addEventListener('click', () => home.home());
   $('authPreview').addEventListener('click', () => home.openStudio());
   for (const button of document.querySelectorAll('[data-password-toggle]')) button.addEventListener('click', () => {
     const field = $(button.dataset.passwordToggle); if (field.disabled) return;
@@ -139,7 +140,10 @@ export function installInterface({ state, ui, home, notice }) {
     if (view === 'auth' && token) $('cloudDiscovery').textContent = 'Use your private studio token to connect this device.';
     $('authUseToken').disabled = $('authUseAccount').disabled = Boolean(state.connecting);
     $('authUseToken').hidden = token; $('authUseAccount').hidden = !token || !accountAvailable;
-    if (view === 'auth' && token) $('legacyConnectionDetails').open = true;
+    if (view === 'auth') {
+      if (authMode === 'token') $('legacyConnectionDetails').open = true;
+      else if (!token) $('legacyConnectionDetails').open = false;
+    }
     $('authAlternatives').hidden = !accountAvailable;
     for (const button of document.querySelectorAll('[data-password-toggle]')) button.disabled = Boolean($(button.dataset.passwordToggle).disabled);
     for (const button of document.querySelectorAll('[data-resolution-proxy]')) {
@@ -161,12 +165,13 @@ export function installInterface({ state, ui, home, notice }) {
     for (const [id, value] of [['matchSeriesValue', score?.series], ['matchClubValue', score?.clubId], ['matchIdValue', score?.matchId], ['matchVenueValue', score?.ground]]) $(id).textContent = value || '—';
     $('graphicsSourceState').textContent = !score ? 'No match loaded' : score.stale ? 'Score delayed' : score.status === 'complete' ? 'Match complete' : 'Source connected';
     $('graphicsScorePreview').hidden = !score; $('graphicsPreviewEmpty').hidden = Boolean(score);
-    const key = JSON.stringify([score, programSize(state.camera)]);
+    const theme = state.overlayStyle || 'gold';
+    const key = JSON.stringify([score, programSize(state.camera), theme]);
     if (key !== scoreDrawingKey) {
       scoreDrawingKey = key;
       if (score) {
         const canvas = programSize(state.camera), barHeight = canvas.height > canvas.width ? 286 * canvas.width / 1080 : 236 * canvas.width / 1920;
-        const drawing = graphicSvg(score, null, true, '', canvas).replace(`height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"`, `height="${barHeight}" viewBox="0 ${canvas.height - barHeight} ${canvas.width} ${barHeight}"`);
+        const drawing = graphicSvg(score, null, true, '', canvas, theme).replace(`height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"`, `height="${barHeight}" viewBox="0 ${canvas.height - barHeight} ${canvas.width} ${barHeight}"`);
         $('graphicsScorePreview').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(drawing);
       }
       else $('graphicsScorePreview').removeAttribute('src');

@@ -28,11 +28,11 @@ export function installStudioAccount({state,api,notice,updateControls,connectIde
   }
   async function configure(config,eligible) {
     available=Boolean(eligible);configurationMessage='';
-    if(!available){registered=null;update();return;}
-    const generation=revision;update();
+    if(!available){registered=null;update();updateControls();return;}
+    const generation=revision;update();updateControls();
     try {const result=await api('/api/account/status',{},null);if(generation===revision)registered=Boolean(result.configured);}
     catch(e){if(generation===revision)configurationMessage=e.status===404?'Deploy MK97 1.9.0 on the cloud service to enable account sign-in.':e.message;}
-    update();
+    update();updateControls();
   }
   async function run(path,value,authorization,secretIds,message) {
     if(!available||locked())return;
