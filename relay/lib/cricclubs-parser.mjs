@@ -142,9 +142,20 @@ function metadata($) {
     scorer: ['scorer', 'scorers'],
     matchType: ['matchtype', 'format', 'gameformat']
   };
-  const set = (label, value) => { for (const [field, names] of Object.entries(labels)) if (names.includes(key(label)) && value) out[field] = clean(value, 200); };
-  $('tr').slice(0, 500).each((_, e) => { const cells = $(e).children('th,td'); if (cells.length === 2) set(cells.eq(0).text(), cells.eq(1).text()); });
+  const set = (label, value) => { for (const [field, names] of Object.entries(labels)) if (names.includes(key(label)) && value && !out[field]) out[field] = clean(value, 200); };
+  $('tr').slice(0, 500).each((_, e) => {
+    const cells = $(e).children('th,td');
+    if (cells.length >= 2 && cells.length <= 6 && cells.length % 2 === 0) {
+      for (let i = 0; i < cells.length; i += 2) set(cells.eq(i).text(), cells.eq(i + 1).text());
+    }
+  });
   $('dt').slice(0, 100).each((_, e) => set($(e).text(), $(e).next('dd').text()));
+  $('li,p,.match-info,.ms-match-info').slice(0, 120).each((_, e) => {
+    const text = clean($(e).text(), 260);
+    const m = text.match(/^([A-Za-z ]{2,25})\s*:\s*(.+)$/);
+    if (m) set(m[1], m[2]);
+  });
+  $('time,.match-date,[data-match-date]').slice(0, 4).each((_, e) => { if (!out.date) out.date = clean($(e).text() || $(e).attr('datetime'), 100); });
   $('.match-result,[data-match-result]').slice(0, 2).each((_, e) => { if (!out.result) out.result = clean($(e).text(), 200); });
   return out;
 }

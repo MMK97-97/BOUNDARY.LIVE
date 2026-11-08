@@ -124,9 +124,9 @@ export class ScoreService {
       if (['imported-html', 'imported-json'].includes(this.scorecardDocument?.origin) && this.score.scorecard?.state === 'complete') return;
     }
     if (!this.scorecardScraper) return;
-    const league = this.league;
+    const league = this.league || (this.score?.source === 'CricClubs' ? (this.leagues.get(ids.clubId) || this.scorecardLeague || 'FWCWL') : null);
     if (!league) {
-      this.score.scorecard = { state: 'unavailable', message: 'Paste this league’s full CricClubs scorecard URL to enable full-card reading.' }; return;
+      this.score.scorecard = { state: 'unavailable', message: 'Full scorecard scraping is not configured for this feed.' }; return;
     }
     if (!this.score.scorecard) this.score.scorecard = { state: 'loading', message: 'Reading full innings tables on the relay.' };
     if (this.scorecardTask) return;

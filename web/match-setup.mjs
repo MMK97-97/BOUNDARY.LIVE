@@ -6,7 +6,7 @@ export function installMatchSelection({ state }) {
     $('clubInput').value = clubId; $('homeClubInput').value = clubId;
     $('leaguePreset').value = known ? clubId : 'custom'; $('homeLeaguePreset').value = known ? clubId : 'custom';
     $('leagueDetails').querySelector('summary').textContent = `${label} · Club ${clubId}`;
-    $('clubHelp').textContent = 'Club ID identifies the league; Match ID identifies the game. Examples: Tampa Cricket 1507 / 3866; TCL 157 / 6098. A full scorecard URL supplies both.';
+    $('clubHelp').textContent = 'Enter the Match ID directly (known leagues auto-detect Club ID), or select a Club ID / paste a scorecard URL. Examples: FWCWL 986; Tampa Cricket 3866; TCL 6098.';
   }
   const locked = () => Boolean(state.live || state.starting || state.stopping || state.scoreLoading);
   for (const id of ['leaguePreset', 'homeLeaguePreset']) $(id).addEventListener('change', () => {

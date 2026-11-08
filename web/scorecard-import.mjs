@@ -117,14 +117,24 @@ function metadata(doc) {
     scorer: ['scorer', 'scorers'],
     matchType: ['matchtype', 'format', 'gameformat']
   };
-  const set = (label, value) => { for (const [field, names] of Object.entries(labels)) if (names.includes(key(label)) && value) out[field] = clean(value, 200); };
+  const set = (label, value) => { for (const [field, names] of Object.entries(labels)) if (names.includes(key(label)) && value && !out[field]) out[field] = clean(value, 200); };
   for (const r of [...doc.querySelectorAll('tr')].slice(0, 500)) {
     const cells = [...r.children].filter(c => c.tagName === 'TH' || c.tagName === 'TD');
-    if (cells.length === 2) set(cells[0].textContent, cells[1].textContent);
+    if (cells.length >= 2 && cells.length <= 6 && cells.length % 2 === 0) {
+      for (let i = 0; i < cells.length; i += 2) set(cells[i].textContent, cells[i + 1].textContent);
+    }
   }
   for (const dt of [...doc.querySelectorAll('dt')].slice(0, 100)) {
     const dd = dt.nextElementSibling;
     if (dd?.tagName === 'DD') set(dt.textContent, dd.textContent);
+  }
+  for (const node of [...doc.querySelectorAll('li,p,.match-info,.ms-match-info')].slice(0, 120)) {
+    const text = clean(node.textContent, 260);
+    const m = text.match(/^([A-Za-z ]{2,25})\s*:\s*(.+)$/);
+    if (m) set(m[1], m[2]);
+  }
+  for (const d of [...doc.querySelectorAll('time,.match-date,[data-match-date]')].slice(0, 4)) {
+    if (!out.date) out.date = clean(d.textContent || d.getAttribute('datetime'), 100);
   }
   for (const m of [...doc.querySelectorAll('.match-result,[data-match-result]')].slice(0, 2)) {
     if (!out.result) out.result = clean(m.textContent, 200);

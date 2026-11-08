@@ -132,7 +132,7 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       toss: clean(v.toss, 120),
       tossWon: clean(v.tossWon, 40),
       playerOfMatch: clean(v.manOfTheMatch, 60),
-      date: clean(v.matchDate || v.date, 60),
+      date: clean(v.matchDate || v.date || v.matchDateTime || v.gameDate || v.dateStr, 60),
       umpires: clean(v.umpires || v.umpire, 120),
       scorer: clean(v.scorer, 80),
       matchType: clean(v.matchType || v.seriesType, 40),

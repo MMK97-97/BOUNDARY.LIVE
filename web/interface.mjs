@@ -177,7 +177,8 @@ export function installInterface({ state, ui, home, notice }) {
       $('matchTeam' + side + 'Name').textContent = name || '—';
       $('matchTeam' + side + 'Icon').textContent = name ? name.slice(0, 4) : '—';
     }
-    for (const [id, value] of [['matchSeriesValue', score?.series], ['matchClubValue', score?.clubId], ['matchIdValue', score?.matchId], ['matchVenueValue', score?.ground]]) $(id).textContent = value || '—';
+    const venueAndDate = [score?.ground, score?.stats?.date].filter(Boolean).join(' · ');
+    for (const [id, value] of [['matchSeriesValue', score?.series], ['matchClubValue', score?.clubId], ['matchIdValue', score?.matchId], ['matchVenueValue', venueAndDate]]) $(id).textContent = value || '—';
     $('graphicsSourceState').textContent = !score ? 'No match loaded' : score.stale ? 'Score delayed' : score.status === 'complete' ? 'Match complete' : 'Source connected';
     $('graphicsScorePreview').hidden = !score; $('graphicsPreviewEmpty').hidden = Boolean(score);
     const theme = state.overlayStyle || 'gold';

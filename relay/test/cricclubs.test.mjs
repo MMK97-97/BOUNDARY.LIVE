@@ -212,3 +212,26 @@ test('supports alternate CricClubs innings heading formats and manual scorecard 
   assert.equal(imported.score.inningsCards[0].batting.length, 4);
   assert.equal(imported.score.scorecard.state, 'complete');
 });
+
+test('scrapes full scorecard and match date when selected by Match ID without providing a URL link', async () => {
+  const datedHtml = html.replace('</body>', '<table><tr><th>Date</th><td>11/08/2026</td><th>Format</th><td>35 Overs</td></tr></table></body>')
+    .replaceAll('matchId=456', 'matchId=789').replaceAll('clubId=123', 'clubId=999')
+    .replace('name="matchId" value="456"', 'name="matchId" value="789"')
+    .replace('name="clubId" value="123"', 'name="clubId" value="999"');
+  const raw = { values: { matchId: '789', t1Name: 'Alpha CC', t2Name: 'Beta CC', t1Total: '150', t1Wickets: '3', t1Overs: '20',
+    t2Total: '151', t2Wickets: '2', t2Overs: '19.2' }, isSecondInningsStarted: true };
+  let scrapedRef = null;
+  const service = new ScoreService({
+    fetchFn: async () => new Response(JSON.stringify(raw)),
+    scorecardScraper: { scrape: async ref => { scrapedRef = ref; return { ...parseCricClubsScorecard(datedHtml, ref), fetchedAt: Date.now() }; } }
+  });
+  service.select('999', '789');
+  await service.refresh();
+  await service.scorecardTask;
+  const snap = service.snapshot();
+  assert.equal(scrapedRef.matchId, '789');
+  assert.equal(scrapedRef.clubId, '999');
+  assert.equal(snap.score.scorecard.state, 'complete');
+  assert.equal(snap.score.stats.date, '11/08/2026');
+  assert.equal(snap.score.stats.matchType, '35 Overs');
+});

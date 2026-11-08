@@ -7,7 +7,7 @@ import { createFeed } from './feed.mjs';
 import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
-import { knownLeague } from './cricclubs-reference.mjs';
+import { CRICCLUBS_LEAGUES, knownLeague } from './cricclubs-reference.mjs';
 import { installMatchSelection } from './match-setup.mjs';
 import { installSavedStudio } from './saved-studio.mjs';
 import { installStudioAccount } from './studio-account.mjs';
@@ -192,15 +192,40 @@ const feed = createFeed({
 async function pollScore() { return feed.refresh(); }
 async function loadSelectedMatch(input, club) {
   if (state.live || state.starting || state.stopping || state.scoreLoading) throw new Error('Stop the current upload before changing matches.');
-  const ids = parseMatch(input, club, saved('league.' + club));
+  const rawInput = String(input || '').trim();
+  const isUrl = /^https?:/i.test(rawInput);
+  let ids = parseMatch(rawInput, club, saved('league.' + club) || knownLeague(club)?.league);
   state.scoreLoading = true; state.graphics.cards = null;
-  matchUI?.accept(ids);
   const league = ids.league || knownLeague(ids.clubId)?.league;
-  if (league) save('league.' + ids.clubId, league);
+  if (league) { ids = { ...ids, league }; save('league.' + ids.clubId, league); }
+  matchUI?.accept(ids);
   save('club', ids.clubId); save('match', ids.matchId); updateControls();
   try {
-    const result = await feed.select(ids);
+    let result = await feed.select(ids);
+    if (!result?.score && !isUrl) {
+      for (const candidate of CRICCLUBS_LEAGUES) {
+        if (candidate.clubId === ids.clubId) continue;
+        const altIds = { clubId: candidate.clubId, matchId: ids.matchId, league: candidate.league };
+        const altResult = await feed.select(altIds);
+        if (altResult?.score) {
+          ids = altIds;
+          result = altResult;
+          matchUI?.accept(ids);
+          save('league.' + ids.clubId, ids.league);
+          save('club', ids.clubId); save('match', ids.matchId);
+          break;
+        }
+      }
+      if (!result?.score) await feed.select(ids);
+    }
     if (!result?.score) throw new Error(result?.error || 'No score data was returned.');
+    if (state.session && !result.score.cards?.complete && result.score.scorecard?.state !== 'complete' && result.score.scorecard?.state !== 'blocked') {
+      api('/api/score/scrape', { method: 'POST', body: '{}' }).then(scraped => {
+        if (scraped?.score && state.score?.matchId === scraped.score.matchId && state.score?.clubId === scraped.score.clubId) {
+          renderScore({ ...result, ...scraped, transport: 'relay' });
+        }
+      }).catch(() => {});
+    }
     notice(''); return result;
   } finally { state.scoreLoading = false; updateControls(); }
 }
