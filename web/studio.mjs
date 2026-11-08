@@ -252,8 +252,8 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function renderScorecardTools(root, s) {
     if (!s) return;
-    const bar = el('div', null, 'row scorecard-actions');
-    const scrapeBtn = el('button', scrapingScorecard ? 'Scraping…' : 'Scrape full scorecard', 'secondary');
+    const bar = el('div', null, 'scorecard-actions-grid');
+    const scrapeBtn = el('button', scrapingScorecard ? 'Scraping…' : 'Scrape scorecard', 'secondary');
     scrapeBtn.type = 'button'; scrapeBtn.disabled = scrapingScorecard;
     scrapeBtn.addEventListener('click', handleScrapeFullScorecard);
 
@@ -277,6 +277,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     const importBtn = el('button', importPanelOpen ? 'Hide import' : 'Import HTML / JSON', 'secondary');
     importBtn.type = 'button';
     importBtn.addEventListener('click', () => { importPanelOpen = !importPanelOpen; tables(); });
+
     bar.append(scrapeBtn, pasteBtn, importBtn);
     const url = scorecardUrl(s);
     if (url) {
@@ -285,6 +286,13 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       bar.append(openLink);
     }
     root.append(bar);
+
+    if (s.scorecard?.state === 'blocked' && !importPanelOpen) {
+      const hint = el('div', null, 'scorecard-blocked-hint');
+      hint.append(el('strong', '⚡ CricClubs cloud check (HTTP 403)'));
+      hint.append(el('p', 'Tap "Open CricClubs ↗", copy the scorecard text on that page, and tap "📋 Paste Scorecard" to load all batters, bowlers and fall of wickets.', 'helper'));
+      root.append(hint);
+    }
     if (importPanelOpen) {
       const box = el('div', null, 'panel');
       box.append(el('p', 'Import Full Scorecard (HTML or JSON)', 'card-caption'));

@@ -16,7 +16,7 @@ async function fixture(fn) {
 test('encrypted saved state survives reopening; plaintext credentials are absent from the file',()=>fixture(async file=>{
   const first=new StudioVault({adapter:new FileVaultAdapter(file),key});
   await first.mutate(state=>{state.profile.destinations.youtube={server:'rtmps://a.rtmps.youtube.com/live2',key:'private-fixture-stream-key'};});
-  const raw=await fs.readFile(file,'utf8');assert.equal(raw.includes('private-fixture-stream-key'),false);assert.equal((await fs.stat(file)).mode&0o777,0o600);
+  const raw=await fs.readFile(file,'utf8');assert.equal(raw.includes('private-fixture-stream-key'),false);if (process.platform !== 'win32') assert.equal((await fs.stat(file)).mode&0o777,0o600);
   const restored=new StudioVault({adapter:new FileVaultAdapter(file),key});await restored.ready();assert.equal(restored.snapshot().profile.destinations.youtube.key,'private-fixture-stream-key');
 }));
 test('a wrong encryption key or modified ciphertext fails without replacing saved data',()=>fixture(async file=>{
