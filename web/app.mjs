@@ -357,7 +357,7 @@ async function startStream() {
     ws.onopen = () => {
       if (state.socket !== ws) return;
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
-        width: capture.width, height: capture.height, resolution: state.captureResolution, framing: state.framing || 'fit', overlay: $('overlayToggle').checked,
+        width: capture.width, height: capture.height, resolution: state.captureResolution, framing: state.framing || 'fit', overlay: $('overlayToggle').checked, overlayStyle: state.overlayStyle || 'gold',
         match: state.score ? { clubId: state.score.clubId, matchId: state.score.matchId } : null,
         automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked } }));
     };

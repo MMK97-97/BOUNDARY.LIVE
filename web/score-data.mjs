@@ -58,7 +58,7 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       batters: (Array.isArray(raw.batters) ? raw.batters : []).slice(0, 2).map(normalPlayer), bowler: raw.bowler ? normalBowler(raw.bowler) : null,
       series: clean(raw.series, 120), ground: clean(raw.ground, 100),
       teams: rows(raw.teams).slice(0, 2).map(t => ({ name: clean(t.name, 100), code: clean(t.code || t.name, 12), logo: sourceLogo(t.logo), runs: clean(t.runs, 6), wickets: clean(t.wickets, 3), overs: clean(t.overs, 6) })),
-      innings: clean(raw.innings || raw.batting, 40),
+      innings: clean(raw.innings || raw.batting, 40), requiredRate: clean(raw.requiredRate, 10), totalOvers: clean(raw.totalOvers, 6), superOver: truth(raw.superOver),
       cards: { batting: (Array.isArray(raw.cards?.batting) ? raw.cards.batting : []).slice(0, 15).map(normalPlayer), bowling: (Array.isArray(raw.cards?.bowling) ? raw.cards.bowling : []).slice(0, 15).map(normalBowler), complete: raw.cards?.complete === true && Array.isArray(raw.cards?.batting) && Array.isArray(raw.cards?.bowling) },
       deliveries: (Array.isArray(raw.deliveries) ? raw.deliveries : []).slice(-12).filter(d => d && typeof d === 'object').map(d => ({ id: clean(d.id, 80), batRuns: Number(d.batRuns), occurredAt: Date.parse(d.occurredAt), batterName: clean(d.batterName, 32) })).filter(d => d.id && Number.isFinite(d.occurredAt))
     };

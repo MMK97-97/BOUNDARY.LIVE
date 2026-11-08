@@ -33,6 +33,10 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       }
     } else if (!busy) { requestId = null; submitted = null; }
     update();
+    if (isRealOrigin && state.session && data?.connected && !data?.authorizing && data?.error?.includes('Google authorization expired') && !busy && !locked()) {
+      post('disconnect').then(() => { data = null; requestId = null; submitted = null; autoPrepKey = ''; return refreshInfo(); }).catch(() => {});
+      return;
+    }
     if (isRealOrigin && state.session && data?.connected && !data?.authorizing && !data?.error && !busy && !locked()) {
       const ended = data.broadcast && ['complete', 'revoked'].includes(data.broadcast.state);
       const key = `${data.channel?.id || 'yt'}:${ended ? data.broadcast.id : 'nosetup'}`;
@@ -93,7 +97,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCapture').textContent = `Capture: ${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · 30 fps program. YouTube detects the incoming format.`;
     $('ytEvent').hidden = !b;
     $('ytOperation').textContent = data?.setup && data.setup.stage !== 'ready' ? `Setup stage: ${data.setup.stage}${data.setup.uncertain ? ' · result unconfirmed; review Studio before New setup' : ''}` : '';
-    $('ytError').textContent = data?.error || '';
+    $('ytError').textContent = (hasManualKey && !connected) ? '' : (data?.error || '');
     $('ytNew').hidden = !data?.setup; $('ytNew').disabled = Boolean(disabled || ['live', 'testing', 'liveStarting', 'testStarting'].includes(b?.state));
     if (b) {
       if (!$('watchUrl').value || $('watchUrl').value === autoWatch) { $('watchUrl').value = b.watchUrl; autoWatch = b.watchUrl; try { localStorage.setItem('boundary.watch', b.watchUrl); } catch {} }

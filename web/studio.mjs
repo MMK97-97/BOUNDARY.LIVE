@@ -1,5 +1,5 @@
 import { programRect, programSize, captureProfile } from './capture.mjs';
-import { graphicSvg } from './score-graphic.mjs';
+import { graphicSvg, calculateEquation } from './score-graphic.mjs';
 const $ = id => document.getElementById(id);
 const label = { match: 'Match Setup', streamSettings: 'Stream Settings', graphics: 'Live Score Graphics', quality: 'Quality & Destinations', advanced: 'Camera, Audio & Advanced', youtubecreate: 'Create Live Setup', events: 'My Event & Live Controls', settings: 'Stream Setup', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
 const el = (tag, content, className) => { const n = document.createElement(tag); if (content != null) n.textContent = String(content); if (className) n.className = className; return n; };
@@ -10,7 +10,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   let scoreTab = 'batting', statsTab = 'overview';
   let monitorCanvas = programSize(state.camera);
   function drawScore(s = state.score) {
-    if (s) $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas));
+    if (s) $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold'));
     else $('scoreGraphic').removeAttribute('src');
   }
   function frameMonitor() {
@@ -46,6 +46,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       try { localStorage.setItem('mk97.overlayStyle', state.overlayStyle); } catch {}
       lastScoreSig = '';
       drawScore();
+      if (state.live) sendControl({ type: 'overlayStyle', style: state.overlayStyle });
       updateControls();
     });
   }
@@ -187,8 +188,9 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     $('seriesTitle').textContent = s.series || `CricClubs · Match ${s.matchId}`; $('groundTitle').textContent = `${s.ground || 'Club ' + s.clubId} · Match ${s.matchId}`;
     $('oppositionTeam').textContent = s.teams?.find(t => t.code === s.bowling || t.name === s.bowling)?.name || s.bowling;
     $('battingLogo').textContent = s.batting.slice(0, 4); $('bowlingLogo').textContent = s.bowling.slice(0, 4);
-    $('requiredRate').textContent = 'RRR ' + (s.requiredRate && s.requiredRate !== '--.--' ? s.requiredRate : '—');
-    $('overlayDetail').textContent = s.result || s.detail || 'CricClubs live score';
+    const eq = calculateEquation(s);
+    $('requiredRate').textContent = eq.isChasing ? 'RRR ' + (eq.rrr || '—') : 'PROJ ' + eq.projected;
+    $('overlayDetail').textContent = s.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b · Target ${eq.target}` : s.detail || '1st Innings · Batting First');
     for (const [n, p] of [[1, s.batters?.[0]], [2, s.batters?.[1]]]) { $(`batter${n}Name`).textContent = p?.name || '—'; $(`batter${n}Runs`).textContent = p ? `${p.runs} (${p.balls})` : '—'; }
     $('bowlerName').textContent = s.bowler?.name || '—'; $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} (${s.bowler.overs})` : '—';
     $('overBalls').replaceChildren(); for (const b of (s.balls || [])) $('overBalls').append(el('span', b === '.' ? '0' : b, `ball ${b === '4' ? 'four' : b === '6' ? 'six' : b.toUpperCase().includes('W') && !b.toLowerCase().includes('wd') ? 'wicket' : ''}`));

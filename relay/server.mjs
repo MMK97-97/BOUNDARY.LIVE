@@ -81,7 +81,7 @@ async function hydrateSavedStudio(origin) {
     try { manualDestinations.restorePrivate(STUDIO_OWNER, origin, profile.destinations); }
     catch { savedWarning = 'A saved destination needs to be entered again. Its stored configuration was not accepted.'; }
     try {
-      if (youtube.restorePrivate(STUDIO_OWNER, profile.youtube)) { try { await youtube.refresh(STUDIO_OWNER, true); } catch {} }
+      if (youtube.restorePrivate(STUDIO_OWNER, profile.youtube)) { try { await youtube.refresh(STUDIO_OWNER, true); } catch (e) { if (e?.status === 401) { try { await youtube.disconnect(STUDIO_OWNER); } catch { youtube.forget(STUDIO_OWNER); } } } }
       else if (profile.youtube) savedWarning = 'The saved YouTube connection needs reconnecting because its Google client or website origin changed.';
     } catch { savedWarning = 'The saved YouTube setup needs to be reconnected. Review its existing event in YouTube Studio.'; }
     if (!scores.ids && profile.preferences?.match) { const match = profile.preferences.match; try { scores.select(match.clubId, match.matchId, match.league); } catch {} }
@@ -287,6 +287,7 @@ const server = http.createServer(async (req, res) => {
         if (value?.id === 'youtube' && youtube.connections.has(owner) && youtube.destination(owner)?.configured) {
           return json(res, 409, { error: 'Disconnect the YouTube account in YouTube live controls before setting a manual stream key.' });
         }
+        if (value?.id === 'youtube' && youtube.connections.has(owner) && !youtube.destination(owner)?.configured) { try { await youtube.disconnect(owner); } catch { youtube.forget(owner); } }
         if (value?.id === 'youtube' && youtube.authorizing(owner)) {
           youtube.cancelAuth(owner);
         }
@@ -302,12 +303,12 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname.startsWith('/api/youtube/')) {
         const stopEditing = () => { if (active?.owner === owner) throw Object.assign(new Error('Stop camera upload before changing the connected YouTube account or setup.'), { status: 409 }); };
-        if (req.method === 'GET' && url.pathname === '/api/youtube/status') return json(res, 200, await youtube.refresh(owner, url.searchParams.get('refresh') === '1'));
+        if (req.method === 'GET' && url.pathname === '/api/youtube/status') { try { return json(res, 200, await youtube.refresh(owner, url.searchParams.get('refresh') === '1')); } catch (e) { if (e?.status === 401 && (!active || active.owner !== owner)) { try { await youtube.disconnect(owner); } catch { youtube.forget(owner); } return json(res, 200, youtube.status(owner)); } throw e; } }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/start') { stopEditing(); return json(res, 201, youtube.start(owner, originOf(req), authenticated.id)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/cancel') { stopEditing(); return json(res, 200, youtube.cancelAuth(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/complete') { stopEditing(); return json(res, 200, await youtube.complete(owner, originOf(req), await body(req, 8192))); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/setup') { stopEditing(); return json(res, 201, await youtube.prepare(owner, await body(req, 16384))); }
-        if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); await youtube.refresh(owner, true); const result = youtube.resetSetup(owner); await youtube.persist(owner); return json(res, 200, result); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); try { await youtube.refresh(owner, true); } catch (e) { if (e?.status !== 401) throw e; } const result = youtube.resetSetup(owner); await youtube.persist(owner); return json(res, 200, result); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/disconnect') { stopEditing(); return json(res, 200, await youtube.disconnect(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/transition') {
           const value = await body(req), result = await youtube.transition(owner, value.state);
@@ -424,7 +425,7 @@ function run(ws, message, identity) {
   session.program = new LiveProgram({ binary, font, dir, mimeType: message.mimeType, options,
     bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000,
     width: canvas.width, height: canvas.height,
-    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, preset, framing: message.framing || 'fit' });
+    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, overlayStyle: ['gold', 'shield', 'dual', 'cyan', 'classic'].includes(message.overlayStyle) ? message.overlayStyle : 'gold', preset, framing: message.framing || 'fit' });
   main = session.program.encoder; session.main = main;
   session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
   session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));
@@ -540,6 +541,7 @@ wss.on('connection', (ws, req) => {
           try {
             if (message.type === 'card') session.program.cards(message.kind);
             else if (message.type === 'overlay' && typeof message.enabled === 'boolean') session.program.showOverlay = message.enabled;
+            else if (message.type === 'overlayStyle' && ['gold', 'shield', 'dual', 'cyan', 'classic'].includes(message.style)) session.program.renderer.style = message.style;
             else throw new Error('Unknown broadcast control.');
           } catch (e) { send(ws, { type: 'warning', message: e.message.slice(0, 180) }); }
         }

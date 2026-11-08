@@ -85,6 +85,7 @@ export class YouTubeService {
     if (origin !== this.config.origin && origin !== 'https://mmk97-97.github.io') throw error('The YouTube callback origin does not match this studio. In Render set YOUTUBE_REDIRECT_URI to this studio’s exact /youtube-callback.html URL and register the same URL in Google Cloud.', 409);
     if (!this.validSession(owner, origin)) throw error('Reconnect the relay before signing in.', 401);
     for (const [key, f] of this.flows) if (f.owner === owner) this.flows.delete(key);
+    if (this.connections.get(owner)) this.connections.get(owner).error = null;
     if (this.completing.has(owner)) this.completing.get(owner).cancelled = true;
     if (this.flows.size >= 24) throw error('Too many pending Google sign-ins. Try again later.', 429);
     const state = randomBytes(32).toString('base64url'), verifier = randomBytes(48).toString('base64url');
@@ -316,9 +317,9 @@ export class YouTubeService {
   async persist(owner) { await this.saveConnection(owner, this.exportPrivate(owner)); }
   restorePrivate(owner, value) {
     if (!value) return false;
-    if (!this.config.configured || value.schema !== 1 || value.clientId !== this.config.clientId || value.origin !== this.config.origin) return false;
+    if (!this.config.configured || value.schema !== 1 || value.clientId !== this.config.clientId || (value.origin !== this.config.origin && value.origin !== 'https://mmk97-97.github.io')) return false;
     if (!id(value.channel?.id) || typeof value.accessToken !== 'string' || value.accessToken.length > 8192 || !Number.isFinite(value.expires)) throw error('Saved YouTube connection is invalid. Connect the account again.', 409);
-    const c = { owner, origin: value.origin, accessToken: value.accessToken, refreshToken: typeof value.refreshToken === 'string' && value.refreshToken.length < 8192 ? value.refreshToken : null,
+    const c = { owner, origin: this.config.origin, accessToken: value.accessToken, refreshToken: typeof value.refreshToken === 'string' && value.refreshToken.length < 8192 ? value.refreshToken : null,
       expires: value.expires, created: value.created, channel: { id: value.channel.id, title: text(value.channel.title) }, lastRefresh: 0, ready: false };
     if (value.operation) {
       const op = value.operation;

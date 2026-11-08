@@ -59,4 +59,15 @@ test('graphics escape score/player markup and cache across consecutive event fra
   assert.equal((svg.match(/<image /g) || []).length, 1); assert.ok(svg.includes('data:image/png;base64,'));
   const render = new GraphicRenderer(findFont()), a = render.frame(score({ fetchedAt: 0 }), event, true);
   const b = render.frame(score({ fetchedAt: 0 }), { ...event, position: 1 }, true); assert.equal(a, b);
+  const firstInnings = score({ innings: '1', target: '0', requiredRate: '--.--', runRate: '8.50', teams: [{ name: 'ICAT', code: 'ICAT', runs: '98', wickets: '1', overs: '7.5' }, { name: 'RBCC', code: 'RBCC', runs: '0', wickets: '0', overs: '0.0' }] });
+  const chasing = score({ innings: '2', batting: 'RBCC', bowling: 'ICAT', runs: '110', wickets: '3', overs: '14.0', totalOvers: '20', runRate: '7.86', requiredRate: '9.00', teams: [{ name: 'ICAT', code: 'ICAT', runs: '163', wickets: '6', overs: '20.0' }, { name: 'RBCC', code: 'RBCC', runs: '110', wickets: '3', overs: '14.0' }] });
+  for (const theme of ['gold', 'shield', 'dual', 'cyan', 'classic']) {
+    const svg1 = graphicSvg(firstInnings, null, true, { width: 1920, height: 1080 }, theme);
+    const svg2 = graphicSvg(chasing, null, true, { width: 1920, height: 1080 }, theme);
+    assert.equal(svg1.includes('NEED 1 '), false, `1st innings should not fabricate a 1-run chase in ${theme}`);
+    assert.ok(svg1.includes('PROJECTED') || svg1.includes('PROJ'), `1st innings should show projected score in ${theme}`);
+    assert.ok(svg2.includes('54') && (svg2.includes('36') || svg2.includes('164')), `2nd innings chase should show runs needed and balls/target in ${theme}`);
+  }
+  assert.ok(graphicSvg(firstInnings, null, true, { width: 1920, height: 1080 }, 'dual').includes('YET TO BAT'));
+  assert.ok(graphicSvg(chasing, null, true, { width: 1920, height: 1080 }, 'dual').includes('163-6'));
 });

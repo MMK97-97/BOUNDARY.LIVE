@@ -23,8 +23,8 @@ export function liveProgramArgs({ mimeType = 'video/mp4', bitrateKbps = 6000, wi
     '-shortest', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', 'pipe:1'];
 }
 export class LiveProgram extends EventEmitter {
-  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, width = 1920, height = 1080, realtime = true, preset, framing }) {
-    super(); this.options = options; this.renderer = new GraphicRenderer(font, { width, height }); this.detector = new CricketEvents();
+  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, overlayStyle = 'gold', width = 1920, height = 1080, realtime = true, preset, framing }) {
+    super(); this.options = options; this.renderer = new GraphicRenderer(font, { width, height }, overlayStyle); this.detector = new CricketEvents();
     this.score = score; this.showOverlay = overlay; this.queue = []; this.current = null; this.outputFrames = 0;
     this.startedAt = null; this.realtime = realtime; this.blocked = false; this.closing = false; this.dead = false;
     if (score) this.detector.update(score);

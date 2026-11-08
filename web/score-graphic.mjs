@@ -21,17 +21,105 @@ function parseOversToBalls(oversStr) {
   return overs * 6 + balls;
 }
 
-function calculateEquation(score) {
-  const rrr = score.requiredRate && score.requiredRate !== '--.--' ? score.requiredRate : null;
-  const target = score.target || (score.teams && score.teams.length > 1 ? (parseInt(score.teams[0].runs, 10) || 0) + 1 : null);
+export function calculateEquation(score) {
+  if (!score) {
+    return {
+      isChasing: false, isComplete: false, crr: '—', rrr: null, target: null,
+      runsNeeded: null, ballsLeft: 0, projected: 0, maxOvers: 20,
+      partnershipText: '—', oppTeam: null, oppHasBatted: false,
+      phaseLabel: 'LIVE', centerEquation: 'LIVE CRICKET'
+    };
+  }
+  const isComplete = score.status === 'complete' || /\bwon\b|\btied\b|\bno result\b|\babandoned\b/i.test(score.result || '');
+  const innStr = String(score.innings || '').trim().toUpperCase();
+  const explicitInnings1 = innStr === '1' || innStr === 'SO1' || /^1ST|FIRST/i.test(innStr);
+  const explicitInnings2 = innStr === '2' || innStr === 'SO2' || /^2ND|SECOND/i.test(innStr);
+
+  const batUpper = String(score.batting || '').trim().toUpperCase();
+  const bowlUpper = String(score.bowling || '').trim().toUpperCase();
+
+  let oppTeam = (score.teams || []).find(t => {
+    const code = String(t.code || '').trim().toUpperCase();
+    const name = String(t.name || '').trim().toUpperCase();
+    if (bowlUpper && (code === bowlUpper || name === bowlUpper)) return true;
+    if (batUpper && code && code !== batUpper && name !== batUpper) return true;
+    return false;
+  }) || (explicitInnings2 ? score.teams?.[0] : null);
+
+  if (!oppTeam && Array.isArray(score.inningsCards) && score.inningsCards.length) {
+    const firstCard = score.inningsCards.find(c => {
+      const tName = String(c.team || '').trim().toUpperCase();
+      return (bowlUpper && tName === bowlUpper) || (batUpper && tName && tName !== batUpper);
+    });
+    if (firstCard) {
+      oppTeam = { name: firstCard.team, code: firstCard.team, runs: firstCard.runs, wickets: firstCard.wickets, overs: firstCard.overs };
+    }
+  }
+
+  const oppRuns = oppTeam ? parseInt(oppTeam.runs, 10) : NaN;
+  const oppBalls = oppTeam ? parseOversToBalls(oppTeam.overs) : 0;
+  const oppHasBatted = Boolean(oppTeam && ((Number.isFinite(oppRuns) && oppRuns > 0) || oppBalls > 0));
+
+  const rawTarget = parseInt(score.target, 10);
+  const explicitTarget = Number.isFinite(rawTarget) && rawTarget > 0 ? rawTarget : null;
+  const rawRrr = score.requiredRate && score.requiredRate !== '--.--' && parseFloat(score.requiredRate) > 0 ? score.requiredRate : null;
+  const detailNeedMatch = String(score.detail || '').match(/need[s]?\s+(\d+)\s*(?:runs?\s*)?(?:from|off|in)\s*(\d+)\s*(balls?|overs?|ov)/i);
+
+  const isChasing = Boolean(
+    explicitInnings2 ||
+    explicitTarget !== null ||
+    rawRrr !== null ||
+    (oppHasBatted && !explicitInnings1) ||
+    (detailNeedMatch && !explicitInnings1)
+  );
+
   const currentRuns = parseInt(score.runs, 10) || 0;
-  const maxOvers = 20; // default T20
-  const totalBalls = maxOvers * 6;
   const bowledBalls = parseOversToBalls(score.overs);
-  const ballsLeft = Math.max(0, totalBalls - bowledBalls);
-  const runsNeeded = target ? Math.max(0, target - currentRuns) : null;
-  const projected = score.runRate ? Math.round(parseFloat(score.runRate) * 20) : currentRuns;
-  return { rrr, target, runsNeeded, ballsLeft, projected };
+  const parsedTotalOvers = parseInt(score.totalOvers, 10);
+  const maxOvers = score.superOver ? 1 : (Number.isFinite(parsedTotalOvers) && parsedTotalOvers > 0 ? parsedTotalOvers : (oppHasBatted && Math.ceil(oppBalls / 6) > 20 ? Math.ceil(oppBalls / 6) : 20));
+  const totalBalls = maxOvers * 6;
+  const ballsLeft = detailNeedMatch && /ball/i.test(detailNeedMatch[3])
+    ? parseInt(detailNeedMatch[2], 10)
+    : Math.max(0, totalBalls - bowledBalls);
+
+  const target = isChasing
+    ? (explicitTarget || (oppHasBatted && Number.isFinite(oppRuns) ? oppRuns + 1 : (detailNeedMatch ? currentRuns + parseInt(detailNeedMatch[1], 10) : null)))
+    : null;
+  const runsNeeded = isChasing && target !== null ? Math.max(0, target - currentRuns) : (isChasing && detailNeedMatch ? parseInt(detailNeedMatch[1], 10) : null);
+
+  const crrNum = parseFloat(score.runRate) || (bowledBalls > 0 ? (currentRuns * 6) / bowledBalls : 0);
+  const crr = score.runRate || (bowledBalls > 0 ? crrNum.toFixed(2) : '0.00');
+  const rrr = isChasing
+    ? (rawRrr || (runsNeeded !== null && ballsLeft > 0 ? ((runsNeeded * 6) / ballsLeft).toFixed(2) : null))
+    : null;
+  const projected = bowledBalls > 0 ? Math.max(currentRuns, Math.round(crrNum * maxOvers)) : currentRuns;
+
+  const p = score.stats?.partnership;
+  const b0 = score.batters?.[0], b1 = score.batters?.[1];
+  const partnershipText = p?.runs != null
+    ? `${p.runs} (${p.balls || 0})`
+    : (b0 && b1 && /^\d+$/.test(String(b0.runs)) && /^\d+$/.test(String(b1.runs))
+      ? `${Number(b0.runs) + Number(b1.runs)} (${(Number(b0.balls) || 0) + (Number(b1.balls) || 0)})`
+      : `${Math.floor(ballsLeft / 6)}.${ballsLeft % 6} OV LEFT`);
+
+  const ppBalls = Math.min(36, Math.max(6, Math.floor(totalBalls * 0.3)));
+  const isPowerplay = !isComplete && bowledBalls > 0 && bowledBalls <= ppBalls;
+  const phaseLabel = isComplete ? 'FINAL' : score.superOver ? 'SUPER OVER' : isPowerplay ? 'P POWERPLAY' : isChasing ? '2ND INNINGS' : '1ST INNINGS';
+
+  let centerEquation;
+  if (isComplete) {
+    centerEquation = short(score.result || score.detail || 'MATCH COMPLETE', 30).toUpperCase();
+  } else if (isChasing) {
+    if (runsNeeded !== null) {
+      centerEquation = runsNeeded === 0 ? 'SCORES LEVEL' : `NEED ${runsNeeded} OFF ${ballsLeft} BALLS`;
+    } else {
+      centerEquation = short(score.detail || '2ND INNINGS · CHASING TARGET', 30).toUpperCase();
+    }
+  } else {
+    centerEquation = '1ST INNINGS · BATTING FIRST';
+  }
+
+  return { isChasing, isComplete, crr, rrr, target, runsNeeded, ballsLeft, projected, maxOvers, partnershipText, oppTeam, oppHasBatted, phaseLabel, centerEquation };
 }
 
 // THEME 1: GOLD CHAMPIONSHIP (Master Broadcast · Pic 2)
@@ -66,7 +154,7 @@ function renderGoldTheme(score, status, width, height, scale) {
   // Left Team monogram / logo container
   g += `<rect x="52" y="838" width="76" height="76" rx="6" fill="#0055bb" stroke="url(#goldBeam)" stroke-width="2"/>`;
   g += `<polygon points="75,902 90,876 105,902" fill="#fbf5b7" opacity="0.85"/>`;
-  g += text('TEAM 1', 150, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
+  g += text(eq.isChasing ? 'CHASING' : 'BATTING 1ST', 150, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
   g += text(team1, 150, 905, 36, '#ffffff', 'font-weight="800"');
   // Batter 1
   g += text('▶', 370, 874, 16, '#f5d061');
@@ -95,7 +183,8 @@ function renderGoldTheme(score, status, width, height, scale) {
   // Right Team monogram container
   g += `<rect x="1705" y="842" width="75" height="75" rx="6" fill="#18191f" stroke="url(#goldBeam)" stroke-width="1.5"/>`;
   g += `<polygon points="1720,895 1742,870 1765,895" fill="#fbf5b7" opacity="0.6"/>`;
-  g += text('TEAM 2', 1690, 864, 15, '#c7a346', 'font-weight="700" text-anchor="end" letter-spacing="1"');
+  const rightRole = eq.isChasing && eq.oppHasBatted ? `1ST INN · ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : 'BOWLING';
+  g += text(rightRole, 1690, 864, 15, '#c7a346', 'font-weight="700" text-anchor="end" letter-spacing="1"');
   g += text(team2, 1690, 905, 36, '#ffffff', 'font-weight="800" text-anchor="end"');
 
   // Center Main Score Pod
@@ -106,23 +195,25 @@ function renderGoldTheme(score, status, width, height, scale) {
   // Score text (both dash and slash formats preserved for tests)
   g += text(runsW, 960, 882, 64, '#fbf5b7', 'text-anchor="middle" font-weight="900"');
   g += `<text x="960" y="882" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
-  // Overs and Powerplay badge
+  // Overs and Innings/Phase badge
   g += text(`${score.overs} OVERS`, 890, 928, 20, '#ffffff', 'text-anchor="end" font-weight="700"');
   g += `<rect x="910" y="910" width="125" height="25" rx="5" fill="#d49c12"/>`;
-  g += text('P POWERPLAY', 972, 928, 14, '#000000', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.phaseLabel, 972, 928, 14, '#000000', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Golden Equation Ribbon
+  // Bottom Golden Equation Ribbon (Adapts to 1st Innings vs 2nd Innings Chase vs Complete)
   g += `<polygon points="150,960 1770,960 1710,1015 210,1015" fill="url(#ribbonDark)" stroke="url(#goldBeam)" stroke-width="2"/>`;
   // Golden Center Plaque
   g += `<polygon points="735,958 1185,958 1165,1017 755,1017" fill="url(#goldPlate)"/>`;
-  const centerEquation = eq.runsNeeded != null ? `NEED ${eq.runsNeeded} OFF ${eq.ballsLeft}` : score.result || score.detail || 'CRICCLUBS LIVE';
-  g += text(centerEquation, 960, 996, 26, '#100c02', 'text-anchor="middle" font-weight="900" letter-spacing="1"');
-  // Left statistics
-  g += text(`CURRENT RR  ${score.runRate || '—'}    |    PROJECTED  ${eq.projected}`, 460, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
-  // Right statistics
-  const reqText = eq.rrr ? `REQ RR  ${eq.rrr}` : 'REQ RR  —';
-  const targetText = eq.target ? `TARGET  ${eq.target}` : 'TARGET  —';
-  g += text(`${reqText}    |    ${targetText}`, 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+  g += text(eq.centerEquation, 960, 996, 24, '#100c02', 'text-anchor="middle" font-weight="900" letter-spacing="1"');
+
+  if (eq.isChasing) {
+    g += text(`CURRENT RR  ${eq.crr}    |    TARGET  ${eq.target || '—'}`, 460, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+    const firstInnSummary = eq.oppHasBatted ? `1ST INN  ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : `OVERS  ${score.overs}/${eq.maxOvers}`;
+    g += text(`REQ RR  ${eq.rrr || '—'}    |    ${firstInnSummary}`, 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+  } else {
+    g += text(`CURRENT RR  ${eq.crr}    |    PROJECTED  ${eq.projected}`, 460, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+    g += text(`PARTNERSHIP  ${eq.partnershipText}    |    OVERS  ${score.overs}/${eq.maxOvers}`, 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+  }
 
   g += '</g></g>';
   return g;
@@ -159,7 +250,7 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += `<path d="M110,830 Q160,830 160,865 Q160,920 110,950 Q60,920 60,865 Q60,830 110,830 Z" fill="#0055bb" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="92,878 96,856 105,866 110,852 115,866 124,856 128,878" fill="#f7df8b"/>`;
   g += text(team1, 110, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
-  g += text(team1, 230, 860, 22, '#96c8ff', 'font-weight="800"');
+  g += text(`${team1} · ${eq.isChasing ? 'CHASING' : '1ST INN'}`, 230, 860, 22, '#96c8ff', 'font-weight="800"');
   // Batters
   g += text('▶ ' + (a ? short(a.name, 14) : 'PLAYER 1'), 230, 895, 23, '#ffffff', 'font-weight="700"');
   g += text(a ? `${a.runs} ${a.balls}` : '—', 560, 895, 24, '#f7df8b', 'font-weight="800" text-anchor="end"');
@@ -171,10 +262,11 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += `<path d="M1810,830 Q1860,830 1860,865 Q1860,920 1810,950 Q1760,920 1760,865 Q1760,830 1810,830 Z" fill="#4d0812" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="1810,850 1826,866 1810,882 1794,866" fill="#f7df8b"/>`;
   g += text(team2, 1810, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
-  g += text(team2, 1670, 860, 22, '#ff96a6', 'text-anchor="end" font-weight="800"');
+  const oppLabel = eq.isChasing && eq.oppHasBatted ? `${team2} (${eq.oppTeam.runs}/${eq.oppTeam.wickets})` : `${team2} · BOWLING`;
+  g += text(oppLabel, 1670, 860, 22, '#ff96a6', 'text-anchor="end" font-weight="800"');
   // Bowler & This Over
-  g += text('BOWLER', 1240, 895, 21, '#d8b0b7', 'font-weight="600"');
-  g += text(bowler ? `${bowler.wickets}-${bowler.runs} ${bowler.overs}` : '—', 1510, 895, 23, '#f7df8b', 'font-weight="800" text-anchor="end"');
+  g += text(bowler ? short(bowler.name, 14).toUpperCase() : 'BOWLER', 1240, 895, 21, '#d8b0b7', 'font-weight="600"');
+  g += text(bowler ? `${bowler.wickets}-${bowler.runs} (${bowler.overs})` : '—', 1550, 895, 23, '#f7df8b', 'font-weight="800" text-anchor="end"');
   g += text('THIS OVER', 1240, 930, 19, '#d8b0b7');
   for (let i = 0; i < 6; i++) {
     const val = balls[i] ?? '·';
@@ -189,18 +281,29 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += text('MK97', 960, 822, 30, '#f7df8b', 'text-anchor="middle" font-weight="900"');
   g += text(`${score.runs}-${score.wickets}`, 960, 892, 64, '#0d1117', 'text-anchor="middle" font-weight="900"');
   g += `<text x="960" y="892" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
-  g += text(`${score.overs} OVERS`, 915, 930, 20, '#242a35', 'text-anchor="end" font-weight="800"');
-  g += `<rect x="930" y="912" width="60" height="22" rx="4" fill="#d32f2f"/>`;
-  g += text('LIVE', 960, 928, 14, '#ffffff', 'text-anchor="middle" font-weight="900"');
+  g += text(`${score.overs} OVERS`, 905, 930, 20, '#242a35', 'text-anchor="end" font-weight="800"');
+  g += `<rect x="920" y="912" width="110" height="22" rx="4" fill="#d32f2f"/>`;
+  g += text(eq.isComplete ? 'FINAL' : eq.isChasing ? '2ND INN' : '1ST INN', 975, 928, 14, '#ffffff', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Target & Ball Tracker Ribbon
+  // Bottom Target & Ball Tracker Ribbon (Adapts to Innings)
   g += `<polygon points="100,960 1820,960 1760,1015 160,1015" fill="#0d1117" stroke="url(#shieldGold)" stroke-width="2"/>`;
-  const tText = eq.target ? `TARGET ${eq.target}` : 'TARGET —';
   g += `<circle cx="222" cy="989" r="8" fill="none" stroke="#f7df8b" stroke-width="2"/><circle cx="222" cy="989" r="2.5" fill="#f7df8b"/>`;
-  g += text(tText, 240, 996, 21, '#f7df8b', 'font-weight="800"');
-  const needText = eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : score.detail || 'LIVE CRICKET MATCH';
-  g += text(needText, 660, 996, 21, '#ffffff', 'font-weight="700"');
-  g += text(`REQ. RR  ${eq.rrr || '—'}`, 1120, 996, 21, '#f7df8b', 'font-weight="800"');
+
+  if (eq.isComplete) {
+    g += text('FINAL RESULT', 240, 996, 21, '#f7df8b', 'font-weight="800"');
+    g += text(eq.centerEquation, 520, 996, 21, '#ffffff', 'font-weight="700"');
+    g += text(`CRR  ${eq.crr}`, 1080, 996, 21, '#f7df8b', 'font-weight="800"');
+  } else if (eq.isChasing) {
+    g += text(`TARGET ${eq.target || '—'}`, 240, 996, 21, '#f7df8b', 'font-weight="800"');
+    const needText = eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : eq.centerEquation;
+    g += text(needText, 520, 996, 21, '#ffffff', 'font-weight="700"');
+    g += text(`REQ. RR  ${eq.rrr || '—'}`, 1080, 996, 21, '#f7df8b', 'font-weight="800"');
+  } else {
+    g += text('1ST INNINGS', 240, 996, 21, '#f7df8b', 'font-weight="800"');
+    g += text(`CRR ${eq.crr}  ·  PROJECTED ${eq.projected} (${eq.maxOvers} OV)`, 520, 996, 21, '#ffffff', 'font-weight="700"');
+    g += text(`PARTNERSHIP ${eq.partnershipText}`, 1040, 996, 20, '#f7df8b', 'font-weight="800"');
+  }
+
   g += text('LAST 6 BALLS', 1340, 996, 18, '#cbd7e6');
   for (let i = 0; i < 6; i++) {
     const val = balls[i] ?? '·';
@@ -219,9 +322,6 @@ function renderDualTheme(score, status, width, height, scale) {
   const eq = calculateEquation(score);
   const team1 = short(score.batting || 'IND', 6).toUpperCase();
   const team2 = short(score.bowling || 'PAK', 6).toUpperCase();
-  const secondRuns = score.teams?.[1]?.runs ?? (eq.target ? eq.target - 1 : 145);
-  const secondWickets = score.teams?.[1]?.wickets ?? 7;
-  const secondOvers = score.teams?.[1]?.overs ?? '20.0';
 
   let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 62)">`;
   g += `<defs>
@@ -241,7 +341,7 @@ function renderDualTheme(score, status, width, height, scale) {
 
   // Innings 1 & Innings 2 Dual Box
   g += `<rect x="295" y="820" width="460" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
-  // Innings 1
+  // Row 1: Current Batting Team
   g += `<rect x="315" y="835" width="45" height="30" rx="4" fill="#ff9933"/>`;
   g += text(team1, 380, 860, 26, '#ffffff', 'font-weight="800"');
   g += `<rect x="440" y="832" width="160" height="36" rx="6" fill="#e8be56"/>`;
@@ -249,13 +349,22 @@ function renderDualTheme(score, status, width, height, scale) {
   g += `<text x="520" y="858" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
   g += text(`${score.overs}`, 660, 850, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
   g += text('OVERS', 660, 866, 12, '#90a4ae', 'text-anchor="middle"');
-  // Innings 2
+
+  // Row 2: Opposition Team (Shows 1st Innings Score when Chasing, or YET TO BAT in 1st Innings)
   g += `<rect x="315" y="895" width="45" height="30" rx="4" fill="#006622"/>`;
   g += text(team2, 380, 920, 26, '#ffffff', 'font-weight="800"');
   g += `<rect x="440" y="892" width="160" height="36" rx="6" fill="#1e293b"/>`;
-  g += text(`${secondRuns}-${secondWickets}`, 520, 918, 27, '#ffffff', 'text-anchor="middle" font-weight="900"');
-  g += text(`${secondOvers}`, 660, 910, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
-  g += text('OVERS', 660, 926, 12, '#90a4ae', 'text-anchor="middle"');
+  if (eq.isChasing && eq.oppHasBatted) {
+    g += text(`${eq.oppTeam.runs}-${eq.oppTeam.wickets}`, 520, 918, 27, '#ffffff', 'text-anchor="middle" font-weight="900"');
+    g += text(`${eq.oppTeam.overs}`, 660, 910, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
+    g += text('1ST INN', 660, 926, 12, '#90a4ae', 'text-anchor="middle"');
+  } else if (eq.isChasing && eq.target) {
+    g += text(`${eq.target - 1}`, 520, 918, 27, '#ffffff', 'text-anchor="middle" font-weight="900"');
+    g += text('TARGET ' + eq.target, 660, 916, 15, '#e8be56', 'text-anchor="middle" font-weight="800"');
+  } else {
+    g += text('YET TO BAT', 520, 916, 20, '#90a4ae', 'text-anchor="middle" font-weight="800"');
+    g += text('1ST INN', 660, 916, 16, '#e8be56', 'text-anchor="middle" font-weight="800"');
+  }
 
   // Batters Box
   g += `<rect x="770" y="820" width="460" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
@@ -280,12 +389,22 @@ function renderDualTheme(score, status, width, height, scale) {
     g += text(val, bx, 887, 14, '#ffffff', 'text-anchor="middle" font-weight="700"');
   }
 
-  // Bottom Live Requirement Ribbon
+  // Bottom Live Requirement Ribbon (Adapts to Innings)
   g += `<path d="M60,960 L1860,960 Q1880,960 1880,985 L1880,1015 L60,1015 Z" fill="#090a0d" stroke="url(#dualGold)" stroke-width="2"/>`;
-  const reqDesc = eq.runsNeeded != null ? `${team1} NEED ${eq.runsNeeded} RUNS  |  FROM ${eq.ballsLeft} BALLS` : score.detail || 'LIVE CRICKET BROADCAST';
-  g += text(reqDesc, 600, 998, 24, '#ffffff', 'text-anchor="middle" font-weight="700"');
+  let reqDesc, rightBadge;
+  if (eq.isComplete) {
+    reqDesc = eq.centerEquation;
+    rightBadge = `FINAL · CRR ${eq.crr}`;
+  } else if (eq.isChasing) {
+    reqDesc = eq.runsNeeded != null ? `${team1} NEED ${eq.runsNeeded} RUNS  |  FROM ${eq.ballsLeft} BALLS  |  TARGET ${eq.target || '—'}` : eq.centerEquation;
+    rightBadge = `REQ. RR  ${eq.rrr || '—'}`;
+  } else {
+    reqDesc = `1ST INNINGS · BATTING FIRST  |  CRR ${eq.crr}  |  PARTNERSHIP ${eq.partnershipText}`;
+    rightBadge = `PROJECTED  ${eq.projected}`;
+  }
+  g += text(reqDesc, 680, 998, 23, '#ffffff', 'text-anchor="middle" font-weight="700"');
   g += `<rect x="1350" y="965" width="500" height="45" rx="8" fill="url(#dualGold)"/>`;
-  g += text(`REQ. RR  ${eq.rrr || '—'}`, 1600, 996, 24, '#000000', 'text-anchor="middle" font-weight="900"');
+  g += text(rightBadge, 1600, 996, 24, '#000000', 'text-anchor="middle" font-weight="900"');
 
   g += '</g></g>';
   return g;
@@ -352,15 +471,23 @@ function renderCyanTheme(score, status, width, height, scale) {
   g += `<polygon points="1752,854 1772,878 1752,902 1732,878" fill="#ffffff" opacity="0.92"/>`;
   g += text(team2, 1752, 930, 11, '#ffffff', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Curved Ribbon
+  // Bottom Curved Ribbon (Adapts to Innings)
   g += `<path d="M65,970 L1855,970 Q1875,970 1875,988 L1855,1015 Q1845,1022 1825,1022 L95,1022 Q75,1022 65,1005 Z" fill="#041220" stroke="url(#cyanGlow)" stroke-width="2"/>`;
-  g += text(`CURRENT RUN RATE  ${score.runRate || '—'}    |    REQUIRED RUN RATE  ${eq.rrr || '—'}    |    PROJECTED SCORE  ${eq.projected}`, 580, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
+  if (eq.isChasing) {
+    g += text(`CURRENT RUN RATE  ${eq.crr}    |    REQUIRED RUN RATE  ${eq.rrr || '—'}    |    TARGET  ${eq.target || '—'}`, 600, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
+  } else {
+    g += text(`CURRENT RUN RATE  ${eq.crr}    |    PROJECTED SCORE  ${eq.projected}    |    PARTNERSHIP  ${eq.partnershipText}`, 600, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
+  }
   // Golden Equation Badge
   g += `<rect x="1200" y="974" width="450" height="42" rx="8" fill="url(#cyanGold)"/>`;
-  const needRuns = eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : score.detail || 'LIVE SCORE';
-  g += text(needRuns, 1425, 1002, 22, '#000000', 'text-anchor="middle" font-weight="900"');
+  const cyanBadge = eq.isComplete
+    ? eq.centerEquation
+    : eq.isChasing
+      ? (eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : eq.centerEquation)
+      : '1ST INNINGS · BATTING FIRST';
+  g += text(cyanBadge, 1425, 1002, 21, '#000000', 'text-anchor="middle" font-weight="900"');
   g += `<circle cx="1700" cy="995" r="7" fill="#ff1744"/>`;
-  g += text('LIVE', 1730, 1001, 19, '#ffffff', 'font-weight="900"');
+  g += text(eq.isComplete ? 'FINAL' : 'LIVE', 1725, 1001, 19, '#ffffff', 'font-weight="900"');
 
   g += '</g></g>';
   return g;
@@ -369,11 +496,14 @@ function renderCyanTheme(score, status, width, height, scale) {
 // THEME 5: CLASSIC CLEAN BROADCAST
 function renderClassicTheme(score, status, width, height, scale) {
   const a = score.batters?.[0], b = score.batters?.[1], bowler = score.bowler;
+  const eq = calculateEquation(score);
   let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 26)"><rect x="55" y="818" width="350" height="42" rx="5" fill="#0a1018" fill-opacity="0.9"/>` + text(status, 78, 847, 25, '#cce5ff');
   g += '<path d="M55 860 H722 L806 964 H30 Z" fill="#0055bb"/><path d="M722 860 H1330 L1268 964 H806 Z" fill="#f5f6fa"/><path d="M1330 860 H1840 L1890 964 H1268 Z" fill="#111924" stroke="#ea8c24" stroke-width="3"/>';
   g += text(short(score.batting, 18), 100, 897, 30) + text(`${score.runs}/${score.wickets}`, 100, 948, 58, '#fff', 'font-weight="700"') + text(`(${score.overs})`, 342, 943, 30);
-  g += text(`CRR  ${score.runRate || '—'}     RRR  ${score.requiredRate && score.requiredRate !== '--.--' ? score.requiredRate : '—'}`, 820, 904, 28, '#101827');
-  g += text(short(score.result || score.detail || 'CricClubs', 24), 815, 943, 22, '#101827');
+  const classicRates = eq.isChasing ? `CRR  ${eq.crr}     RRR  ${eq.rrr || '—'}` : `CRR  ${eq.crr}     PROJ  ${eq.projected}`;
+  const classicDetail = score.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b (Target ${eq.target})` : score.detail || '1st Innings · Batting First');
+  g += text(classicRates, 820, 904, 28, '#101827');
+  g += text(short(classicDetail, 26), 815, 943, 22, '#101827');
   g += text(short(score.bowling, 16), 1375, 925, 29, '#fff', 'font-weight="700"');
   g += '<rect x="30" y="964" width="1860" height="90" fill="#0a1018" fill-opacity="0.94"/>';
   for (const [player, x] of [[a, 65], [b, 520]]) {
@@ -394,11 +524,12 @@ function renderClassicTheme(score, status, width, height, scale) {
 
 function portraitScore(score, status, width, height) {
   const scale = width / 1080, a = score.batters?.[0], b = score.batters?.[1], bowler = score.bowler;
+  const eq = calculateEquation(score);
   let g = `<g transform="translate(0 ${height - 286 * scale}) scale(${scale})"><rect x="12" y="0" width="1056" height="286" fill="#081522" fill-opacity="0.95"/>`;
   g += text(status, 32, 25, 20, '#bad6f4');
   g += '<path d="M12 34 H430 L470 142 H12 Z" fill="#0055bb"/><path d="M430 34 H760 L720 142 H470 Z" fill="#f5f6fa"/><path d="M760 34 H1068 V142 H720 Z" fill="#111924" stroke="#ea8c24" stroke-width="2"/>';
   g += text(short(score.batting, 12), 36, 70, 27) + text(`${score.runs}/${score.wickets}`, 36, 124, 55, '#fff', 'font-weight="700"') + text(`(${score.overs})`, 257, 122, 26);
-  g += text(`CRR ${score.runRate || '—'}`, 475, 73, 23, '#101827') + text(`RRR ${score.requiredRate && score.requiredRate !== '--.--' ? score.requiredRate : '—'}`, 475, 111, 23, '#101827');
+  g += text(`CRR ${eq.crr}`, 475, 73, 23, '#101827') + text(eq.isChasing ? `RRR ${eq.rrr || '—'}` : `PROJ ${eq.projected}`, 475, 111, 23, '#101827');
   g += text(short(score.bowling, 12), 780, 98, 25, '#fff', 'font-weight="700"');
   for (const [player, x, end] of [[a, 32, 512], [b, 555, 1040]]) {
     g += text(player ? short(player.name, 18) : '—', x, 180, 24, '#d7e7fa');
