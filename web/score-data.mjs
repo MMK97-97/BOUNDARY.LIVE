@@ -27,7 +27,7 @@ function sourceBowler(p) { return normalBowler({ id: p.playerID ?? p.id, name: p
   overs: p.overs ?? p.oversBowled ?? (/^\d{1,4}$/.test(String(p.balls)) ? `${Math.floor(Number(p.balls) / 6)}.${Number(p.balls) % 6}` : ''),
   maidens: p.maidens, runs: p.runs, wickets: p.wickets, economy: p.economy }); }
 function inningsCard(p) { return { id: clean(p.id, 8), team: clean(p.team, 100), bowling: clean(p.bowling, 100),
-  runs: clean(p.runs, 6), wickets: clean(p.wickets, 3), overs: clean(p.overs, 6),
+  runs: clean(p.runs, 6), wickets: clean(p.wickets, 3), overs: clean(p.overs, 6), runRate: clean(p.runRate, 10),
   batting: rows(p.batting).map(normalPlayer), bowlers: rows(p.bowlers).map(normalBowler), complete: p.complete === true,
   extras: p.extras && typeof p.extras === 'object' ? Object.fromEntries(['total', 'byes', 'legByes', 'wides', 'noBalls', 'penalty', 'text'].map(k => [k, clean(p.extras[k], k === 'text' ? 300 : 6)])) : null,
   fallOfWickets: (Array.isArray(p.fallOfWickets) ? p.fallOfWickets : []).slice(0, 20).map(v => clean(v, 1000)),
@@ -57,14 +57,32 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       detail: clean(raw.detail, 110), source: 'Approved score feed',
       batters: (Array.isArray(raw.batters) ? raw.batters : []).slice(0, 2).map(normalPlayer), bowler: raw.bowler ? normalBowler(raw.bowler) : null,
       series: clean(raw.series, 120), ground: clean(raw.ground, 100),
-      teams: rows(raw.teams).slice(0, 2).map(t => ({ name: clean(t.name, 100), code: clean(t.code || t.name, 12), logo: sourceLogo(t.logo), runs: clean(t.runs, 6), wickets: clean(t.wickets, 3), overs: clean(t.overs, 6) })),
+      teams: rows(raw.teams).slice(0, 2).map(t => ({ name: clean(t.name, 100), code: clean(t.code || t.name, 12), logo: sourceLogo(t.logo), runs: clean(t.runs, 6), wickets: clean(t.wickets, 3), overs: clean(t.overs, 6), runRate: clean(t.runRate, 10) })),
       innings: clean(raw.innings || raw.batting, 40), requiredRate: clean(raw.requiredRate, 10), totalOvers: clean(raw.totalOvers, 6), superOver: truth(raw.superOver),
       cards: { batting: (Array.isArray(raw.cards?.batting) ? raw.cards.batting : []).slice(0, 15).map(normalPlayer), bowling: (Array.isArray(raw.cards?.bowling) ? raw.cards.bowling : []).slice(0, 15).map(normalBowler), complete: raw.cards?.complete === true && Array.isArray(raw.cards?.batting) && Array.isArray(raw.cards?.bowling) },
       deliveries: (Array.isArray(raw.deliveries) ? raw.deliveries : []).slice(-12).filter(d => d && typeof d === 'object').map(d => ({ id: clean(d.id, 80), batRuns: Number(d.batRuns), occurredAt: Date.parse(d.occurredAt), batterName: clean(d.batterName, 32) })).filter(d => d.id && Number.isFinite(d.occurredAt))
     };
     s.commentary = commentaryRows(raw.commentary);
     s.lastOut = raw.lastOut ? normalPlayer(raw.lastOut) : null;
-    s.stats = { toss: clean(raw.stats?.toss, 120), playerOfMatch: clean(raw.stats?.playerOfMatch, 60), partnership: partnership(raw.stats?.partnership) };
+    s.stats = {
+      toss: clean(raw.stats?.toss, 120),
+      tossWon: clean(raw.stats?.tossWon, 40),
+      playerOfMatch: clean(raw.stats?.playerOfMatch, 60),
+      date: clean(raw.stats?.date, 60),
+      umpires: clean(raw.stats?.umpires, 120),
+      scorer: clean(raw.stats?.scorer, 80),
+      matchType: clean(raw.stats?.matchType, 40),
+      dots: clean(raw.stats?.dots, 6),
+      fow: clean(raw.stats?.fow, 500),
+      parScore: clean(raw.stats?.parScore, 8),
+      isDls: truth(raw.stats?.isDls),
+      requiredRuns: clean(raw.stats?.requiredRuns, 8),
+      remainingOvers: clean(raw.stats?.remainingOvers, 8),
+      revisedOvers: clean(raw.stats?.revisedOvers, 8),
+      oppositeTeamSummary: clean(raw.stats?.oppositeTeamSummary, 120),
+      scoreNeededText: clean(raw.stats?.scoreNeededText, 120),
+      partnership: partnership(raw.stats?.partnership)
+    };
     s.inningsCards = rows(raw.inningsCards).slice(0, 4).map(inningsCard);
   } else {
     const v = raw?.values;
@@ -76,10 +94,12 @@ export function normalizeScore(raw, ids, now = Date.now()) {
     const bat = second ? 't2' : 't1', bowl = second ? 't1' : 't2';
     const batters = [1, 2].filter(n => v[`batsman${n}Name`]).map(n => normalPlayer({
       id: v[`batsman${n}ID`], name: v[`batsman${n}Name`], runs: v[`batsman${n}Runs`], balls: v[`batsman${n}Balls`],
-      fours: v[`batsman${n}Fours`], sixes: v[`batsman${n}Sixers`], status: truth(v[`batsman${n}IsOut`]) ? 'out' : 'not out'
+      fours: v[`batsman${n}Fours`], sixes: v[`batsman${n}Sixers`],
+      status: clean(v[`batsman${n}OutString`], 200) || (truth(v[`batsman${n}IsOut`]) ? 'out' : 'not out'),
+      strikeRate: v[`batsman${n}StrikeRate`] ?? v[`batsman${n}SR`]
     }));
     const bowler = v.bowlerName ? normalBowler({ id: v.bowlerID, name: v.bowlerName, overs: v.bowlerOvers,
-      maidens: v.bowlerMaidens, runs: v.bowlerRuns, wickets: v.bowlerWickets }) : null;
+      maidens: v.bowlerMaidens, runs: v.bowlerRuns, wickets: v.bowlerWickets, economy: v.bowlerEconomy ?? v.bowlerEcon }) : null;
     s = {
       batting: clean(v[`${bat}Code`] || v[`${bat}Name`], 28),
       bowling: clean(v[`${bowl}Code`] || v[`${bowl}Name`] || 'Opposition', 28),
@@ -100,7 +120,7 @@ export function normalizeScore(raw, ids, now = Date.now()) {
       },
       teams: ['t1', 't2'].filter(t => v[`${t}Name`] && /^\d+$/.test(String(v[`${t}Total`]))).map(t => ({
         name: clean(v[`${t}Name`], 100), code: clean(v[`${t}Code`] || v[`${t}Name`], 12), logo: sourceLogo(t === 't1' ? v.firstLogo : v.secondLogo),
-        runs: clean(v[`${t}Total`], 6), wickets: clean(v[`${t}Wickets`], 3), overs: clean(v[`${t}Overs`], 6)
+        runs: clean(v[`${t}Total`], 6), wickets: clean(v[`${t}Wickets`], 3), overs: clean(v[`${t}Overs`], 6), runRate: clean(v[`${t}RR`], 10)
       })),
       partialView: ![1, 42, 45, 54].includes(Number(raw.view))
     };
@@ -108,13 +128,30 @@ export function normalizeScore(raw, ids, now = Date.now()) {
     s.lastOut = v.lastOutName ? normalPlayer({ id: v.lastOutID, name: v.lastOutName, runs: v.lastOutRuns, balls: v.lastOutBalls,
       fours: v.lastOutFours, sixes: v.lastOutSixers ?? v.lastOUtSixers, status: v.lastOutString }) : null;
     s.commentary = commentaryRows(raw.comments);
-    s.stats = { toss: clean(v.toss, 120), playerOfMatch: clean(v.manOfTheMatch, 60),
+    s.stats = {
+      toss: clean(v.toss, 120),
+      tossWon: clean(v.tossWon, 40),
+      playerOfMatch: clean(v.manOfTheMatch, 60),
+      date: clean(v.matchDate || v.date, 60),
+      umpires: clean(v.umpires || v.umpire, 120),
+      scorer: clean(v.scorer, 80),
+      matchType: clean(v.matchType || v.seriesType, 40),
+      dots: clean(v.dots, 6),
+      fow: clean(v.fow, 500),
+      parScore: clean(v.parScore, 8),
+      isDls: truth(v.isDls),
+      requiredRuns: clean(v.requiredRuns, 8),
+      remainingOvers: clean(v.remainingOvers, 8),
+      revisedOvers: clean(v.revisedOvers, 8),
+      oppositeTeamSummary: clean(v.showScoreMsgForOpositTeam, 120),
+      scoreNeededText: clean(v.showMsgForScoreNeeded, 120),
       partnership: p ? partnership({ runs: p.partnershipTotalRuns, balls: p.partnershipTotalBalls,
-        batters: [1, 2].map(n => ({ name: p[`partnershipBatsman${n}Name`], runs: p[`partnershipBatsman${n}ContributionRuns`], balls: p[`partnershipBatsman${n}ContributionBalls`] })) }) : null };
+        batters: [1, 2].map(n => ({ name: p[`partnershipBatsman${n}Name`], runs: p[`partnershipBatsman${n}ContributionRuns`], balls: p[`partnershipBatsman${n}ContributionBalls`] })) }) : null
+    };
     s.inningsCards = ['t1', 't2'].filter(t => v[`${t}Name`] && /^\d+$/.test(String(v[`${t}Total`]))).map((t, i) => {
       const other = t === 't1' ? 't2' : 't1';
       return { id: superOver ? `SO${i + 1}` : String(i + 1), team: clean(v[`${t}Name`], 100), bowling: clean(v[`${other}Name`], 100),
-        runs: clean(v[`${t}Total`], 6), wickets: clean(v[`${t}Wickets`], 3), overs: clean(v[`${t}Overs`], 6),
+        runs: clean(v[`${t}Total`], 6), wickets: clean(v[`${t}Wickets`], 3), overs: clean(v[`${t}Overs`], 6), runRate: clean(v[`${t}RR`], 10),
         batting: rows(v[`${t}Batting`]).map(sourceBatter), bowlers: rows(v[`${other}Bowling`]).map(sourceBowler), complete: false };
     });
   }

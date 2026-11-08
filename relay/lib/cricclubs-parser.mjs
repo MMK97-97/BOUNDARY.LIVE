@@ -120,8 +120,18 @@ function extras(text) {
   return out;
 }
 function metadata($) {
-  const out = { series: '', ground: '', result: '', toss: '', playerOfMatch: '' };
-  const labels = { series: ['series', 'tournament'], ground: ['ground', 'venue'], result: ['result', 'matchresult'], toss: ['toss'], playerOfMatch: ['playerofthematch', 'manofthematch'] };
+  const out = { series: '', ground: '', result: '', toss: '', playerOfMatch: '', date: '', umpires: '', scorer: '', matchType: '' };
+  const labels = {
+    series: ['series', 'tournament', 'league', 'division'],
+    ground: ['ground', 'venue', 'location', 'stadium'],
+    result: ['result', 'matchresult', 'status'],
+    toss: ['toss', 'tosswonby'],
+    playerOfMatch: ['playerofthematch', 'manofthematch', 'mom', 'mvp'],
+    date: ['date', 'matchdate', 'playedon', 'datetime'],
+    umpires: ['umpires', 'umpire', 'matchofficials', 'officials'],
+    scorer: ['scorer', 'scorers'],
+    matchType: ['matchtype', 'format', 'gameformat']
+  };
   const set = (label, value) => { for (const [field, names] of Object.entries(labels)) if (names.includes(key(label)) && value) out[field] = clean(value, 200); };
   $('tr').slice(0, 500).each((_, e) => { const cells = $(e).children('th,td'); if (cells.length === 2) set(cells.eq(0).text(), cells.eq(1).text()); });
   $('dt').slice(0, 100).each((_, e) => set($(e).text(), $(e).next('dd').text()));
@@ -237,13 +247,26 @@ export function enrichCricClubsScore(score, document) {
     if (['runs', 'wickets', 'overs'].some(k => parsed[k] === '' || (k === 'overs' ? legalBalls(parsed[k]) !== legalBalls(current[k]) : Number(parsed[k]) !== Number(current[k])))) {
       messages.push('Full scorecard totals differ from the latest ticker; waiting for matching data.'); continue;
     }
-    cards.push({ ...parsed, id: current.id, bowling: current.bowling, fetchedAt: document.fetchedAt });
+    cards.push({ ...parsed, id: current.id, bowling: current.bowling, runRate: current.runRate || '', fetchedAt: document.fetchedAt });
   }
   const inningsCards = (score.inningsCards || []).map(c => cards.find(p => p.id === c.id) || c);
   const active = cards.find(c => c.id === score.innings), complete = cards.length > 0 && cards.length === inningsCards.length && cards.every(c => c.complete);
-  return { ...score, source: cards.length ? 'CricClubs ticker + scorecard' : score.source, inningsCards,
+  return { ...score,
+    source: cards.length ? 'CricClubs ticker + scorecard' : score.source,
+    series: score.series || document.metadata.series || '',
+    ground: score.ground || document.metadata.ground || '',
+    result: score.result || document.metadata.result || '',
+    inningsCards,
     cards: active ? { batting: active.batting, bowling: active.bowlers, complete: active.complete } : score.cards,
     commentary: document.commentary.length ? document.commentary : score.commentary,
-    stats: { ...score.stats, toss: document.metadata.toss || score.stats?.toss || '', playerOfMatch: document.metadata.playerOfMatch || score.stats?.playerOfMatch || '' },
+    stats: {
+      ...score.stats,
+      toss: document.metadata.toss || score.stats?.toss || '',
+      playerOfMatch: document.metadata.playerOfMatch || score.stats?.playerOfMatch || '',
+      date: document.metadata.date || score.stats?.date || '',
+      umpires: document.metadata.umpires || score.stats?.umpires || '',
+      scorer: document.metadata.scorer || score.stats?.scorer || '',
+      matchType: document.metadata.matchType || score.stats?.matchType || ''
+    },
     scorecard: { state: complete ? 'complete' : 'partial', fetchedAt: document.fetchedAt, message: messages[0] || (complete ? 'Innings tables reconcile with source totals.' : 'Some innings records remain incomplete or unverified.') } };
 }

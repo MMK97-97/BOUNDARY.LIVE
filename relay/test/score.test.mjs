@@ -83,3 +83,19 @@ test('rejects HTTP custom feeds, HTML responses and oversized data', async () =>
     assert.equal(r.score, null); assert.ok(r.error);
   }
 });
+test('extracts extended CricClubs telemetry including team run rates, DLS par score, dots and fall of wickets', () => {
+  const s = normalizeScore({ ...first, isSecondInningsStarted: true, values: { ...first.values, t2Total: '110', t2Wickets: '4', t2Overs: '14.0', t2RR: '7.86',
+    tossWon: 'TEAM B', dots: '7', fow: '42-1, 88-2', parScore: '105', isDls: true, requiredRuns: '33', remainingOvers: '6.0',
+    showScoreMsgForOpositTeam: 'TEAM A: 142/3 (16.2 ov)', showMsgForScoreNeeded: 'TEAM B need 33 runs in 36 balls' } }, ids);
+  assert.equal(s.teams[0].runRate, '8.69');
+  assert.equal(s.teams[1].runRate, '7.86');
+  assert.equal(s.stats.tossWon, 'TEAM B');
+  assert.equal(s.stats.dots, '7');
+  assert.equal(s.stats.fow, '42-1, 88-2');
+  assert.equal(s.stats.parScore, '105');
+  assert.equal(s.stats.isDls, true);
+  assert.equal(s.stats.requiredRuns, '33');
+  assert.equal(s.stats.remainingOvers, '6.0');
+  assert.equal(s.stats.oppositeTeamSummary, 'TEAM A: 142/3 (16.2 ov)');
+  assert.equal(s.stats.scoreNeededText, 'TEAM B need 33 runs in 36 balls');
+});

@@ -18,7 +18,7 @@ export class CricketEvents {
     this.key = inningsKey(score); this.previous = null; this.seen.clear(); this.batters.clear(); this.bowlers.clear(); this.fullCards = false; this.highestOver = 0;
   }
   remember(score) {
-    for (const p of [...(score.cards?.batting || []), ...(score.batters || [])]) if (identity(p)) this.batters.set(identity(p), { ...p });
+    for (const p of [...(score.cards?.batting || []), ...(score.batters || []), ...(score.lastOut ? [score.lastOut] : [])]) if (identity(p)) this.batters.set(identity(p), { ...p });
     for (const p of [...(score.cards?.bowling || []), ...(score.bowler ? [score.bowler] : [])]) if (identity(p)) this.bowlers.set(identity(p), { ...p });
     if (score.cards?.complete) this.fullCards = true;
   }

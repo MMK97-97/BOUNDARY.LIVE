@@ -6,9 +6,43 @@ const el = (tag, content, className) => { const n = document.createElement(tag);
 const icon = id => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', '#i-' + id); svg.append(use); return svg; };
 const safeWatch = value => { const u = new URL(value); if (u.protocol !== 'https:' || u.username || u.password || !['youtube.com', 'youtu.be', 'facebook.com', 'fb.watch', 'instagram.com'].some(h => u.hostname === h || u.hostname.endsWith('.' + h))) throw new Error('Enter your public YouTube, Facebook or Instagram watch URL.'); return u.href; };
 export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview, onPanel = () => {}, onClosePanel = () => {}, onBackPanel }) {
-  let lastFocus = null, lastGraphic = null;
+  let lastFocus = null, lastGraphic = null, lastScoreSig = '';
   let scoreTab = 'batting', statsTab = 'overview';
   let monitorCanvas = programSize(state.camera);
+  let observedMatchKey = '';
+  const observedInnings = new Map();
+  function recordObserved(s) {
+    if (!s?.clubId || !s?.matchId) return;
+    const matchKey = `${s.clubId}:${s.matchId}`;
+    if (matchKey !== observedMatchKey) {
+      observedMatchKey = matchKey;
+      observedInnings.clear();
+    }
+    const pKey = p => String(p?.id || p?.name || '').trim().toLowerCase();
+    const ensure = id => {
+      let entry = observedInnings.get(id);
+      if (!entry) { entry = { batters: new Map(), bowlers: new Map(), fow: [] }; observedInnings.set(id, entry); }
+      return entry;
+    };
+    const active = ensure(s.innings || '1');
+    for (const p of [...(s.cards?.batting || []), ...(s.batters || [])]) {
+      const k = pKey(p); if (k) active.batters.set(k, { ...active.batters.get(k), ...p });
+    }
+    if (s.lastOut && pKey(s.lastOut)) {
+      const k = pKey(s.lastOut);
+      active.batters.set(k, { ...active.batters.get(k), ...s.lastOut, status: s.lastOut.status || 'out' });
+    }
+    for (const b of [...(s.cards?.bowling || []), ...(s.bowler ? [s.bowler] : [])]) {
+      const k = pKey(b); if (k) active.bowlers.set(k, { ...active.bowlers.get(k), ...b });
+    }
+    if (s.stats?.fow && !active.fow.includes(s.stats.fow)) active.fow.push(s.stats.fow);
+    for (const card of s.inningsCards || []) {
+      const cEntry = ensure(card.id);
+      for (const p of card.batting || []) { const k = pKey(p); if (k) cEntry.batters.set(k, { ...cEntry.batters.get(k), ...p }); }
+      for (const b of card.bowlers || []) { const k = pKey(b); if (k) cEntry.bowlers.set(k, { ...cEntry.bowlers.get(k), ...b }); }
+      for (const f of card.fallOfWickets || []) if (f && !cEntry.fow.includes(f)) cEntry.fow.push(f);
+    }
+  }
   function drawScore(s = state.score) {
     if (s) $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold'));
     else $('scoreGraphic').removeAttribute('src');
@@ -20,7 +54,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     document.documentElement.style.setProperty('--studio-notice-top', `${Math.max(8, box.getBoundingClientRect().top + 10)}px`);
     surface.style.width = `${rect.width}px`; surface.style.height = `${rect.height}px`;
     surface.style.setProperty('--program-unit', `${rect.width / 1920}px`);
-    if (changed) { lastScoreSig = ""; drawScore(); }
+    if (changed) { lastScoreSig = ''; drawScore(); }
   }
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(frameMonitor).observe($('viewfinder'));
   else window.addEventListener('resize', frameMonitor);
@@ -100,7 +134,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   async function fullscreen() {
     try {
       if (document.fullscreenElement) { await document.exitFullscreen(); return; }
-      if (document.documentElement.requestFullscreen) { await document.documentElement.requestFullscreen();  }
+      if (document.documentElement.requestFullscreen) { await document.documentElement.requestFullscreen(); }
       else document.body.classList.toggle('theater');
     } catch { document.body.classList.toggle('theater'); }
   }
@@ -133,6 +167,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function tables() {
     const s = state.score, select = $('inningsSelect');
+    if (s) recordObserved(s);
     const selection = select.value || 'current', options = s?.inningsCards || [];
     const key = options.map(c => `${c.id}:${c.team}:${c.runs}:${c.wickets}`).join('|');
     if (select.dataset.key !== key) {
@@ -143,38 +178,86 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     }
     const selected = options.find(c => c.id === select.value), current = !selected || selected.id === s?.innings;
     const available = [...(s?.batters || [])]; if (s?.lastOut && !available.some(p => p.id && p.id === s.lastOut.id || p.name === s.lastOut.name)) available.push(s.lastOut);
-    const batting = selected?.batting?.length ? selected.batting : current ? (s?.cards?.batting?.length ? s.cards.batting : available) : [];
-    const bowling = selected?.bowlers?.length ? selected.bowlers : current ? (s?.cards?.bowling?.length ? s.cards.bowling : s?.bowler ? [s.bowler] : []) : [];
+    const targetId = selected?.id || s?.innings || '1';
+    const obs = observedInnings.get(targetId);
+    const obsBatters = obs?.batters?.size ? [...obs.batters.values()] : (current ? available : []);
+    const obsBowlers = obs?.bowlers?.size ? [...obs.bowlers.values()] : (current && s?.bowler ? [s.bowler] : []);
+    const batting = selected?.batting?.length ? selected.batting : current && s?.cards?.batting?.length ? s.cards.batting : obsBatters;
+    const bowling = selected?.bowlers?.length ? selected.bowlers : current && s?.cards?.bowling?.length ? s.cards.bowling : obsBowlers;
     const root = $('scoreTables'); root.replaceChildren();
-    if (scoreTab === 'batting') root.append(table(`BATTING${selected ? ' · ' + selected.team : ''}`, batting, [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes'], ['SR', 'strikeRate']]));
-    else if (scoreTab === 'bowling') root.append(table(`BOWLING${selected ? ' · ' + selected.bowling : ''}`, bowling, [['Bowler', 'name'], ['O', 'overs'], ['M', 'maidens'], ['R', 'runs'], ['W', 'wickets'], ['Econ', 'economy']]));
-    else {
+    if (scoreTab === 'batting') {
+      root.append(table(`BATTING${selected ? ' · ' + selected.team : s?.batting ? ' · ' + s.batting : ''}`, batting, [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes'], ['SR', 'strikeRate']]));
+      if (current && s?.stats?.partnership) {
+        const p = s.stats.partnership;
+        root.append(el('p', `Current partnership: ${p.runs} runs (${p.balls} balls)`, 'helper'));
+      }
+      if (current && s?.lastOut) {
+        root.append(el('p', `Last out: ${s.lastOut.name} ${s.lastOut.runs}(${s.lastOut.balls})${s.lastOut.status ? ' · ' + s.lastOut.status : ''}`, 'helper'));
+      }
+    } else if (scoreTab === 'bowling') {
+      root.append(table(`BOWLING${selected ? ' · ' + selected.bowling : s?.bowling ? ' · ' + s.bowling : ''}`, bowling, [['Bowler', 'name'], ['O', 'overs'], ['M', 'maidens'], ['R', 'runs'], ['W', 'wickets'], ['Econ', 'economy']]));
+      if (current && s?.stats?.dots && s.stats.dots !== '0') root.append(el('p', `Current spell dot balls: ${s.stats.dots}`, 'helper'));
+    } else {
+      if (s?.balls?.length) {
+        root.append(el('p', 'RECENT DELIVERIES', 'card-caption'));
+        const strip = el('div', null, 'balls');
+        for (const b of s.balls) strip.append(el('span', b === '.' ? '0' : b, `ball ${b === '4' ? 'four' : b === '6' ? 'six' : b.toUpperCase().includes('W') && !b.toLowerCase().includes('wd') ? 'wicket' : ''}`));
+        root.append(strip);
+      }
       root.append(el('p', 'SOURCE COMMENTARY', 'card-caption'));
       for (const row of [...(s?.commentary || [])].reverse()) { const item = el('article', null, 'commentary-row'); if (row.over) item.append(el('strong', row.over)); item.append(el('p', row.text)); root.append(item); }
       if (!s?.commentary?.length) root.append(el('p', 'Commentary is not supplied by this CricClubs feed. No ball commentary is generated from score changes.', 'source-empty'));
     }
     const detail = selected || options.find(c => c.id === s?.innings);
-    if (scoreTab === 'batting' && detail) {
-      if (detail.extras?.text) root.append(el('p', detail.extras.text, 'helper'));
-      if (detail.didNotBat?.length) root.append(el('p', 'Did not bat: ' + detail.didNotBat.join(', '), 'helper'));
-      for (const text of detail.fallOfWickets || []) root.append(el('p', 'Fall of wickets: ' + text, 'helper'));
+    if (scoreTab === 'batting' && (detail || obs)) {
+      if (detail?.extras?.text) root.append(el('p', detail.extras.text, 'helper'));
+      if (detail?.didNotBat?.length) root.append(el('p', 'Did not bat: ' + detail.didNotBat.join(', '), 'helper'));
+      const fowList = detail?.fallOfWickets?.length ? detail.fallOfWickets : obs?.fow || [];
+      for (const text of fowList) root.append(el('p', 'Fall of wickets: ' + text, 'helper'));
     }
     $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? state.session ? 'Full scorecard data is not available from the relay.' : 'Connect the relay for full scorecard reading.' : '')} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
     const stats = $('statsTables'); stats.replaceChildren();
     if (!s) return stats.append(el('p', 'Load a match to see source statistics.', 'source-empty'));
-    const teams = s.teams?.length ? s.teams : [{ code: s.batting, name: s.batting, runs: s.runs, wickets: s.wickets, overs: s.overs }];
+    const teams = s.teams?.length ? s.teams : [{ code: s.batting, name: s.batting, runs: s.runs, wickets: s.wickets, overs: s.overs, runRate: s.runRate }];
     if (statsTab === 'overview') {
-      const metrics = el('div', null, 'source-metrics'); for (const [value, caption] of [[s.runs, 'Runs'], [s.wickets, 'Wickets'], [s.overs, 'Overs']]) { const m = el('div'); m.append(el('strong', value), el('span', caption)); metrics.append(m); } stats.append(metrics);
-      stats.append(table('TEAMS', teams, [['Team', 'name'], ['R', 'runs'], ['W', 'wickets'], ['O', 'overs']]));
-      for (const value of [s.stats?.toss, s.result, s.stats?.playerOfMatch ? 'Player of the match: ' + s.stats.playerOfMatch : '']) if (value) stats.append(el('p', value, 'helper'));
+      const eq = calculateEquation(s);
+      const metricItems = [[s.runs, 'Runs'], [s.wickets, 'Wickets'], [s.overs, 'Overs'], [s.runRate || eq.crr.toFixed(2), 'CRR']];
+      if (eq.isChasing) {
+        metricItems.push([eq.target, 'Target']);
+        if (eq.runsNeeded != null) metricItems.push([eq.runsNeeded, 'Need']);
+        if (eq.ballsLeft != null) metricItems.push([eq.ballsLeft, 'Balls left']);
+        if (eq.rrr) metricItems.push([eq.rrr, 'RRR']);
+      } else {
+        metricItems.push([eq.projected, 'Projected']);
+        if (s.totalOvers && Number(s.totalOvers) > 0) metricItems.push([s.totalOvers, 'Max overs']);
+      }
+      if (s.stats?.isDls || Number(s.stats?.parScore) > 0) metricItems.push([s.stats.parScore || '—', 'DLS Par']);
+      const metrics = el('div', null, 'source-metrics');
+      for (const [value, caption] of metricItems) { const m = el('div'); m.append(el('strong', value), el('span', caption)); metrics.append(m); }
+      stats.append(metrics);
+      stats.append(table('TEAMS', teams, [['Team', 'name'], ['R', 'runs'], ['W', 'wickets'], ['O', 'overs'], ['RR', 'runRate']]));
+      const infoLines = [
+        s.series ? 'Series: ' + s.series : '',
+        s.ground ? 'Venue: ' + s.ground : '',
+        s.stats?.date ? 'Date: ' + s.stats.date : '',
+        s.stats?.matchType ? 'Format: ' + s.stats.matchType : '',
+        s.stats?.toss || (s.stats?.tossWon ? 'Toss won by: ' + s.stats.tossWon : ''),
+        s.stats?.oppositeTeamSummary || '',
+        s.result || s.stats?.scoreNeededText || '',
+        s.stats?.playerOfMatch ? 'Player of the match: ' + s.stats.playerOfMatch : '',
+        s.stats?.umpires ? 'Umpires: ' + s.stats.umpires : '',
+        s.stats?.scorer ? 'Scorer: ' + s.stats.scorer : ''
+      ];
+      for (const value of infoLines) if (value) stats.append(el('p', value, 'helper'));
     } else if (statsTab === 'partnership') {
       const p = s.stats?.partnership;
       if (p) stats.append(el('p', `${p.runs} runs · ${p.balls} balls`, 'partnership-total'), table('SOURCE PARTNERSHIP CONTRIBUTIONS', p.batters, [['Batter', 'name'], ['R', 'runs'], ['B', 'balls']]));
       else stats.append(el('p', 'Partnership statistics are not supplied by this feed.', 'source-empty'));
+      if (s.batters?.length) stats.append(table('ACTIVE BATTERS AT CREASE', s.batters, [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes'], ['SR', 'strikeRate']]));
     } else {
       const key = statsTab === 'runs' ? 'runs' : 'wickets', max = Math.max(key === 'wickets' ? 10 : 1, ...teams.map(t => Number(t[key]) || 0));
       for (const team of teams) { const line = el('div', null, 'source-bar'); line.append(el('span', team.name), el('strong', team[key])); const meter = el('meter'); meter.min = 0; meter.max = max; meter.value = Number(team[key]); meter.setAttribute('aria-label', `${team.name} ${key}`); line.append(meter); stats.append(line); }
-      stats.append(table(key === 'runs' ? 'AVAILABLE BATTERS' : 'AVAILABLE BOWLERS', key === 'runs' ? batting : bowling, key === 'runs' ? [['Batter', 'name'], ['R', 'runs'], ['B', 'balls']] : [['Bowler', 'name'], ['O', 'overs'], ['R', 'runs'], ['W', 'wickets']]));
+      stats.append(table(key === 'runs' ? 'AVAILABLE BATTERS' : 'AVAILABLE BOWLERS', key === 'runs' ? batting : bowling, key === 'runs' ? [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes']] : [['Bowler', 'name'], ['O', 'overs'], ['M', 'maidens'], ['R', 'runs'], ['W', 'wickets']]));
     }
     stats.append(el('p', 'Values come from the selected source match. Missing players or statistics are not estimated.', 'helper'));
   }
@@ -184,6 +267,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function score(s) {
     if (!s) { $('scoreGraphic').removeAttribute('src'); tables(); return; }
+    recordObserved(s);
     drawScore(s);
     $('seriesTitle').textContent = s.series || `CricClubs · Match ${s.matchId}`; $('groundTitle').textContent = `${s.ground || 'Club ' + s.clubId} · Match ${s.matchId}`;
     $('oppositionTeam').textContent = s.teams?.find(t => t.code === s.bowling || t.name === s.bowling)?.name || s.bowling;
