@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 const files = [];
 function walk(dir) { for (const item of fs.readdirSync(dir, { withFileTypes: true })) { if (['node_modules', '.git', '.openai'].includes(item.name)) continue; const p = path.join(dir, item.name); if (item.isDirectory()) walk(p); else if (p.endsWith('.mjs')) files.push(p); } }
@@ -8,7 +9,18 @@ for (const file of files) { const r = spawnSync(process.execPath, ['--check', fi
 for (const file of files) {
   const source = fs.readFileSync(file, 'utf8');
   for (const m of source.matchAll(/(?:from\s+|import\s*\(?\s*)['"](\.{1,2}\/[^'"]+)['"]/g)) {
-    if (!fs.existsSync(path.resolve(path.dirname(file), m[1]))) throw new Error(`Missing module ${m[1]} in ${file}`);
+    const resolved = path.resolve(path.dirname(file), m[1]);
+    if (!fs.existsSync(resolved)) throw new Error(`Missing module ${m[1]} in ${file}`);
+  }
+  if (file.startsWith('web')) {
+    for (const m of source.matchAll(/import\s+\{([^}]+)\}\s+from\s+['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      const target = path.resolve(path.dirname(file), m[2]);
+      const mod = await import(pathToFileURL(target).href);
+      for (const spec of m[1].split(',')) {
+        const name = spec.trim().split(/\s+as\s+/)[0].trim();
+        if (name && !(name in mod)) throw new Error(`Missing export "${name}" in ${target} (imported by ${file})`);
+      }
+    }
   }
 }
 const html = fs.readFileSync('web/index.html', 'utf8');

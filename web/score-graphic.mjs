@@ -14,7 +14,7 @@ const ballColor = b => {
   return '#1976d2';
 };
 
-function parseOversToBalls(oversStr) {
+export function parseOversToBalls(oversStr) {
   const parts = String(oversStr || '0').split('.');
   const overs = parseInt(parts[0], 10) || 0;
   const balls = parseInt(parts[1], 10) || 0;
