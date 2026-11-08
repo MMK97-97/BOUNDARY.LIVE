@@ -271,14 +271,21 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
   window.addEventListener('focus', pollAuthorization);
   $('ytBroadcastForm').addEventListener('submit', async event => {
     event.preventDefault(); if (locked() || busy || !data?.connected || data?.authorizing) return;
-    const at = $('ytStartMode').value === 'now' ? new Date() : new Date($('ytSchedule').value);
-    if (!Number.isFinite(at.getTime())) return notice('Choose a valid scheduled start time.', 'error');
-    const audience = $('ytAudience').value || 'false';
-    const nextReqId = [...crypto.getRandomValues(new Uint8Array(24))].map(v => v.toString(16).padStart(2, '0')).join('');
-    submitted = { requestId: nextReqId, title: $('ytTitle').value, description: $('ytDescription').value, privacy: $('ytPrivacy').value,
-      scheduledStartTime: at.toISOString(), madeForKids: audience === 'true' };
-    requestId = nextReqId;
-    if (data?.setup && !['live', 'testing', 'liveStarting', 'testStarting'].includes(data.broadcast?.state)) {
+    const isUpdate = Boolean(data?.setup?.stage === 'ready');
+    if (isUpdate) {
+      submitted = null;
+      requestId = null;
+    }
+    if (!submitted) {
+      const at = $('ytStartMode').value === 'now' ? new Date() : new Date($('ytSchedule').value);
+      if (!Number.isFinite(at.getTime())) return notice('Choose a valid scheduled start time.', 'error');
+      const audience = $('ytAudience').value || 'false';
+      if (!['true', 'false'].includes(audience)) return notice('Choose the audience declaration.', 'error');
+      requestId ||= [...crypto.getRandomValues(new Uint8Array(24))].map(v => v.toString(16).padStart(2, '0')).join('');
+      submitted = { requestId, title: $('ytTitle').value, description: $('ytDescription').value, privacy: $('ytPrivacy').value,
+        scheduledStartTime: at.toISOString(), madeForKids: audience === 'true' };
+    }
+    if (isUpdate) {
       await action(async () => {
         try { await post('reset'); } catch {}
         return post('setup', submitted);
