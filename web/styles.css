@@ -19,3 +19,8 @@ textarea{display:block;width:100%;resize:vertical;color:#eaf2f9;background:#0713
 @media(max-height:520px) and (min-width:621px){.launch{padding:16px 24px}.launch-top{padding-bottom:15px}.brand-lockup img{width:38px;height:37px}.brand-lockup b{font-size:19px}.brand-lockup small{font-size:7px}.launch-grid{grid-template-columns:.9fr 1.2fr;gap:28px;padding:22px 0}.launch-story{padding-top:0}.launch-story h1{font-size:40px;letter-spacing:-1.7px;margin:15px 0}.launch-story>p{font-size:11px;line-height:1.6}.launch-cta{margin-top:15px;gap:0}.launch-cta>.primary{font-size:11px;min-height:43px;padding:12px 15px}.launch-story .launch-emblem,.launch-story .launch-specs{display:none}.match-connect{padding:17px}.match-connect h2{font-size:21px;margin-top:15px}}
 
 .status-chip.ready{background:#0b3c26;border-color:#166534;color:#4ade80}.youtube-key-panel{background:linear-gradient(135deg,#131f30,#0d1522);border:1px solid #2d4564}
+
+.scorecard-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.scorecard-actions button,.scorecard-actions .button-link{flex:1 1 auto;min-width:110px;text-align:center;white-space:nowrap;padding:7px 10px;font-size:11px}
+.match-summary-card{background:#0b192c;border:1px solid #1f354f;border-radius:10px;padding:12px;margin-bottom:14px}
+.match-teams-strip strong{color:#e6f0fa;font-size:13px;display:block;margin-bottom:4px}

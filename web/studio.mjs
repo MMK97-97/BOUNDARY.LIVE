@@ -252,14 +252,32 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function renderScorecardTools(root, s) {
     if (!s) return;
-    const bar = el('div', null, 'row');
+    const bar = el('div', null, 'row scorecard-actions');
     const scrapeBtn = el('button', scrapingScorecard ? 'Scraping…' : 'Scrape full scorecard', 'secondary');
     scrapeBtn.type = 'button'; scrapeBtn.disabled = scrapingScorecard;
     scrapeBtn.addEventListener('click', handleScrapeFullScorecard);
+
+    const pasteBtn = el('button', '📋 Paste Scorecard', 'secondary');
+    pasteBtn.type = 'button';
+    pasteBtn.title = 'Paste copied scorecard text or HTML from clipboard';
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard?.readText) {
+          const clip = await navigator.clipboard.readText();
+          if (clip && clip.trim()) {
+            await handleImportScorecardText(clip.trim());
+            return;
+          }
+        }
+      } catch {}
+      importPanelOpen = true; tables();
+      notice('Paste your copied CricClubs scorecard text or HTML into the box below and click Load.', 'info');
+    });
+
     const importBtn = el('button', importPanelOpen ? 'Hide import' : 'Import HTML / JSON', 'secondary');
     importBtn.type = 'button';
     importBtn.addEventListener('click', () => { importPanelOpen = !importPanelOpen; tables(); });
-    bar.append(scrapeBtn, importBtn);
+    bar.append(scrapeBtn, pasteBtn, importBtn);
     const url = scorecardUrl(s);
     if (url) {
       const openLink = el('a', 'Open CricClubs ↗', 'button-link secondary');
@@ -305,6 +323,31 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     const bowling = selected?.bowlers?.length ? selected.bowlers : current && s?.cards?.bowling?.length ? s.cards.bowling : obsBowlers;
     const detail = selected || options.find(c => c.id === s?.innings);
     const root = $('scoreTables'); root.replaceChildren();
+    if (s) {
+      const summaryCard = el('div', null, 'panel match-summary-card');
+      const teamsSummary = el('div', null, 'match-teams-strip');
+      const t1 = s.inningsCards?.[0];
+      const t2 = s.inningsCards?.[1];
+      const t1Text = t1 ? `${t1.team}: ${t1.runs}/${t1.wickets} (${t1.overs} ov${t1.runRate ? ', RR ' + t1.runRate : ''})` : '';
+      const t2Text = t2 ? `${t2.team}: ${t2.runs}/${t2.wickets} (${t2.overs} ov${t2.runRate ? ', RR ' + t2.runRate : ''})` : '';
+      if (t1Text || t2Text) {
+        teamsSummary.append(el('strong', [t1Text, t2Text].filter(Boolean).join('  ·  ')));
+      } else if (s.batting && s.bowling) {
+        teamsSummary.append(el('strong', `${s.batting} ${s.runs}/${s.wickets} (${s.overs} ov) vs ${s.bowling}`));
+      }
+      summaryCard.append(teamsSummary);
+      const metaItems = [
+        s.result ? `Result: ${s.result}` : null,
+        s.stats?.toss ? `Toss: ${s.stats.toss}` : null,
+        s.stats?.playerOfMatch ? `MoM: ${s.stats.playerOfMatch}` : null,
+        s.ground || s.stats?.date ? `Venue: ${[s.ground, s.stats?.date].filter(Boolean).join(' · ')}` : null,
+        s.targetEquation ? `Equation: ${s.targetEquation}` : null
+      ].filter(Boolean);
+      if (metaItems.length) {
+        summaryCard.append(el('p', metaItems.join('  |  '), 'helper'));
+      }
+      root.append(summaryCard);
+    }
     renderScorecardTools(root, s);
     if (s && detail) {
       const isComplete = Boolean(detail.complete || (current && s.cards?.complete));

@@ -47,6 +47,14 @@ export function installInterface({ state, ui, home, notice }) {
         legacyHost.append($('legacyConnectionDetails'));
       }
     }
+    const ytSetupTarget = currentPanel === 'youtubecreate' ? document.querySelector('[data-drawer="youtubecreate"]') : $('ytSetupInlineMount');
+    if (ytSetupTarget && $('ytBroadcastForm') && $('ytBroadcastForm').parentElement !== ytSetupTarget) {
+      ytSetupTarget.append($('ytBroadcastForm'));
+    }
+    const ytEventTarget = currentPanel === 'events' ? document.querySelector('[data-drawer="events"]') : $('ytEventInlineMount');
+    if (ytEventTarget && $('ytEvent') && $('ytEvent').parentElement !== ytEventTarget) {
+      ytEventTarget.append($('ytEvent'));
+    }
   }
   function viewChanged(next) {
     view = next;

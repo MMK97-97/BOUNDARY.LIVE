@@ -285,7 +285,16 @@ export class YouTubeService {
       if (target !== 'complete' && c.broadcast.streamStatus !== 'active') throw error(reasons.errorStreamInactive, 409);
       if (target === 'testing' && !['created', 'ready'].includes(c.broadcast.state) || target === 'live' && !['ready', 'testing'].includes(c.broadcast.state)) throw error('Wait for the current YouTube state change to finish, then refresh the event.', 409);
       if (target === 'complete' && !['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast.state)) throw error('This YouTube event is not testing or live. Review it in Studio.', 409);
-      const b = await this.request(c, 'liveBroadcasts/transition', { part: 'id,snippet,status,contentDetails', id: c.broadcast.id, broadcastStatus: target }, 'POST');
+      let b;
+      try {
+        b = await this.request(c, 'liveBroadcasts/transition', { part: 'id,snippet,status,contentDetails', id: c.broadcast.id, broadcastStatus: target }, 'POST');
+      } catch (err) {
+        if (target === 'live' && c.broadcast.state === 'ready' && (err.message?.includes('Transition') || err.status === 400)) {
+          b = await this.request(c, 'liveBroadcasts/transition', { part: 'id,snippet,status,contentDetails', id: c.broadcast.id, broadcastStatus: 'testing' }, 'POST');
+        } else {
+          throw err;
+        }
+      }
       this.checkCurrent(owner, c); if (b.id !== c.broadcast.id) throw error('YouTube did not confirm the status change. Refresh the event.', 502);
       c.broadcast.state = text(b.status?.lifeCycleStatus || target, 32); c.lastRefresh = 0; c.error = null;
       await this.persist(owner); c.busy = false; return this.status(owner);

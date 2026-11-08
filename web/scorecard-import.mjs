@@ -142,6 +142,115 @@ function metadata(doc) {
   return out;
 }
 
+function parsePlainTextScorecard(text, ids, ref) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const inningsCards = [];
+  let currentCard = null;
+  let section = null;
+  const meta = {};
+
+  for (const line of lines) {
+    const metaMatch = line.match(/^([A-Za-z ]{2,25})\s*:\s*(.+)$/);
+    if (metaMatch) {
+      const k = metaMatch[1].trim().toLowerCase().replace(/\s+/g, '');
+      const v = clean(metaMatch[2], 200);
+      if (['toss', 'result', 'venue', 'ground', 'date', 'mom', 'playerofmatch', 'umpires', 'scorer', 'matchtype', 'format'].includes(k)) {
+        meta[k] = v;
+      }
+    }
+
+    const head = teamHeading(line);
+    if (head?.team) {
+      currentCard = inningsCards.find(c => sameTeam(c.team, head.team));
+      if (!currentCard) {
+        currentCard = {
+          id: String(inningsCards.length + 1), team: head.team, bowling: '',
+          runs: head.runs || '', wickets: head.wickets || '', overs: head.overs || '',
+          batting: [], bowlers: [], extras: null, fallOfWickets: [], didNotBat: [], complete: false, issues: []
+        };
+        inningsCards.push(currentCard);
+      }
+      section = null;
+      continue;
+    }
+
+    if (/^(?:batting|batsman|batsmen|batter|batters)\b/i.test(line)) {
+      section = 'batting';
+      continue;
+    }
+    if (/^(?:bowling|bowler|bowlers)\b/i.test(line)) {
+      section = 'bowlers';
+      continue;
+    }
+    if (/^total\b/i.test(line)) {
+      if (currentCard) {
+        const tot = summary(line);
+        if (tot.runs) currentCard.runs = tot.runs;
+        if (tot.wickets) currentCard.wickets = tot.wickets;
+        if (tot.overs) currentCard.overs = tot.overs;
+      }
+      continue;
+    }
+    if (/^extras?\b/i.test(line)) {
+      if (currentCard) currentCard.extras = extras(line);
+      continue;
+    }
+    if (/^fall of wickets\b/i.test(line)) {
+      if (currentCard) currentCard.fallOfWickets.push(clean(line.replace(/^fall of wickets\s*:?\s*/i, ''), 1000));
+      continue;
+    }
+
+    if (currentCard && section === 'batting') {
+      const bm = line.match(/^(.*?)\s+(\d{1,4})\s+(\d{1,4})\s+(\d{1,3})\s+(\d{1,3})(?:\s+([\d.]+))?$/);
+      if (bm) {
+        const rawNameStatus = bm[1].trim();
+        const runs = bm[2], balls = bm[3], fours = bm[4], sixes = bm[5], sr = bm[6] || (Number(balls) > 0 ? (Number(runs) / Number(balls) * 100).toFixed(2) : '0.00');
+        let name = rawNameStatus, status = '';
+        const sm = rawNameStatus.match(/^(.*?)\s+(not out|c\s+.*?|b\s+.*?|lbw\s+.*?|run out\s+.*?|st\s+.*?|retired\s+.*?|hit wicket.*?)$/i);
+        if (sm) {
+          name = sm[1].trim();
+          status = sm[2].trim();
+        }
+        currentCard.batting.push({ id: '', name: clean(name, 120), status: clean(status, 200), runs, balls, fours, sixes, strikeRate: sr });
+        continue;
+      }
+    }
+
+    if (currentCard && section === 'bowlers') {
+      const wm = line.match(/^(.*?)\s+(\d{1,3}(?:\.[0-5])?)\s+(\d{1,3})\s+(\d{1,4})\s+(\d{1,3})(?:\s+([\d.]+))?$/);
+      if (wm) {
+        const name = wm[1].trim(), ov = wm[2], maidens = wm[3], runs = wm[4], wickets = wm[5];
+        const econ = wm[6] || (legalBalls(ov) > 0 ? (Number(runs) / (legalBalls(ov) / 6)).toFixed(2) : '0.00');
+        currentCard.bowlers.push({ id: '', name: clean(name, 120), overs: ov, maidens, runs, wickets, economy: econ });
+        continue;
+      }
+    }
+  }
+
+  if (!inningsCards.some(c => c.batting.length || c.bowlers.length)) return null;
+
+  for (const card of inningsCards) {
+    const opp = inningsCards.filter(c => c !== card);
+    if (opp.length === 1) card.bowling = opp[0].team;
+    const battingOK = card.extras?.total !== '' && card.extras?.total != null && card.runs !== '' && card.batting.length > 0 &&
+      card.batting.reduce((n, p) => n + Number(p.runs), 0) + Number(card.extras.total) === Number(card.runs);
+    const bowlingOK = card.overs !== '' && card.bowlers.length > 0 && card.bowlers.reduce((n, p) => n + legalBalls(p.overs), 0) === legalBalls(card.overs);
+    card.complete = Boolean(card.batting.length > 0 && card.bowlers.length > 0 && battingOK && bowlingOK);
+  }
+
+  return {
+    schema: 'mk97.cricclubs.scorecard.v1',
+    clubId: ids.clubId,
+    matchId: ids.matchId,
+    league: ref.league || 'FWCWL',
+    inningsCards,
+    commentary: [],
+    metadata: meta,
+    origin: 'imported-text',
+    fetchedAt: Date.now()
+  };
+}
+
 export function parseBrowserScorecard(rawInput, ref) {
   const ids = validateIds(ref.clubId, ref.matchId);
   const text = String(rawInput ?? '').trim();
@@ -159,7 +268,16 @@ export function parseBrowserScorecard(rawInput, ref) {
   if (/(?:cf-chl-|challenge-platform|id=["']challenge-form|<title[^>]*>\s*(?:just a moment|attention required)|verify you are human)/i.test(text)) {
     throw new Error('The provided HTML is a Cloudflare verification screen, not the match scorecard.');
   }
+
+  if (!text.includes('<table') && !text.includes('<html')) {
+    const plain = parsePlainTextScorecard(text, ids, ref);
+    if (plain) return plain;
+  }
   const doc = new DOMParser().parseFromString(text, 'text/html');
+  if (doc.querySelectorAll('table').length === 0) {
+    const plain = parsePlainTextScorecard(text, ids, ref);
+    if (plain) return plain;
+  }
   for (const name of ['clubId', 'matchId']) {
     for (const e of doc.querySelectorAll('input[name],body[data-match-id],body[data-club-id],main[data-match-id],main[data-club-id],[data-scorecard][data-match-id],[data-scorecard][data-club-id]')) {
       const value = e.getAttribute('name') === name ? e.getAttribute('value') : e.getAttribute(name === 'clubId' ? 'data-club-id' : 'data-match-id');
