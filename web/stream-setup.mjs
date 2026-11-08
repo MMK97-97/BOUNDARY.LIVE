@@ -26,9 +26,45 @@ export function installStreamSetup({ state, api, ui, updateControls, refreshInfo
     for (const id of ['destinationPlatform', 'destinationServer', 'destinationKey', 'saveDestination', 'clearDestination']) $(id).disabled = !state.session || locked();
     $('saveDestination').textContent = state.destinationBusy ? 'Saving…' : 'Save securely';
     $('setupCameraStep').disabled = locked() || state.cameraBusy;
+    for (const [id, statusId, btnId, fallback] of [
+      ['youtube', 'setupPlatformYoutubeStatus', 'setupPlatformYoutubeBtn', 'Stream to your YouTube channel'],
+      ['facebook', 'setupPlatformFacebookStatus', 'setupPlatformFacebookBtn', 'Stream to your Facebook page'],
+      ['instagram', 'setupPlatformInstagramStatus', 'setupPlatformInstagramBtn', 'Stream to your Instagram channel']
+    ]) {
+      const dest = state.info?.destinations?.find(d => d.id === id);
+      const ok = Boolean(dest?.configured);
+      if ($(statusId)) $(statusId).textContent = ok ? (id === 'youtube' && state.info?.youtube?.channel?.title ? `Connected · ${state.info.youtube.channel.title}` : 'Connected · Stream key ready') : fallback;
+      if ($(btnId)) {
+        $(btnId).textContent = ok ? 'Connected ✓' : 'Connect';
+        $(btnId).classList.toggle('connected', ok);
+      }
+    }
   }
-  $('setupConnectionStep').addEventListener('click', () => { $('cloudConnectionPanel').scrollIntoView({ block: 'start', behavior: 'smooth' }); if(!state.session){ const field=!$('accountPanel').hidden?(!$('accountLoginForm').hidden?$('accountEmail'):!$('accountCreateForm').hidden?$('accountCreateEmail'):null):null; if(field)field.focus({preventScroll:true});else{$('legacyConnectionDetails').open=true;$('relayToken').focus({preventScroll:true});} } });
-  $('setupDestinationStep').addEventListener('click', () => ui.panel('quality', 'destinationPanel'));
+  $('setupConnectionStep').addEventListener('click', () => {
+    if (state.session) { ui.panel('graphics'); return; }
+    $('cloudConnectionPanel').scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const field = !$('accountPanel').hidden ? (!$('accountLoginForm').hidden ? $('accountEmail') : !$('accountCreateForm').hidden ? $('accountCreateEmail') : null) : null;
+    if (field) field.focus({ preventScroll: true });
+    else { $('legacyConnectionDetails').open = true; $('relayToken').focus({ preventScroll: true }); }
+  });
+  $('setupDestinationStep').addEventListener('click', () => {
+    if ($('streamSetupPlatforms')) $('streamSetupPlatforms').scrollIntoView({ block: 'start', behavior: 'smooth' });
+    else ui.panel('quality', 'destinationPanel');
+  });
+  for (const btn of document.querySelectorAll('[data-platform-connect]')) {
+    btn.addEventListener('click', () => {
+      const platform = btn.dataset.platformConnect;
+      if (platform === 'youtube') { ui.panel('youtube'); return; }
+      if (locked()) return;
+      ui.panel('quality', 'manualDestinationDetails');
+      $('manualDestinationDetails').open = true;
+      if (platform === 'facebook' || platform === 'instagram') {
+        $('destinationPlatform').value = platform;
+        $('destinationPlatform').dispatchEvent(new Event('change'));
+      }
+      (platform === 'facebook' ? $('destinationKey') : $('destinationServer')).focus();
+    });
+  }
   $('setupCameraStep').addEventListener('click', () => { ui.closeDrawer(); if (!state.stream) openCamera(); });
   $('returnToStudio').addEventListener('click', returnToStudio);
   async function change(clear = false) {

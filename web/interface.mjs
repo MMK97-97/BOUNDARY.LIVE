@@ -40,7 +40,13 @@ export function installInterface({ state, ui, home, notice }) {
     const target = view === 'auth' && !currentPanel ? $('authMount') : $('cloudSettingsMount');
     if ($('cloudConnectionPanel').parentElement !== target) target.append($('cloudConnectionPanel'));
     const legacyHost = view === 'auth' && !currentPanel ? $('authAdvancedMount') : $('cloudConnectionPanel');
-    if ($('legacyConnectionDetails').parentElement !== legacyHost) legacyHost.append($('legacyConnectionDetails'));
+    if ($('legacyConnectionDetails').parentElement !== legacyHost) {
+      if (legacyHost === $('cloudConnectionPanel') && typeof legacyHost.insertBefore === 'function' && $('relayConnected')) {
+        legacyHost.insertBefore($('legacyConnectionDetails'), $('relayConnected'));
+      } else {
+        legacyHost.append($('legacyConnectionDetails'));
+      }
+    }
   }
   function viewChanged(next) {
     view = next;
@@ -65,7 +71,7 @@ export function installInterface({ state, ui, home, notice }) {
     ui.panel(route.panel, route.target);
   }
   function updateSteps() {
-    const selected = currentPanel === 'match' ? 'match' : currentPanel === 'settings' ? 'stream' : 'studio';
+    const selected = currentPanel === 'match' ? 'match' : ['settings', 'graphics', 'quality', 'youtube', 'youtubecreate', 'events'].includes(currentPanel) ? 'stream' : 'studio';
     const ready = {
       match: Boolean(state.score),
       stream: Boolean(state.session && state.info?.encoder.ready && ['youtube', 'facebook', 'instagram'].some(id => $('dest-' + id).checked && state.info?.destinations?.some(d => d.id === id && d.configured))),
@@ -84,7 +90,7 @@ export function installInterface({ state, ui, home, notice }) {
     goingBack = false;
     currentPanel = name; closeMenu(); maskSecrets(); mountCloud();
     $('home').inert = true; $('authScreen').inert = true;
-    $('drawerSteps').hidden = !['match', 'settings'].includes(name);
+    $('drawerSteps').hidden = !['match', 'graphics', 'settings', 'quality', 'youtube', 'youtubecreate', 'events'].includes(name);
     if (['youtube', 'youtubecreate', 'events'].includes(name)) document.querySelector(`[data-drawer="${name}"]`).append($('youtubeFeedback'));
     updateSteps();
   }
@@ -130,6 +136,15 @@ export function installInterface({ state, ui, home, notice }) {
     $('destinationServer').focus();
   });
 
+  for (const card of document.querySelectorAll('[data-overlay-card]')) card.addEventListener('click', () => {
+    const theme = card.dataset.overlayCard;
+    state.overlayStyle = theme;
+    if ($('overlayStyleSelect')) {
+      $('overlayStyleSelect').value = theme;
+      $('overlayStyleSelect').dispatchEvent(new Event('change'));
+    }
+    update();
+  });
   function update() {
     if (view === 'auth' && state.session && state.info) { $('legacyConnectionDetails').open = false; home.home(); }
     else if (previousSession && !state.session && !locked()) signIn();
@@ -166,6 +181,9 @@ export function installInterface({ state, ui, home, notice }) {
     $('graphicsSourceState').textContent = !score ? 'No match loaded' : score.stale ? 'Score delayed' : score.status === 'complete' ? 'Match complete' : 'Source connected';
     $('graphicsScorePreview').hidden = !score; $('graphicsPreviewEmpty').hidden = Boolean(score);
     const theme = state.overlayStyle || 'gold';
+    for (const card of document.querySelectorAll('[data-overlay-card]')) {
+      card.classList.toggle('selected', card.dataset.overlayCard === theme);
+    }
     const key = JSON.stringify([score, programSize(state.camera), theme]);
     if (key !== scoreDrawingKey) {
       scoreDrawingKey = key;
