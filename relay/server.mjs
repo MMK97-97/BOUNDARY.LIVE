@@ -322,6 +322,14 @@ const server = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'Unknown YouTube endpoint.' });
       }
       if (req.method === 'GET' && url.pathname === '/api/score') return json(res, 200, scores.snapshot());
+      if (req.method === 'POST' && url.pathname === '/api/score/scrape') {
+        const result = await scores.scrapeScorecard({ force: true }); updateOverlay();
+        return json(res, 200, result);
+      }
+      if (req.method === 'POST' && url.pathname === '/api/score/scorecard') {
+        const result = scores.importScorecard(await body(req, 2_097_152)); updateOverlay();
+        return json(res, 200, result);
+      }
       if (req.method === 'GET' && url.pathname === '/api/score/stream') {
         if (url.searchParams.getAll('clubId').length !== 1 || url.searchParams.getAll('matchId').length !== 1) throw new Error('Provide one Club ID and Match ID.');
         scoreStream.open(req, res, authenticated.id, originOf(req), { clubId: url.searchParams.get('clubId'), matchId: url.searchParams.get('matchId') });

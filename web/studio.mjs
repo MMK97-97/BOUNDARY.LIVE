@@ -1,22 +1,53 @@
 import { programRect, programSize, captureProfile } from './capture.mjs';
-import { graphicSvg, calculateEquation } from './score-graphic.mjs';
+import { graphicSvg, calculateEquation, parseOversToBalls } from './score-graphic.mjs';
+import { knownLeague } from './cricclubs-reference.mjs';
+import { parseBrowserScorecard, enrichBrowserScore } from './scorecard-import.mjs';
 const $ = id => document.getElementById(id);
 const label = { match: 'Match Setup', streamSettings: 'Stream Settings', graphics: 'Live Score Graphics', quality: 'Quality & Destinations', advanced: 'Camera, Audio & Advanced', youtubecreate: 'Create Live Setup', events: 'My Event & Live Controls', settings: 'Stream Setup', score: 'Score & commentary', stats: 'Match statistics', share: 'Share broadcast', youtube: 'YouTube live setup' };
 const el = (tag, content, className) => { const n = document.createElement(tag); if (content != null) n.textContent = String(content); if (className) n.className = className; return n; };
 const icon = id => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', '#i-' + id); svg.append(use); return svg; };
 const safeWatch = value => { const u = new URL(value); if (u.protocol !== 'https:' || u.username || u.password || !['youtube.com', 'youtu.be', 'facebook.com', 'fb.watch', 'instagram.com'].some(h => u.hostname === h || u.hostname.endsWith('.' + h))) throw new Error('Enter your public YouTube, Facebook or Instagram watch URL.'); return u.href; };
+const computedCellValue = (p, key) => {
+  const val = p?.[key];
+  if (val !== '' && val != null) return val;
+  if (key === 'strikeRate' && /^\d+$/.test(String(p?.runs)) && /^[1-9]\d*$/.test(String(p?.balls))) {
+    return ((Number(p.runs) * 100) / Number(p.balls)).toFixed(2);
+  }
+  if (key === 'economy' && /^\d+$/.test(String(p?.runs)) && /^\d+(?:\.[0-5])?$/.test(String(p?.overs))) {
+    const balls = parseOversToBalls(p.overs);
+    if (balls > 0) return ((Number(p.runs) * 6) / balls).toFixed(2);
+  }
+  return '—';
+};
 export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview, onPanel = () => {}, onClosePanel = () => {}, onBackPanel }) {
   let lastFocus = null, lastGraphic = null, lastScoreSig = '';
   let scoreTab = 'batting', statsTab = 'overview';
   let monitorCanvas = programSize(state.camera);
-  let observedMatchKey = '';
+  let observedMatchKey = '', importedScorecard = null, importPanelOpen = false, scrapingScorecard = false;
   const observedInnings = new Map();
+  function currentLeague(s = state.score) {
+    if (!s?.clubId) return 'FWCWL';
+    try {
+      const saved = localStorage.getItem('mk97.league.' + s.clubId);
+      if (saved && /^[A-Za-z0-9_-]{1,80}$/.test(saved)) return saved;
+    } catch {}
+    return knownLeague(s.clubId)?.league || 'FWCWL';
+  }
+  function scorecardUrl(s = state.score) {
+    if (!s?.clubId || !s?.matchId) return '';
+    return `https://cricclubs.com/${encodeURIComponent(currentLeague(s))}/viewScorecard.do?matchId=${encodeURIComponent(s.matchId)}&clubId=${encodeURIComponent(s.clubId)}`;
+  }
   function recordObserved(s) {
     if (!s?.clubId || !s?.matchId) return;
     const matchKey = `${s.clubId}:${s.matchId}`;
     if (matchKey !== observedMatchKey) {
       observedMatchKey = matchKey;
       observedInnings.clear();
+      if (importedScorecard && (`${importedScorecard.clubId}:${importedScorecard.matchId}` !== matchKey)) importedScorecard = null;
+    }
+    if (importedScorecard && !s.cards?.complete) {
+      const enriched = enrichBrowserScore(s, importedScorecard);
+      Object.assign(s, enriched);
     }
     const pKey = p => String(p?.id || p?.name || '').trim().toLowerCase();
     const ensure = id => {
@@ -41,6 +72,60 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       for (const p of card.batting || []) { const k = pKey(p); if (k) cEntry.batters.set(k, { ...cEntry.batters.get(k), ...p }); }
       for (const b of card.bowlers || []) { const k = pKey(b); if (k) cEntry.bowlers.set(k, { ...cEntry.bowlers.get(k), ...b }); }
       for (const f of card.fallOfWickets || []) if (f && !cEntry.fow.includes(f)) cEntry.fow.push(f);
+    }
+  }
+  async function handleScrapeFullScorecard() {
+    const s = state.score;
+    if (!s) { notice('Load a CricClubs match first.', 'error'); return; }
+    if (!state.session) {
+      importPanelOpen = true;
+      tables();
+      notice('Open the CricClubs scorecard link or import its saved HTML/JSON below, or connect the cloud studio.', 'info');
+      return;
+    }
+    scrapingScorecard = true; tables();
+    try {
+      const result = await api('/api/score/scrape', { method: 'POST', body: '{}' });
+      if (result?.score) {
+        state.score = result.score;
+        score(state.score);
+        if (result.score.scorecard?.state === 'complete') {
+          notice('Full scorecard scraped and reconciled!', 'success');
+        } else if (result.score.scorecard?.state === 'blocked') {
+          importPanelOpen = true; tables();
+          notice('CricClubs blocked automated cloud access (HTTP 403). Open the scorecard in your browser and paste/import its HTML below.', 'info');
+        } else {
+          notice(result.score.scorecard?.message || 'Scorecard checked.', 'info');
+        }
+      }
+    } catch (e) {
+      importPanelOpen = true;
+      notice(e.message || 'Could not scrape full scorecard from relay.', 'error');
+    } finally {
+      scrapingScorecard = false; tables();
+    }
+  }
+  async function handleImportScorecardText(rawText) {
+    const s = state.score;
+    if (!s) { notice('Load a CricClubs match first before importing its scorecard.', 'error'); return; }
+    try {
+      const league = currentLeague(s);
+      const doc = parseBrowserScorecard(rawText, { clubId: s.clubId, matchId: s.matchId, league });
+      importedScorecard = doc;
+      state.score = enrichBrowserScore(s, doc);
+      if (state.session) {
+        try {
+          const result = await api('/api/score/scorecard', { method: 'POST', body: JSON.stringify({ document: doc, league }) });
+          if (result?.score) state.score = result.score;
+        } catch {}
+      }
+      importPanelOpen = false;
+      score(state.score);
+      updateControls();
+      const totalPlayers = (doc.inningsCards || []).reduce((n, c) => n + (c.batting?.length || 0), 0);
+      notice(`Full scorecard loaded (${doc.inningsCards.length} innings, ${totalPlayers} batting entries).`, 'success');
+    } catch (e) {
+      notice(e.message || 'Could not parse scorecard HTML/JSON.', 'error');
     }
   }
   function drawScore(s = state.score) {
@@ -161,9 +246,43 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   $('inningsSelect').addEventListener('change', tables);
   function table(title, rows, columns) {
     const section = el('div'); section.append(el('p', title, 'card-caption'));
-    if (!rows?.length) { section.append(el('p', 'Player rows are not supplied for this innings by the current feed.', 'helper')); return section; }
+    if (!rows?.length) { section.append(el('p', 'Player rows are not supplied for this innings by the current feed. Use "Scrape Full Scorecard" or "Import HTML / JSON" below to load full innings tables.', 'helper')); return section; }
     const t = el('table', null, 'data-table'), head = el('tr'); for (const [name] of columns) head.append(el('th', name)); const thead = el('thead'); thead.append(head); t.append(thead);
-    const body = el('tbody'); for (const p of rows) { const row = el('tr'); for (const [, key] of columns) { const cell = el('td', p[key] === '' || p[key] == null ? '—' : p[key]); if (key === 'name' && p.status) cell.append(el('small', p.status, 'dismissal')); row.append(cell); } body.append(row); } t.append(body); section.append(t); return section;
+    const body = el('tbody'); for (const p of rows) { const row = el('tr'); for (const [, key] of columns) { const cell = el('td', computedCellValue(p, key)); if (key === 'name' && p.status) cell.append(el('small', p.status, 'dismissal')); row.append(cell); } body.append(row); } t.append(body); section.append(t); return section;
+  }
+  function renderScorecardTools(root, s) {
+    if (!s) return;
+    const bar = el('div', null, 'row');
+    const scrapeBtn = el('button', scrapingScorecard ? 'Scraping…' : 'Scrape full scorecard', 'secondary');
+    scrapeBtn.type = 'button'; scrapeBtn.disabled = scrapingScorecard;
+    scrapeBtn.addEventListener('click', handleScrapeFullScorecard);
+    const importBtn = el('button', importPanelOpen ? 'Hide import' : 'Import HTML / JSON', 'secondary');
+    importBtn.type = 'button';
+    importBtn.addEventListener('click', () => { importPanelOpen = !importPanelOpen; tables(); });
+    bar.append(scrapeBtn, importBtn);
+    const url = scorecardUrl(s);
+    if (url) {
+      const openLink = el('a', 'Open CricClubs ↗', 'button-link secondary');
+      openLink.href = url; openLink.target = '_blank'; openLink.rel = 'noopener noreferrer';
+      bar.append(openLink);
+    }
+    root.append(bar);
+    if (importPanelOpen) {
+      const box = el('div', null, 'panel');
+      box.append(el('p', 'Import Full Scorecard (HTML or JSON)', 'card-caption'));
+      box.append(el('p', 'If CricClubs blocks cloud requests with a Cloudflare check, open the CricClubs scorecard in your browser, save or copy the page HTML (or run npm run scrape), and load it here to populate all innings tables.', 'helper'));
+      const fileInput = el('input'); fileInput.type = 'file'; fileInput.accept = '.html,.htm,.json,text/html,application/json';
+      fileInput.addEventListener('change', async () => {
+        const f = fileInput.files?.[0]; if (!f) return;
+        const text = await f.text();
+        await handleImportScorecardText(text);
+      });
+      const area = el('textarea'); area.rows = 4; area.placeholder = 'Or paste the full viewScorecard.do HTML source or mk97.cricclubs.scorecard.v1 JSON here…';
+      const applyBtn = el('button', 'Load full scorecard', 'primary full'); applyBtn.type = 'button';
+      applyBtn.addEventListener('click', () => handleImportScorecardText(area.value));
+      box.append(fileInput, area, applyBtn);
+      root.append(box);
+    }
   }
   function tables() {
     const s = state.score, select = $('inningsSelect');
@@ -184,7 +303,14 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     const obsBowlers = obs?.bowlers?.size ? [...obs.bowlers.values()] : (current && s?.bowler ? [s.bowler] : []);
     const batting = selected?.batting?.length ? selected.batting : current && s?.cards?.batting?.length ? s.cards.batting : obsBatters;
     const bowling = selected?.bowlers?.length ? selected.bowlers : current && s?.cards?.bowling?.length ? s.cards.bowling : obsBowlers;
+    const detail = selected || options.find(c => c.id === s?.innings);
     const root = $('scoreTables'); root.replaceChildren();
+    renderScorecardTools(root, s);
+    if (s && detail) {
+      const isComplete = Boolean(detail.complete || (current && s.cards?.complete));
+      const summaryLine = `${detail.team || s.batting}: ${detail.runs ?? s.runs}/${detail.wickets ?? s.wickets} (${detail.overs ?? s.overs} ov)${detail.runRate ? ` · RR ${detail.runRate}` : ''}${detail.extras?.total ? ` · Extras ${detail.extras.total}` : ''} · ${isComplete ? 'Complete Scorecard' : 'Live Session Records'}`;
+      root.append(el('p', summaryLine, 'helper'));
+    }
     if (scoreTab === 'batting') {
       root.append(table(`BATTING${selected ? ' · ' + selected.team : s?.batting ? ' · ' + s.batting : ''}`, batting, [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes'], ['SR', 'strikeRate']]));
       if (current && s?.stats?.partnership) {
@@ -208,14 +334,13 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       for (const row of [...(s?.commentary || [])].reverse()) { const item = el('article', null, 'commentary-row'); if (row.over) item.append(el('strong', row.over)); item.append(el('p', row.text)); root.append(item); }
       if (!s?.commentary?.length) root.append(el('p', 'Commentary is not supplied by this CricClubs feed. No ball commentary is generated from score changes.', 'source-empty'));
     }
-    const detail = selected || options.find(c => c.id === s?.innings);
     if (scoreTab === 'batting' && (detail || obs)) {
       if (detail?.extras?.text) root.append(el('p', detail.extras.text, 'helper'));
       if (detail?.didNotBat?.length) root.append(el('p', 'Did not bat: ' + detail.didNotBat.join(', '), 'helper'));
       const fowList = detail?.fallOfWickets?.length ? detail.fallOfWickets : obs?.fow || [];
       for (const text of fowList) root.append(el('p', 'Fall of wickets: ' + text, 'helper'));
     }
-    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? state.session ? 'Full scorecard data is not available from the relay.' : 'Connect the relay for full scorecard reading.' : '')} Missing source fields show —. Commentary lists source text for the match.` : 'Load a match to see source data.';
+    $('sourceNote').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${selected?.complete || current && s.cards?.complete ? 'Complete card supplied or source tables reconciled.' : 'Supplied records only; full innings card not confirmed.'} ${s.scorecard?.message || (s.source === 'CricClubs' ? state.session ? 'Full scorecard data is not available from the relay.' : 'Connect the relay or import HTML/JSON for full scorecard reading.' : '')} Commentary lists source text for the match.` : 'Load a match to see source data.';
     const stats = $('statsTables'); stats.replaceChildren();
     if (!s) return stats.append(el('p', 'Load a match to see source statistics.', 'source-empty'));
     const teams = s.teams?.length ? s.teams : [{ code: s.batting, name: s.batting, runs: s.runs, wickets: s.wickets, overs: s.overs, runRate: s.runRate }];
@@ -257,7 +382,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     } else {
       const key = statsTab === 'runs' ? 'runs' : 'wickets', max = Math.max(key === 'wickets' ? 10 : 1, ...teams.map(t => Number(t[key]) || 0));
       for (const team of teams) { const line = el('div', null, 'source-bar'); line.append(el('span', team.name), el('strong', team[key])); const meter = el('meter'); meter.min = 0; meter.max = max; meter.value = Number(team[key]); meter.setAttribute('aria-label', `${team.name} ${key}`); line.append(meter); stats.append(line); }
-      stats.append(table(key === 'runs' ? 'AVAILABLE BATTERS' : 'AVAILABLE BOWLERS', key === 'runs' ? batting : bowling, key === 'runs' ? [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes']] : [['Bowler', 'name'], ['O', 'overs'], ['M', 'maidens'], ['R', 'runs'], ['W', 'wickets']]));
+      stats.append(table(key === 'runs' ? 'AVAILABLE BATTERS' : 'AVAILABLE BOWLERS', key === 'runs' ? batting : bowling, key === 'runs' ? [['Batter', 'name'], ['R', 'runs'], ['B', 'balls'], ['4s', 'fours'], ['6s', 'sixes'], ['SR', 'strikeRate']] : [['Bowler', 'name'], ['O', 'overs'], ['M', 'maidens'], ['R', 'runs'], ['W', 'wickets'], ['Econ', 'economy']]));
     }
     stats.append(el('p', 'Values come from the selected source match. Missing players or statistics are not estimated.', 'helper'));
   }

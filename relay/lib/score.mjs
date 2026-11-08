@@ -1,5 +1,5 @@
 import { clean, validateIds, normalizeScore } from '../../web/score-data.mjs';
-import { enrichCricClubsScore } from './cricclubs-parser.mjs';
+import { enrichCricClubsScore, parseCricClubsScorecard } from './cricclubs-parser.mjs';
 import { CRICCLUBS_LEAGUES, validateLeague } from '../../web/cricclubs-reference.mjs';
 export { clean, validateIds, normalizeScore, scoreLines } from '../../web/score-data.mjs';
 export class ScoreService {
@@ -89,14 +89,44 @@ export class ScoreService {
     // A disconnected viewer must never turn a successful source read into a failure.
     for (const listener of this.listeners) { try { listener(snapshot); } catch {} }
   }
+  async scrapeScorecard({ force = false } = {}) {
+    if (!this.ids || !this.score) throw new Error('Load a match first before scraping its full scorecard.');
+    if (!this.scorecardScraper) throw new Error('Full scorecard scraping is disabled on this server.');
+    if (force) {
+      this.scorecardScraper.blocked = null;
+      this.scorecardScraper.nextAllowed = 0;
+      this.scorecardScraper.cache?.clear?.();
+      this.scorecardDocument = null;
+    }
+    this.enrich(this.ids, this.generation);
+    if (this.scorecardTask) await this.scorecardTask;
+    return this.snapshot();
+  }
+  importScorecard(input = {}) {
+    if (!this.ids || !this.score) throw new Error('Load a match first before importing its full scorecard.');
+    const league = validateLeague(input.league) || this.league || 'FWCWL';
+    let document;
+    if (typeof input.html === 'string' && input.html.trim()) {
+      document = { ...parseCricClubsScorecard(input.html, { ...this.ids, league }), origin: 'imported-html', fetchedAt: Date.now() };
+    } else if (input.document && typeof input.document === 'object' && input.document.schema === 'mk97.cricclubs.scorecard.v1') {
+      document = { ...input.document, origin: input.document.origin || 'imported-json', fetchedAt: input.document.fetchedAt || Date.now() };
+    } else {
+      throw new Error('Provide scorecard HTML or a valid mk97.cricclubs.scorecard.v1 JSON document.');
+    }
+    this.score = enrichCricClubsScore(this.score, document);
+    this.scorecardDocument = document;
+    this.notify();
+    return this.snapshot();
+  }
   enrich(ids, generation) {
+    if (this.scorecardDocument && (['imported-html', 'imported-json'].includes(this.scorecardDocument.origin) || Date.now() - this.scorecardDocument.fetchedAt < 120000)) {
+      try { this.score = enrichCricClubsScore(this.score, this.scorecardDocument); } catch { this.scorecardDocument = null; }
+      if (['imported-html', 'imported-json'].includes(this.scorecardDocument?.origin) && this.score.scorecard?.state === 'complete') return;
+    }
     if (!this.scorecardScraper) return;
     const league = this.league;
     if (!league) {
       this.score.scorecard = { state: 'unavailable', message: 'Paste this league’s full CricClubs scorecard URL to enable full-card reading.' }; return;
-    }
-    if (this.scorecardDocument && Date.now() - this.scorecardDocument.fetchedAt < 120000) {
-      try { this.score = enrichCricClubsScore(this.score, this.scorecardDocument); } catch { this.scorecardDocument = null; }
     }
     if (!this.score.scorecard) this.score.scorecard = { state: 'loading', message: 'Reading full innings tables on the relay.' };
     if (this.scorecardTask) return;
@@ -109,6 +139,7 @@ export class ScoreService {
       } catch (error) {
         if (generation !== this.generation || !this.score) return;
         if (error.code === 'COOLDOWN' && this.scorecardDocument) return;
+        if (['imported-html', 'imported-json'].includes(this.scorecardDocument?.origin)) return;
         this.scorecardDocument = null;
         this.score = { ...this.score, scorecard: { state: ['ACCESS_BLOCKED', 'ROBOTS_DENIED'].includes(error.code) ? 'blocked' : error.code === 'RATE_LIMITED' ? 'rate_limited' : 'unavailable',
           code: clean(error.code, 40), message: clean(error.message, 220) } };

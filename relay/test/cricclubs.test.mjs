@@ -195,3 +195,20 @@ test('custom approved feeds and other unconfigured leagues never invoke the HTML
   }
   assert.equal(calls, 0);
 });
+
+test('supports alternate CricClubs innings heading formats and manual scorecard import', async () => {
+  const altHtml = html.replace('<h2>Alpha CC innings 150/3 (20 overs)</h2>', '<h2>1st Innings - Alpha CC 150/3 (20 overs)</h2>')
+    .replace('<h2>Beta CC innings 151/2 (19.2 overs)</h2>', '<h2>Beta CC 151/2 (19.2 overs)</h2>');
+  const parsed = parseCricClubsScorecard(altHtml, ids);
+  assert.equal(parsed.inningsCards.length, 2);
+  assert.equal(parsed.coverage.reconciledInnings, 2);
+  const raw = { values: { matchId: '456', t1Name: 'Alpha CC', t2Name: 'Beta CC', t1Total: '150', t1Wickets: '3', t1Overs: '20',
+    t2Total: '151', t2Wickets: '2', t2Overs: '19.2' }, isSecondInningsStarted: true };
+  const service = new ScoreService({ fetchFn: async () => new Response(JSON.stringify(raw)), scorecardClubId: '123', scorecardLeague: 'TestLeague' });
+  service.select('123', '456'); await service.refresh();
+  const imported = service.importScorecard({ html: altHtml, league: 'TestLeague' });
+  assert.equal(imported.score.cards.complete, true);
+  assert.equal(imported.score.cards.batting.length, 3);
+  assert.equal(imported.score.inningsCards[0].batting.length, 4);
+  assert.equal(imported.score.scorecard.state, 'complete');
+});

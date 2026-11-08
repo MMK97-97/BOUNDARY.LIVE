@@ -14,7 +14,7 @@ const number = v => /^\d{1,6}$/.test(String(v).trim()) ? String(v).trim() : '';
 const rate = v => /^\d{1,6}(?:\.\d{1,3})?$/.test(String(v).trim()) ? String(v).trim() : '';
 const overs = v => /^\d{1,4}(?:\.[0-5])?$/.test(String(v).trim()) ? String(v).trim() : '';
 const legalBalls = v => { if (!overs(v)) return null; const [o, b = '0'] = v.split('.'); return Number(o) * 6 + Number(b); };
-const HEADINGS = 'h1,h2,h3,h4,h5,h6,caption,.panel-heading,.box-title';
+const HEADINGS = 'h1,h2,h3,h4,h5,h6,caption,.panel-heading,.panel-title,.box-title,.innings-header';
 
 export function cricclubsReference(input) {
   let ids, league;
@@ -67,20 +67,30 @@ function summary(text, cells = []) {
 }
 function teamHeading(text) {
   text = clean(text, 300);
-  if (!/\binnings\b/i.test(text)) return null;
-  const team = text.split(/\s+(?:(?:1st|2nd|3rd|4th|first|second)\s+)?innings\b/i)[0].replace(/\s+\d+\s*\/\s*\d+.*$/, '').trim();
-  return team && !/^(?:first|second|1st|2nd|current|batting|bowling|match|super over)$/i.test(team) ? { team: clean(team, 100), ...summary(text) } : null;
+  if (/\binnings\b/i.test(text)) {
+    const before = text.split(/\s+(?:(?:1st|2nd|3rd|4th|first|second)\s+)?innings\b/i)[0].replace(/\s*[:\-–—]?\s*\(?\d+\s*\/\s*\d+.*$/, '').trim();
+    const after = text.split(/\binnings\s*[:\-–—]?\s*/i)[1]?.replace(/\s*[:\-–—]?\s*\(?\d+\s*\/\s*\d+.*$/, '').trim() || '';
+    const team = before && !/^(?:first|second|1st|2nd|3rd|4th|current|batting|bowling|match|super over)$/i.test(before) ? before : after;
+    return team && !/^(?:first|second|1st|2nd|3rd|4th|current|batting|bowling|match|super over)$/i.test(team) ? { team: clean(team, 100), ...summary(text) } : null;
+  }
+  if (/\b\d{1,4}\s*\/\s*\d{1,2}\b/.test(text) && /\b(?:\d{1,4}(?:\.[0-5])?\s*(?:overs?|ovs?)|\(\s*\d{1,4}(?:\.[0-5])?\s*\))/i.test(text)) {
+    const team = text.replace(/\s*[:\-–—]?\s*\(?\d{1,4}\s*\/\s*\d{1,2}\b.*$/, '').trim();
+    return team && !/^(?:total|extras?|fall of wickets|first|second|1st|2nd|current|batting|bowling|match|super over)$/i.test(team) ? { team: clean(team, 100), ...summary(text) } : null;
+  }
+  return null;
 }
 function context($, table, previous) {
   let node = $(table);
   for (let depth = 0; node.length && depth < 7; depth++, node = node.parent()) {
     if (node.is('body,html')) break;
     if (node.attr('data-team')) return { team: clean(node.attr('data-team'), 100), ...summary(node.attr('data-score') || '') };
+    const prev = node.prevAll(HEADINGS).toArray().map(e => teamHeading($(e).text())).find(Boolean);
+    if (prev) return prev;
     const caption = node.children(HEADINGS).toArray().map(e => teamHeading($(e).text())).find(Boolean);
     if (caption) return caption;
     const id = node.attr('id');
     if (id) {
-      const label = $('a[href]').toArray().filter(e => $(e).attr('href') === '#' + id).map(e => teamHeading($(e).text())).find(Boolean);
+      const label = $('a[href],[data-target],[data-bs-target]').toArray().filter(e => [$(e).attr('href'), $(e).attr('data-target'), $(e).attr('data-bs-target')].includes('#' + id)).map(e => teamHeading($(e).text())).find(Boolean);
       if (label) return label;
     }
   }
@@ -107,7 +117,7 @@ function rowPlayer($, cells, h) {
   const at = field => h[field] < 0 || !cells[h[field]] ? '' : clean($(cells[h[field]]).text(), 300);
   const cell = $(cells[h.name]), link = cell.find('a[href]').filter((_, e) => /viewPlayer\.do/.test($(e).attr('href'))).first();
   const detail = cell.find('small,.dismissal,.out-string').first().text();
-  const name = clean(link.length ? link.text() : cell.clone().find('small,.dismissal,.out-string').remove().end().text(), 120).replace(/\s*[*†]+\s*$/, '');
+  const name = clean(link.length ? link.text() : cell.clone().find('small,.dismissal,.out-string').remove().end().text(), 120).replace(/\s*(?:\((?:c|wk|c\s*&\s*wk)\)|[*†])+\s*$/i, '');
   let id = ''; try { const url = new URL(link.attr('href'), 'https://cricclubs.com'); id = number(url.searchParams.get('playerId')); } catch { /* optional public player ID */ }
   const status = at('status') || clean(detail || (link.length ? cell.text().replace(link.text(), '') : ''), 200);
   return { at, id, name, status };
