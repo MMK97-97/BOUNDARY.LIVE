@@ -34,7 +34,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       }
     } else if (!busy) { requestId = null; submitted = null; }
     update();
-    if (isRealOrigin && state.session && data?.connected && !data?.authorizing && data?.error?.includes('Google authorization expired') && !busy && !locked()) {
+    if (isRealOrigin && state.session && data?.connected && !data?.authorizing && /Google authori[sz]ation expired|revoked|needs refreshing|invalid_grant|rejected/i.test(data?.error || '') && !busy && !locked()) {
       post('disconnect').then(() => { data = null; requestId = null; submitted = null; autoPrepKey = ''; return refreshInfo(); }).catch(() => {});
       return;
     }
@@ -76,7 +76,7 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     const mismatch = Boolean(data?.redirectUri && !validOrigins.includes(new URL(data.redirectUri).origin));
     $('ytConnect').disabled = Boolean(disabled || !data?.configured || data?.authorizing || mismatch);
     $('ytConnect').hidden = false;
-    $('ytConnect').textContent = connected ? 'Switch Google / YouTube account' : 'Connect with Google';
+    $('ytConnect').textContent = data?.error ? 'Reconnect with Google' : connected ? 'Switch Google / YouTube account' : 'Connect with Google';
     $('ytCancelAuth').hidden = !pending && !data?.authorizing;
     $('ytCancelAuth').disabled = Boolean(!state.session || locked());
     $('ytDisconnect').hidden = !connected; $('ytDisconnect').disabled = Boolean(disabled || data?.authorizing);

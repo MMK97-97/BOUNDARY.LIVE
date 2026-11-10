@@ -11,6 +11,7 @@ import { CRICCLUBS_LEAGUES, knownLeague } from './cricclubs-reference.mjs';
 import { installMatchSelection } from './match-setup.mjs';
 import { installSavedStudio } from './saved-studio.mjs';
 import { installStudioAccount } from './studio-account.mjs';
+import { calculateEquation } from './score-graphic.mjs';
 let ui = null;
 let youtubeUI = null;
 let homeUI = null;
@@ -168,11 +169,47 @@ function renderScore(result) {
     updateControls(); return;
   }
   const delayed = s.stale || Date.now() - s.fetchedAt > 30000;
-  $('overlayTeam').textContent = s.batting; $('overlayRuns').textContent = `${s.runs}/${s.wickets}`;
-  $('overlayOvers').textContent = `${s.overs} ov`; $('overlayRate').textContent = s.runRate ? `CRR ${s.runRate}` : '';
-  $('overlayStatus').textContent = delayed ? 'SCORE DELAYED' : s.status === 'complete' ? 'MATCH COMPLETE' : s.superOver ? 'SUPER OVER' : 'LIVE SCORE';
-  const players = s.batters?.map(p => `${p.name.slice(0, 18)} ${p.runs}(${p.balls})`).join(' · ');
-  $('overlayDetail').textContent = s.result || players || s.detail || `v ${s.bowling} · ${s.source}`;
+  const eq = calculateEquation(s);
+  $('overlayTeam').textContent = s.batting || '—'; $('overlayRuns').textContent = `${s.runs}/${s.wickets}`;
+  $('overlayOvers').textContent = `${s.overs} ov`; $('overlayRate').textContent = eq.crr ? `CRR ${eq.crr}` : '';
+  if ($('battingLogo')) $('battingLogo').textContent = (s.batting || 'CC').slice(0, 3).toUpperCase();
+  if ($('bowlingLogo')) $('bowlingLogo').textContent = (s.bowling || 'CC').slice(0, 3).toUpperCase();
+  if (eq.isChasing) {
+    $('overlayStatus').textContent = delayed ? 'SCORE DELAYED' : eq.isComplete ? 'MATCH COMPLETE' : s.superOver ? 'SUPER OVER' : '2ND INNINGS · CHASE';
+    $('requiredRate').textContent = eq.rrr ? `RRR ${eq.rrr}` : (eq.target ? `TARGET ${eq.target}` : 'RRR —');
+    $('requiredRate').hidden = false;
+    $('overlayDetail').textContent = eq.isComplete ? (s.result || 'MATCH COMPLETE') : eq.runsNeeded !== null ? (eq.runsNeeded === 0 ? 'SCORES LEVEL' : `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft}b`) : (s.detail || `TARGET ${eq.target || '—'}`);
+    $('oppositionTeam').textContent = eq.oppTeam ? `${eq.oppTeam.code || eq.oppTeam.name} ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : (s.bowling ? `v ${s.bowling}` : 'OPPOSITION');
+  } else {
+    $('overlayStatus').textContent = delayed ? 'SCORE DELAYED' : eq.isComplete ? 'MATCH COMPLETE' : s.superOver ? 'SUPER OVER' : '1ST INNINGS · BATTING FIRST';
+    $('requiredRate').textContent = `PROJ ${eq.projected}`;
+    $('requiredRate').hidden = false;
+    $('overlayDetail').textContent = eq.isComplete ? (s.result || 'MATCH COMPLETE') : `1ST INNINGS · PROJ ${eq.projected} (${eq.maxOvers} OV)`;
+    $('oppositionTeam').textContent = s.bowling ? `${s.bowling} (YET TO BAT)` : 'YET TO BAT';
+  }
+  const b0 = s.batters?.[0];
+  if ($('batter1Name')) $('batter1Name').textContent = b0 ? b0.name.slice(0, 18) : '—';
+  if ($('batter1Runs')) $('batter1Runs').textContent = b0 ? `${b0.runs || 0} (${b0.balls || 0})` : '—';
+  const b1 = s.batters?.[1];
+  if ($('batter2Name')) $('batter2Name').textContent = b1 ? b1.name.slice(0, 18) : '—';
+  if ($('batter2Runs')) $('batter2Runs').textContent = b1 ? `${b1.runs || 0} (${b1.balls || 0})` : '—';
+  const bw = s.bowlers?.[0];
+  if ($('bowlerName')) $('bowlerName').textContent = bw ? bw.name.slice(0, 18) : '—';
+  if ($('bowlerFigures')) $('bowlerFigures').textContent = bw ? `${bw.wickets || 0}/${bw.runs || 0} (${bw.overs || 0} ov)` : '—';
+  if ($('overBalls')) {
+    $('overBalls').replaceChildren();
+    const balls = Array.isArray(s.stats?.recentBalls) && s.stats.recentBalls.length
+      ? s.stats.recentBalls.slice(-6)
+      : Array.isArray(s.recentBalls) && s.recentBalls.length
+        ? s.recentBalls.slice(-6)
+        : [];
+    for (const b of balls) {
+      const span = document.createElement('span');
+      span.className = 'ball' + (b === 'W' ? ' wicket' : b === '4' || b === '6' ? ' boundary' : '');
+      span.textContent = b;
+      $('overBalls').append(span);
+    }
+  }
   $('scoreOverlay').classList.toggle('delayed', delayed);
   $('matchTitle').textContent = `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} ov`;
   const teams = s.teams?.map(t => `${t.code} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ');

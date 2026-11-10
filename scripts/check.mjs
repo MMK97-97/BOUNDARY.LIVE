@@ -30,3 +30,4 @@ const app = fs.readFileSync('web/app.mjs', 'utf8') + fs.readFileSync('web/studio
 for (const m of app.matchAll(/\$\('([^']+)'\)/g)) if (!ids.includes(m[1])) throw new Error(`Missing UI element ${m[1]}`);
 for (const m of html.matchAll(/(?:href|src)="\.\/([^"#]+)"/g)) if (!fs.existsSync(path.join('web', m[1]))) throw new Error(`Missing asset ${m[1]}`);
 console.log(`Checked ${files.length} JavaScript modules, ${ids.length} unique UI IDs and local assets.`);
+process.exit(0);
