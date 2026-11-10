@@ -541,10 +541,77 @@ if (typeof navigator !== 'undefined' && navigator.getBattery) {
   }).catch(() => {});
 }
 
+let refreshing = false;
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update().catch(() => {});
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              notice('MK97 App updated to latest version! Reloading…', 'good');
+              setTimeout(() => window.location.reload(), 600);
+            }
+          });
+        }
+      });
+    }).catch(() => {});
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      navigator.serviceWorker.getRegistration().then(reg => reg?.update().catch(() => {}));
+    }
+  });
+}
+
+async function triggerAppUpdate() {
+  notice('Checking for updates…', 'info');
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
+    }
+    await fetch('./build.json?t=' + Date.now(), { cache: 'no-store' });
+    notice('MK97 App updated! Reloading to latest build…', 'good');
+    setTimeout(() => {
+      window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+    }, 700);
+  } catch {
+    window.location.reload();
+  }
+}
+
+let currentCommit = '';
+async function checkBuildVersion() {
+  try {
+    const res = await fetch('./build.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!currentCommit) {
+      currentCommit = data.commit || '';
+      return;
+    }
+    if (data.commit && currentCommit && data.commit !== currentCommit) {
+      notice('New MK97 update available! Reloading…', 'good');
+      setTimeout(() => triggerAppUpdate(), 1000);
+    }
+  } catch {}
+}
+if (typeof window !== 'undefined') {
+  checkBuildVersion();
+  setInterval(checkBuildVersion, 45000);
 }
 
 let deferredInstallPrompt = null;
@@ -557,13 +624,13 @@ function isStandaloneApp() {
 function syncInstallButtons() {
   const installed = isStandaloneApp();
   const ready = Boolean(deferredInstallPrompt);
-  const label = installed ? 'MK97 App Installed ✓' : ready ? 'Install MK97 App Now' : 'Download MK97 App';
+  const label = installed ? 'Check for App Updates ↻' : ready ? 'Install MK97 App Now' : 'Download MK97 App';
   $('installAppAuthLabel').textContent = label;
-  $('installAppHomeLabel').textContent = installed ? 'Running in MK97 Installed App ✓' : ready ? 'Install MK97 App (1-Tap Install)' : 'Download MK97 App (Phone & Desktop)';
+  $('installAppHomeLabel').textContent = installed ? 'Check for App Updates (Latest Build) ↻' : ready ? 'Install MK97 App (1-Tap Install)' : 'Download MK97 App (Phone & Desktop)';
   $('installAppMenuLabel').textContent = label;
   $('installAppStudio').textContent = label;
-  $('installAppAuth').hidden = installed;
-  $('installAppHome').hidden = installed;
+  $('installAppAuth').hidden = false;
+  $('installAppHome').hidden = false;
 }
 window.addEventListener('beforeinstallprompt', event => {
   event.preventDefault();
@@ -581,6 +648,10 @@ async function triggerInstallApp() {
   $('homeMenuButton').setAttribute('aria-expanded', 'false');
   $('studioMenu').hidden = true;
   $('moreButton').setAttribute('aria-expanded', 'false');
+  if (isStandaloneApp()) {
+    await triggerAppUpdate();
+    return;
+  }
   if (deferredInstallPrompt) {
     try {
       deferredInstallPrompt.prompt();
@@ -591,10 +662,6 @@ async function triggerInstallApp() {
       }
       return;
     } catch {}
-  }
-  if (isStandaloneApp()) {
-    notice('MK97 Cricket Studio is already installed and running as an app.', 'good');
-    return;
   }
   $('installAppModal').hidden = false;
   $('closeInstallModal').focus();
