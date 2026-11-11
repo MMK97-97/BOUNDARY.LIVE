@@ -20,7 +20,7 @@ const computedCellValue = (p, key) => {
   return '—';
 };
 export function installStudio({ state, api, notice, sendControl, openCamera, updateControls, togglePreview, onPanel = () => {}, onClosePanel = () => {}, onBackPanel }) {
-  let lastFocus = null, lastGraphic = null, lastScoreSig = '';
+  let lastFocus = null, lastGraphic = null, lastScoreSig = '', activeDrawer = null;
   let scoreTab = 'batting', statsTab = 'overview';
   let monitorCanvas = programSize(state.camera);
   let observedMatchKey = '', importedScorecard = null, importPanelOpen = false, scrapingScorecard = false;
@@ -129,8 +129,9 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     }
   }
   function drawScore(s = state.score) {
-    if (s) $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold'));
-    else $('scoreGraphic').removeAttribute('src');
+    if (!s) { $('scoreGraphic').removeAttribute('src'); return; }
+    if (state.coolMode && state.previewOff) return;
+    $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold'));
   }
   function frameMonitor() {
     const canvas = (state.live || state.starting || state.stopping) && state.programCanvas || programSize(state.camera), changed = canvas.width !== monitorCanvas.width || canvas.height !== monitorCanvas.height;
@@ -180,9 +181,10 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) { e.preventDefault(); const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length; buttons[next]?.focus(); }
   });
   $('monitorInfo').addEventListener('click', () => { panel('stats'); });
-  function closeDrawer() { document.body.append($('notice'), $('dismissNotice')); $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; onClosePanel(); lastFocus?.focus(); }
+  function closeDrawer() { activeDrawer = null; document.body.append($('notice'), $('dismissNotice')); $('drawer').hidden = true; $('drawerScrim').hidden = true; $('studio').inert = false; onClosePanel(); lastFocus?.focus(); }
   function panel(name, target) {
     if (!Object.hasOwn(label, name)) return;
+    activeDrawer = name;
     const focus = document.activeElement;
     if (!$('drawer').contains(focus)) lastFocus = $('studioMenu').contains(focus) ? $('moreButton') : focus;
     closeMenu();
@@ -313,6 +315,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   function tables() {
     const s = state.score, select = $('inningsSelect');
     if (s) recordObserved(s);
+    if (s && activeDrawer !== 'score' && activeDrawer !== 'stats') return;
     const selection = select.value || 'current', options = s?.inningsCards || [];
     const key = options.map(c => `${c.id}:${c.team}:${c.runs}:${c.wickets}`).join('|');
     if (select.dataset.key !== key) {
@@ -449,8 +452,8 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     $('oppositionTeam').textContent = s.teams?.find(t => t.code === s.bowling || t.name === s.bowling)?.name || s.bowling;
     $('battingLogo').textContent = s.batting.slice(0, 4); $('bowlingLogo').textContent = s.bowling.slice(0, 4);
     const eq = calculateEquation(s);
-    $('requiredRate').textContent = eq.isChasing ? 'RRR ' + (eq.rrr || '—') : 'PROJ ' + eq.projected;
-    $('overlayDetail').textContent = s.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b · Target ${eq.target}` : s.detail || '1st Innings · Batting First');
+    $('requiredRate').textContent = eq.isScheduled ? 'SCHEDULED' : eq.isChasing ? 'RRR ' + (eq.rrr || '—') : 'PROJ ' + eq.projected;
+    $('overlayDetail').textContent = eq.isScheduled ? (s.detail || s.stats?.date || 'Scheduled · waiting for CricClubs') : s.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b · Target ${eq.target}` : s.detail || '1st Innings · Batting First');
     for (const [n, p] of [[1, s.batters?.[0]], [2, s.batters?.[1]]]) { $(`batter${n}Name`).textContent = p?.name || '—'; $(`batter${n}Runs`).textContent = p ? `${p.runs} (${p.balls})` : '—'; }
     $('bowlerName').textContent = s.bowler?.name || '—'; $('bowlerFigures').textContent = s.bowler ? `${s.bowler.wickets}-${s.bowler.runs} (${s.bowler.overs})` : '—';
     $('overBalls').replaceChildren(); for (const b of (s.balls || [])) $('overBalls').append(el('span', b === '.' ? '0' : b, `ball ${b === '4' ? 'four' : b === '6' ? 'six' : b.toUpperCase().includes('W') && !b.toLowerCase().includes('wd') ? 'wicket' : ''}`));
@@ -467,7 +470,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     const locked = state.live || state.starting || state.stopping;
     $('fitButton').disabled = locked; $('fitButton').setAttribute('aria-label', 'Camera framing: ' + (state.framing === 'fill' ? 'Fill' : 'Fit'));
     frameMonitor();
-    if (!state.camera) $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · 30 fps`;
+    if (!state.camera) $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · ${state.coolMode ? '24 fps (Cool)' : '30 fps'}`;
     for (const id of ['youtube', 'facebook']) $(id + 'Resolution').textContent = `${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · ${state.camera?.height > state.camera?.width ? 'portrait' : 'landscape'}`;
     for (const b of $('resolutionOptions').querySelectorAll('button')) { b.disabled = locked || state.cameraBusy; b.classList.toggle('selected', b.dataset.resolution === state.captureResolution); b.setAttribute('aria-pressed', String(b.dataset.resolution === state.captureResolution)); }
     for (const id of ['showBatting', 'showBowling']) $(id).disabled = !state.live || !state.programEnabled;

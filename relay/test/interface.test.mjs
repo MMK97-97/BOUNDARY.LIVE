@@ -116,3 +116,13 @@ test('successful existing YouTube setup opens its live controls and Back does no
   h.state.youtubeBusy=false;h.controller.update();assert.equal(h.controller.panel,'events');assert.equal(h.e('eventEmpty').hidden,true);
   h.controller.back();h.controller.update();assert.equal(h.controller.panel,'youtubecreate');
 });
+
+test('Cool Mode caps bitrate & frame rate, and scheduled matches display scheduled waiting status',()=>{
+  const h=harness();h.state.captureResolution='720';h.state.coolMode=true;h.e('coolModeToggle').checked=true;h.controller.update();
+  assert.match(h.e('qualityActual').textContent,/2\.0 Mbps/);
+  assert.match(h.e('qualityActual').textContent,/24 FPS/);
+  h.state.score={clubId:'300',matchId:'1005',batting:'Super Kings',bowling:'Chargers',runs:'0',wickets:'0',overs:'0.0',series:'FWCWL',status:'scheduled',fetchedAt:Date.now(),batters:[]};
+  h.controller.update();
+  assert.equal(h.e('graphicsSourceState').textContent,'Scheduled · Waiting for live');
+  assert.ok(decodeURIComponent(h.e('graphicsScorePreview').src).includes('MATCH SCHEDULED'));
+});

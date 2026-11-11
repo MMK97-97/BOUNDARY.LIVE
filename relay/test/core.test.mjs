@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMatch, relayOrigin, clampZoom, is1080Landscape, duration, chooseMime, preflight } from '../../web/core.mjs';
+import { parseMatch, relayOrigin, clampZoom, is1080Landscape, duration, chooseMime, effectiveBitrate, preflight } from '../../web/core.mjs';
 test('match 986 accepts league ID and extracts IDs from a complete CricClubs URL', () => {
   assert.deepEqual(parseMatch('986', '300'), { clubId: '300', matchId: '986' });
   assert.deepEqual(parseMatch('https://cricclubs.com/FWCWL/viewScorecard.do?matchId=986&clubId=300'), { clubId: '300', matchId: '986', league: 'FWCWL' });
@@ -44,4 +44,13 @@ test('preflight requires every dependency without silently lowering quality', ()
     assert.equal(typeof preflight({ ...valid, ...change }), 'string');
   }
   assert.equal(preflight({ ...valid, overlay: false, score: null }), null);
+});
+
+test('effectiveBitrate lowers capture bandwidth in Cool Mode to cut heat and battery drain', () => {
+  assert.equal(effectiveBitrate('balanced', '1080', false), 8_000_000);
+  assert.equal(effectiveBitrate('balanced', '720', false), 4_480_000);
+  assert.equal(effectiveBitrate('detail', '1080', true), 3_500_000);
+  assert.equal(effectiveBitrate('balanced', '1080', true), 3_500_000);
+  assert.equal(effectiveBitrate('balanced', '720', true), 2_000_000);
+  assert.equal(effectiveBitrate('balanced', '480', true), 950_000);
 });

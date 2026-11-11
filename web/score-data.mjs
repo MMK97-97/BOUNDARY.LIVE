@@ -42,6 +42,36 @@ export function validateIds(clubId, matchId) {
   }
   return { clubId: String(clubId), matchId: String(matchId) };
 }
+export function scheduledScore(ids, hint = {}, now = Date.now()) {
+  ids = validateIds(ids.clubId, ids.matchId);
+  const t1 = clean(hint?.team1 || hint?.batting || hint?.t1Code || 'TEAM A', 28) || 'TEAM A';
+  const t2 = clean(hint?.team2 || hint?.bowling || hint?.t2Code || 'TEAM B', 28) || 'TEAM B';
+  const c1 = clean(hint?.t1Code || t1, 12) || 'T1';
+  const c2 = clean(hint?.t2Code || t2, 12) || 'T2';
+  const date = clean(hint?.date, 60);
+  return {
+    batting: t1, bowling: t2, runs: '0', wickets: '0', overs: '0.0', runRate: '',
+    target: '', result: '', status: 'scheduled', waitingForLive: true, balls: [],
+    detail: clean(date ? `Scheduled · ${date}` : 'Waiting for CricClubs live scoring', 110),
+    source: 'CricClubs · Scheduled', superOver: false,
+    series: clean(hint?.series, 80), ground: clean(hint?.ground, 60),
+    batters: [], bowler: null, innings: '1', requiredRate: '', totalOvers: '',
+    deliveries: [], cards: { batting: [], bowling: [], complete: false },
+    teams: [
+      { name: t1, code: c1, logo: '', runs: '0', wickets: '0', overs: '0.0', runRate: '' },
+      { name: t2, code: c2, logo: '', runs: '0', wickets: '0', overs: '0.0', runRate: '' }
+    ],
+    partialView: false, commentary: [], lastOut: null,
+    stats: {
+      toss: '', tossWon: '', playerOfMatch: '', date, umpires: '', scorer: '',
+      matchType: clean(hint?.matchType, 40), dots: '', fow: '', parScore: '', isDls: false,
+      requiredRuns: '', remainingOvers: '', revisedOvers: '',
+      oppositeTeamSummary: '', scoreNeededText: '', partnership: null
+    },
+    inningsCards: [],
+    ...ids, fetchedAt: now, stale: false, error: null
+  };
+}
 export function normalizeScore(raw, ids, now = Date.now()) {
   ids = validateIds(ids.clubId, ids.matchId);
   let s;
@@ -100,13 +130,16 @@ export function normalizeScore(raw, ids, now = Date.now()) {
     }));
     const bowler = v.bowlerName ? normalBowler({ id: v.bowlerID, name: v.bowlerName, overs: v.bowlerOvers,
       maidens: v.bowlerMaidens, runs: v.bowlerRuns, wickets: v.bowlerWickets, economy: v.bowlerEconomy ?? v.bowlerEcon }) : null;
+    const runsVal = decimal(v[`${bat}Total`], 'batting total'), wicketsVal = decimal(v[`${bat}Wickets`], 'wickets'), oversVal = decimal(v[`${bat}Overs`], 'overs');
+    const preMatch = !truth(v.isMatchEnded) && !second && !superOver && runsVal === '0' && wicketsVal === '0' && /^0(?:\.0)?$/.test(oversVal) && !batters.length && !bowler && !v.toss && !(Array.isArray(raw.balls) && raw.balls.length);
     s = {
       batting: clean(v[`${bat}Code`] || v[`${bat}Name`], 28),
       bowling: clean(v[`${bowl}Code`] || v[`${bowl}Name`] || 'Opposition', 28),
-      runs: decimal(v[`${bat}Total`], 'batting total'), wickets: decimal(v[`${bat}Wickets`], 'wickets'),
-      overs: decimal(v[`${bat}Overs`], 'overs'), runRate: clean(v[`${bat}RR`], 10),
+      runs: runsVal, wickets: wicketsVal,
+      overs: oversVal, runRate: clean(v[`${bat}RR`], 10),
       target: clean(v.revisedTarget, 8), result: clean(v.shortResult || v.result, 100),
-      status: truth(v.isMatchEnded) ? 'complete' : 'live',
+      status: truth(v.isMatchEnded) ? 'complete' : preMatch ? 'scheduled' : 'live',
+      waitingForLive: preMatch,
       balls: Array.isArray(raw.balls) ? raw.balls.slice(-32).map(b => clean(b, 8)) : [],
       detail: clean(v.customTextValue || v.showMsgForScoreNeeded || v.seriesName, 110),
       source: 'CricClubs', superOver,
@@ -165,6 +198,12 @@ function normalBowler(p) { p ||= {}; return { id: clean(p.id, 30), name: clean(p
 export function scoreLines(score, now = Date.now()) {
   if (!score) return ['MK97  |  CRICKET', 'Waiting for score feed'];
   const delayed = score.stale || now - score.fetchedAt > 30000;
+  if (score.status === 'scheduled') {
+    const first = `${score.batting}  v  ${score.bowling}`;
+    const status = delayed ? 'SCORE DELAYED' : 'MATCH SCHEDULED';
+    const info = score.stats?.date || score.detail || 'Waiting for live score';
+    return [clean(first, 95), clean(`${status}  |  ${info}  |  ${score.source}`, 120)];
+  }
   const first = `${score.batting}  ${score.runs}/${score.wickets}    ${score.overs} ov${score.runRate ? `   CRR ${score.runRate}` : ''}`;
   const status = delayed ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';
   const shortName = name => name.length > 18 ? name.slice(0, 17) + '…' : name;

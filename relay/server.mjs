@@ -20,6 +20,8 @@ import { configuredVault, storageError } from './lib/vault.mjs';
 import { TrustedDevices, STUDIO_OWNER } from './lib/trusted-devices.mjs';
 import { validatePreferences } from './lib/preferences.mjs';
 import { StudioAccount } from './lib/studio-account.mjs';
+import { discoverLeagueSchedule } from '../web/cricclubs-schedule.mjs';
+import { validateLeague } from '../web/cricclubs-reference.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../web');
@@ -84,7 +86,7 @@ async function hydrateSavedStudio(origin) {
       if (youtube.restorePrivate(STUDIO_OWNER, profile.youtube)) { try { await youtube.refresh(STUDIO_OWNER, true); } catch (e) { if (e?.status === 401) { try { await youtube.disconnect(STUDIO_OWNER); } catch { youtube.forget(STUDIO_OWNER); } } } }
       else if (profile.youtube) savedWarning = 'The saved YouTube connection needs reconnecting because its Google client or website origin changed.';
     } catch { savedWarning = 'The saved YouTube setup needs to be reconnected. Review its existing event in YouTube Studio.'; }
-    if (!scores.ids && profile.preferences?.match) { const match = profile.preferences.match; try { scores.select(match.clubId, match.matchId, match.league); } catch {} }
+    if (!scores.ids && profile.preferences?.match) { const match = profile.preferences.match; try { scores.select(match.clubId, match.matchId, match.league, { allowScheduled: true }); } catch {} }
     sharedLoaded = true;
   })().finally(() => { sharedLoading = null; });
   await sharedLoading;
@@ -308,6 +310,7 @@ const server = http.createServer(async (req, res) => {
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/cancel') { stopEditing(); return json(res, 200, youtube.cancelAuth(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/auth/complete') { stopEditing(); return json(res, 200, await youtube.complete(owner, originOf(req), await body(req, 8192))); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/setup') { stopEditing(); return json(res, 201, await youtube.prepare(owner, await body(req, 16384))); }
+        if (req.method === 'POST' && url.pathname === '/api/youtube/channel') { stopEditing(); const value = await body(req); return json(res, 200, await youtube.selectChannel(owner, value.channelId)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/reset') { stopEditing(); try { await youtube.refresh(owner, true); } catch (e) { if (e?.status !== 401) throw e; } const result = youtube.resetSetup(owner); await youtube.persist(owner); return json(res, 200, result); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/disconnect') { stopEditing(); return json(res, 200, await youtube.disconnect(owner)); }
         if (req.method === 'POST' && url.pathname === '/api/youtube/transition') {
@@ -320,6 +323,13 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, result);
         }
         return json(res, 404, { error: 'Unknown YouTube endpoint.' });
+      }
+      if ((req.method === 'GET' || req.method === 'POST') && url.pathname === '/api/league/schedule') {
+        const input = req.method === 'POST' ? await body(req, 65536) : Object.fromEntries(url.searchParams.entries());
+        const ids = validateIds(input.clubId || '300', '1');
+        const league = validateLeague(input.league) || scores.leagues.get(ids.clubId) || 'FWCWL';
+        const result = await discoverLeagueSchedule({ clubId: ids.clubId, league, fetchFn: fetch, force: Boolean(input.force === true || input.force === '1' || input.refresh === '1') });
+        return json(res, 200, result);
       }
       if (req.method === 'GET' && url.pathname === '/api/score') return json(res, 200, scores.snapshot());
       if (req.method === 'POST' && url.pathname === '/api/score/scrape') {
@@ -350,7 +360,7 @@ const server = http.createServer(async (req, res) => {
         if (active && active.owner !== owner) return json(res, 409, { error: 'Another studio owns the active stream.' });
         const data = await body(req);
         if (active && (String(data.clubId) !== scores.ids?.clubId || String(data.matchId) !== scores.ids?.matchId || data.league != null && data.league !== scores.league)) return json(res, 409, { error: 'Stop the active camera upload before changing matches or leagues.' });
-        scores.select(data.clubId, data.matchId, data.league);
+        scores.select(data.clubId, data.matchId, data.league, { allowScheduled: Boolean(data.allowScheduled), scheduleHint: data.scheduleHint });
         await savePreferences(owner, { match: { ...scores.ids, ...(scores.league ? {league:scores.league} : {}) } });
         const result = await scores.refresh(); updateOverlay();
         return json(res, result.score ? 200 : 502, result);
@@ -563,6 +573,7 @@ const scoreTimer = setInterval(async () => {
   youtube.prune();
   manualDestinations.prune();
   if (!active && !sessions.sessions.size) return;
+  if (active?.outputs?.has('youtube')) youtube.maybeAutoGoLive(active.owner).catch(() => {});
   if (!scores.ids) return;
   updateOverlay();
 }, 2000);

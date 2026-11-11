@@ -189,3 +189,52 @@ test('a grant is not connected before durable saving succeeds and cancellation i
  const failing=new YouTubeService({env:testGoogleEnv,fetchFn:mock.fetchFn,saveConnection:async()=>{throw new Error('Saved storage unavailable');}}),second=failing.start(owner,origin);
  await assert.rejects(failing.complete(owner,origin,{state:second.state,code:'fixture'}),/storage unavailable/);assert.equal(failing.status(owner).connected,false);
 });
+
+test('multi-channel 0-sub accounts switch channels cleanly, surface activation URLs, and auto-go-live on active stream', async () => {
+  let clock = now;
+  const mock = youtubeProvider();
+  const s = new YouTubeService({
+    env: testGoogleEnv,
+    now: () => clock,
+    fetchFn: async (url, opts) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/channels')) {
+        return new Response(JSON.stringify({
+          items: [
+            { id: 'ch_main', snippet: { title: 'Main Channel' }, statistics: { subscriberCount: '5000' } },
+            { id: 'ch_small', snippet: { title: 'Zero Sub Club' }, statistics: { subscriberCount: '12' } }
+          ]
+        }), { status: 200 });
+      }
+      return mock.fetchFn(url, opts);
+    }
+  });
+  const flow = s.start(owner, origin);
+  const authRes = await s.complete(owner, origin, { state: flow.state, code: 'ok' });
+  assert.equal(authRes.channels.length, 2);
+  assert.equal(authRes.channels[1].subscriberCount, 12);
+
+  const switched = await s.selectChannel(owner, 'ch_small');
+  assert.equal(switched.channel.id, 'ch_small');
+  assert.equal(switched.channel.title, 'Zero Sub Club');
+  await assert.rejects(s.selectChannel(owner, 'missing_ch'), /not available/);
+
+  mock.control.failResource = 'liveBroadcasts';
+  await assert.rejects(s.prepare(owner, { ...details, autoStart: true }), /0 subscribers allowed/);
+  assert.equal(s.status(owner).verificationUrl, 'https://studio.youtube.com/channel/ch_small/livestreaming');
+
+  mock.control.failResource = '';
+  const ready = await s.prepare(owner, { ...details, autoStart: true });
+  assert.equal(ready.autoStart, true);
+  const broadcastReq = JSON.parse(mock.log.find(x => x.url.includes('/liveBroadcasts?') && x.method === 'POST').body);
+  assert.equal(broadcastReq.contentDetails.enableAutoStart, true);
+  assert.equal(broadcastReq.contentDetails.enableAutoStop, true);
+  assert.equal(broadcastReq.contentDetails.enableEmbed, true);
+  assert.equal(broadcastReq.contentDetails.monitorStream.enableMonitorStream, false);
+
+  mock.control.streamStatus = 'active';
+  clock += 10_000;
+  const liveStatus = await s.maybeAutoGoLive(owner);
+  assert.equal(liveStatus.broadcast.state, 'live');
+  await assert.rejects(s.selectChannel(owner, 'ch_main'), /End the current/);
+});

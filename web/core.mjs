@@ -3,6 +3,14 @@ export const PROFILES = Object.freeze({ balanced: { bitrate: 8_000_000, fps: 30 
 import { captureReady } from './capture.mjs';
 export { SIZES, captureReady } from './capture.mjs';
 export function parseMatch(input, savedClub, savedLeague) { return matchReference(input, savedClub, savedLeague); }
+export function effectiveBitrate(profileKey, nativeProfile = '1080', coolMode = false) {
+  const profile = PROFILES[profileKey] || PROFILES.balanced;
+  const qualityScale = nativeProfile === '1080' ? 1 : nativeProfile === '720' ? .56 : .25;
+  const base = Math.round(profile.bitrate * qualityScale);
+  if (!coolMode) return base;
+  const cap = nativeProfile === '1080' ? 3_500_000 : nativeProfile === '720' ? 2_000_000 : 950_000;
+  return Math.min(base, cap);
+}
 export function relayOrigin(value) {
   const u = new URL(value);
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
@@ -11,9 +19,17 @@ export function relayOrigin(value) {
 }
 export function chooseMime(Recorder) {
   if (!Recorder?.isTypeSupported) throw new Error('This browser does not support MediaRecorder. Try current Chrome on Android or Safari on iPhone.');
-  // Prefer AVC when available; browser hardware acceleration is not guaranteed.
-  const candidates = ['video/mp4;codecs=avc1.42E028,mp4a.40.2', 'video/webm;codecs=h264,opus',
-    'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  // Prefer hardware-accelerated Baseline/Main/High H.264/AVC profiles before software/VP8 codecs.
+  const candidates = [
+    'video/mp4;codecs=avc1.42E028,mp4a.40.2',
+    'video/mp4;codecs=avc1.4D4028,mp4a.40.2',
+    'video/mp4;codecs=avc1.640028,mp4a.40.2',
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/webm;codecs=h264,opus',
+    'video/mp4',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
   const mime = candidates.find(m => Recorder.isTypeSupported(m));
   if (!mime) throw new Error('No compatible camera encoding format is available in this browser.');
   return mime;

@@ -166,3 +166,33 @@ test('YouTube stream key input normalizes RTMP to RTMPS, saves destination and t
   assert.equal(h.element('dest-youtube').checked, false);
   h.controller.destroy();
 });
+
+test('PRISM-style 1-tap autoStart, verification link, and channel switcher work cleanly in YouTube UI', async () => {
+  const h = harness({
+    ...blank(),
+    connected: true,
+    channel: { id: 'ch_1', title: 'Main Channel', subscriberCount: 5000 },
+    channels: [
+      { id: 'ch_1', title: 'Main Channel', subscriberCount: 5000 },
+      { id: 'ch_2', title: 'Small Club', subscriberCount: 9 }
+    ],
+    verificationUrl: 'https://studio.youtube.com/channel/ch_1/livestreaming'
+  });
+  assert.equal(h.element('ytChannelRow').hidden, false);
+  assert.equal(h.element('ytVerifyLink').hidden, false);
+  assert.equal(h.element('ytVerifyLink').href, 'https://studio.youtube.com/channel/ch_1/livestreaming');
+  assert.match(h.element('ytEligibilityBadge').textContent, /Enable YouTube Live verification/);
+
+  h.element('ytAutoLive').checked = true;
+  h.element('ytBroadcastForm').emit('submit');
+  await flush();
+  const setupReq = h.calls.find(c => c.path === '/api/youtube/setup');
+  assert.equal(setupReq.value.autoStart, true);
+
+  h.element('ytChannelSelect').value = 'ch_2';
+  await h.element('ytChannelSelect').emit('change');
+  await flush();
+  const switchReq = h.calls.find(c => c.path === '/api/youtube/channel');
+  assert.equal(switchReq?.value?.channelId, 'ch_2');
+  h.controller.destroy();
+});

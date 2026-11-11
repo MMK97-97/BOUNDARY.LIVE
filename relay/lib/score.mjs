@@ -1,7 +1,7 @@
-import { clean, validateIds, normalizeScore } from '../../web/score-data.mjs';
+import { clean, validateIds, normalizeScore, scheduledScore } from '../../web/score-data.mjs';
 import { enrichCricClubsScore, parseCricClubsScorecard } from './cricclubs-parser.mjs';
 import { CRICCLUBS_LEAGUES, validateLeague } from '../../web/cricclubs-reference.mjs';
-export { clean, validateIds, normalizeScore, scoreLines } from '../../web/score-data.mjs';
+export { clean, validateIds, normalizeScore, scheduledScore, scoreLines } from '../../web/score-data.mjs';
 export class ScoreService {
   constructor({ template, headerName, headerValue, pollSeconds = 5, fetchFn = fetch, scorecardScraper = null, scorecardClubId = '300', scorecardLeague = 'FWCWL' } = {}) {
     this.template = template || 'https://cricclubs.com/liveScoreOverlayData.do?clubId={clubId}&matchId={matchId}';
@@ -9,6 +9,7 @@ export class ScoreService {
     this.pollMs = Math.max(5, Number(pollSeconds) || 5) * 1000;
     this.fetchFn = fetchFn; this.ids = null; this.score = null; this.inflight = null; this.error = null;
     this.lastAttempt = 0; this.generation = 0;
+    this.allowScheduled = false; this.scheduleHint = null;
     this.scorecardScraper = template ? null : scorecardScraper;
     this.scorecardClubId = String(scorecardClubId); this.scorecardLeague = scorecardLeague;
     this.leagues = new Map(CRICCLUBS_LEAGUES.map(item => [item.clubId, item.league]));
@@ -17,14 +18,28 @@ export class ScoreService {
     this.scorecardDocument = null; this.scorecardTask = null;
     this.revision = 0; this.listeners = new Set(); this.retryAt = 0;
   }
-  select(clubId, matchId, league) {
+  select(clubId, matchId, league, options = {}) {
     const ids = validateIds(clubId, matchId);
     const path = validateLeague(league) || this.leagues.get(ids.clubId) || (this.ids?.clubId === ids.clubId ? this.league : null);
+    const hint = options?.scheduleHint && typeof options.scheduleHint === 'object' ? {
+      team1: clean(options.scheduleHint.team1, 40),
+      team2: clean(options.scheduleHint.team2, 40),
+      t1Code: clean(options.scheduleHint.t1Code, 12),
+      t2Code: clean(options.scheduleHint.t2Code, 12),
+      date: clean(options.scheduleHint.date, 60),
+      ground: clean(options.scheduleHint.ground, 60),
+      series: clean(options.scheduleHint.series, 80)
+    } : null;
+    const prevAllow = this.allowScheduled;
+    this.allowScheduled = Boolean(options?.allowScheduled);
+    this.scheduleHint = hint;
     if (!this.ids || this.ids.clubId !== ids.clubId || this.ids.matchId !== ids.matchId || this.league !== path) {
       this.ids = ids; this.score = null; this.error = null; this.lastAttempt = 0; this.inflight = null; this.generation++;
       this.league = path;
       this.scorecardDocument = null; this.scorecardTask = null;
       this.retryAt = 0; this.notify();
+    } else if (prevAllow !== this.allowScheduled && (!this.score || this.score.status === 'scheduled')) {
+      this.lastAttempt = 0; this.retryAt = 0;
     }
   }
   async refresh() {
@@ -58,12 +73,12 @@ export class ScoreService {
           chunks.push(Buffer.from(value));
         }
         const raw = JSON.parse(Buffer.concat(chunks).toString().replace(/^\uFEFF/, ''));
-        const next = normalizeScore(raw, ids);
+        const emptyScheduled = this.allowScheduled && raw && typeof raw === 'object' && !Array.isArray(raw) && !raw.values && !raw.schema && Object.keys(raw).length === 0;
+        const next = emptyScheduled ? scheduledScore(ids, this.scheduleHint) : normalizeScore(raw, ids);
         if (generation === this.generation) {
           this.score = next; this.error = null; this.retryAt = 0;
-          // HTML scraping runs independently; a slow or blocked scorecard must
-          // not hold up live totals, camera upload or the encoder.
-          this.enrich(ids, generation);
+          // HTML scraping runs independently; skip pre-match scraping until live scoring begins.
+          if (next.status !== 'scheduled') this.enrich(ids, generation);
           this.notify();
         }
       } catch (error) {
@@ -81,7 +96,10 @@ export class ScoreService {
     this.inflight = operation;
     try { return await operation; } finally { if (this.inflight === operation) this.inflight = null; }
   }
-  get nextAttemptAt() { return Math.max(this.lastAttempt + this.pollMs, this.retryAt); }
+  get nextAttemptAt() {
+    const effectivePollMs = this.score?.status === 'scheduled' ? Math.min(this.pollMs, 3000) : this.pollMs;
+    return Math.max(this.lastAttempt + effectivePollMs, this.retryAt);
+  }
   subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   notify() {
     this.revision++;
@@ -150,9 +168,10 @@ export class ScoreService {
     task.finally(() => { if (this.scorecardTask === task) this.scorecardTask = null; });
   }
   snapshot() {
+    const effectivePollMs = this.score?.status === 'scheduled' ? Math.min(this.pollMs, 3000) : this.pollMs;
     return {
       score: this.score ? { ...this.score, stale: this.score.stale || Date.now() - this.score.fetchedAt > 30000 } : null,
-      error: this.error, ids: this.ids, league: this.league, pollSeconds: this.pollMs / 1000, revision: this.revision
+      error: this.error, ids: this.ids, league: this.league, pollSeconds: effectivePollMs / 1000, revision: this.revision
     };
   }
 }

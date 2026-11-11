@@ -8,8 +8,15 @@ const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v
 const text = (v, max = 100) => String(v ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, max);
 const hash = value => createHash('sha256').update(value).digest('base64url');
 const error = (message, status = 400, uncertain = false) => Object.assign(new Error(message), { status, uncertain });
+function verificationUrlFor(code, channelId) {
+  if (['liveStreamingNotEnabled', 'livePermissionBlocked'].includes(code)) {
+    return channelId ? `https://studio.youtube.com/channel/${channelId}/livestreaming` : 'https://studio.youtube.com/channel/UC/livestreaming';
+  }
+  if (code === 'youtubeSignupRequired') return 'https://www.youtube.com/create_channel';
+  return null;
+}
 const reasons = {
-  liveStreamingNotEnabled: 'Enable live streaming for this YouTube channel first, then retry. YouTube may require channel verification and an activation wait.',
+  liveStreamingNotEnabled: 'Enable live streaming for this YouTube channel first (0 subscribers allowed — only 1-time YouTube account verification + 24h activation is needed), then retry.',
   livePermissionBlocked: 'YouTube has blocked live streaming for this channel. Check its channel eligibility in YouTube Studio.',
   insufficientLivePermissions: 'This Google account does not have the required live permissions for the channel.',
   insufficientPermissions: 'Grant the requested YouTube management permission when connecting the account.',
@@ -85,7 +92,7 @@ export class YouTubeService {
     if (origin !== this.config.origin && origin !== 'https://mmk97-97.github.io') throw error('The YouTube callback origin does not match this studio. In Render set YOUTUBE_REDIRECT_URI to this studio’s exact /youtube-callback.html URL and register the same URL in Google Cloud.', 409);
     if (!this.validSession(owner, origin)) throw error('Reconnect the relay before signing in.', 401);
     for (const [key, f] of this.flows) if (f.owner === owner) this.flows.delete(key);
-    if (this.connections.get(owner)) this.connections.get(owner).error = null;
+    if (this.connections.get(owner)) { this.connections.get(owner).error = null; this.connections.get(owner).errorCode = null; }
     if (this.completing.has(owner)) this.completing.get(owner).cancelled = true;
     if (this.flows.size >= 24) throw error('Too many pending Google sign-ins. Try again later.', 429);
     const state = randomBytes(32).toString('base64url'), verifier = randomBytes(48).toString('base64url');
@@ -140,9 +147,15 @@ export class YouTubeService {
     if (!granted.includes(YOUTUBE_SCOPE) && !granted.includes('https://www.googleapis.com/auth/youtube')) throw error('The required YouTube management permission was not granted.', 403);
     const c = { owner, origin, accessToken: t.access_token, refreshToken: typeof t.refresh_token === 'string' && t.refresh_token.length < 8192 ? t.refresh_token : null,
       expires: this.now() + Math.max(60, Math.min(86400, Number(t.expires_in) || 3600)) * 1000, created: this.now(), lastRefresh: 0 };
-    const channels = await this.request(c, 'channels', { part: 'id,snippet', mine: 'true', maxResults: '2' });
-    if (!channels.items?.length || !id(channels.items[0].id)) throw error('Choose a Google/Brand Account with exactly one YouTube channel. Create or select that channel in YouTube first.', 409);
-    c.channel = { id: channels.items[0].id, title: text(channels.items[0].snippet?.title) };
+    const channels = await this.request(c, 'channels', { part: 'id,snippet,statistics,status', mine: 'true', maxResults: '25' });
+    c.channels = (channels.items || []).filter(ch => id(ch.id)).map(ch => ({
+      id: ch.id,
+      title: text(ch.snippet?.title) || 'YouTube Channel',
+      subscriberCount: ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null,
+      isLinked: ch.status?.isLinked ?? true
+    }));
+    if (!c.channels.length) throw Object.assign(error(reasons.youtubeSignupRequired, 409), { code: 'youtubeSignupRequired' });
+    c.channel = c.channels[0];
     if (!this.validSession(owner, origin) || !this.validFlow(flow.binding || owner, origin)) throw error('Relay session ended during Google sign-in. Reconnect.', 401);
     // A newer authorization request or disconnect invalidates this in-flight callback.
     if (flow.cancelled) throw error('Google sign-in was cancelled.', 401);
@@ -155,7 +168,7 @@ export class YouTubeService {
     if (this.authorizations.get(owner) === authorization) { authorization.status = 'connected'; authorization.error = null; }
     if (this.completing.get(owner) === flow) this.completing.delete(owner); return this.status(owner);
     } catch (e) {
-      if (this.authorizations.get(owner) === authorization && !flow.cancelled && this.validSession(owner, origin)) { authorization.status = 'failed'; authorization.error = e.message; }
+      if (this.authorizations.get(owner) === authorization && !flow.cancelled && this.validSession(owner, origin)) { authorization.status = 'failed'; authorization.error = e.message; authorization.code = typeof e.code === 'string' ? e.code : null; }
       throw e;
     } finally { if (this.completing.get(owner) === flow) this.completing.delete(owner); }
   }
@@ -176,18 +189,24 @@ export class YouTubeService {
     if (response.status === 401 && retry && c.refreshToken) { c.expires = 0; return this.request(c, resource, params, method, payload, false); }
     if (!response.ok) {
       const reason = data.error?.errors?.[0]?.reason;
-      throw error(reasons[reason] || `YouTube rejected the request (HTTP ${response.status}). Check the channel, API access and event in YouTube Studio.`, response.status === 401 ? 401 : 502, method !== 'GET' && response.status >= 500);
+      c.errorCode = typeof reason === 'string' ? reason : null;
+      throw Object.assign(error(reasons[reason] || `YouTube rejected the request (HTTP ${response.status}). Check the channel, API access and event in YouTube Studio.`, response.status === 401 ? 401 : 502, method !== 'GET' && response.status >= 500), { code: c.errorCode });
     }
+    c.errorCode = null;
     return data;
   }
   connection(owner) { if (this.authorizing(owner)) throw error('Finish or cancel Google sign-in before changing the YouTube event.', 409); const c = this.connections.get(owner); if (!c) throw error('Connect your YouTube account first.', 409); return c; }
   checkCurrent(owner, c) { if (this.connections.get(owner) !== c || !this.validSession(owner, c.origin)) throw error('YouTube connection changed or the session ended.', 401); }
   status(owner) {
     const c = this.connections.get(owner), op = c?.operation, b = c?.broadcast, authorization = this.authorizations.get(owner);
+    const errorCode = authorization?.code || c?.errorCode || null;
     return { configured: this.config.configured, configurationError: this.config.error || null, connected: Boolean(c), channel: c?.channel || null,
+      channels: c?.channels || (c?.channel ? [c.channel] : []),
       redirectUri: this.config.redirectUri || null, callbackMode: this.config.callbackMode || null,
       authorization: authorization ? { state: authorization.state, status: authorization.status, error: authorization.error || null } : null,
       busy: Boolean(c?.busy), authorizing: this.authorizing(owner), error: authorization?.error || c?.error || null,
+      errorCode, verificationUrl: verificationUrlFor(errorCode, c?.channel?.id),
+      autoStart: op ? Boolean(op.autoStart) : true,
       setup: op ? { requestId: op.requestId, stage: op.stage, uncertain: Boolean(op.uncertain), details: op.details } : null,
       broadcast: b ? { id: b.id, title: b.title, privacy: b.privacy, scheduledStartTime: b.scheduledStartTime, state: b.state,
         streamStatus: b.streamStatus || 'ready', health: b.health || 'noData', issues: b.issues || [], keyReady: Boolean(c.ready && !c.authError && !c.needsVerification && !['complete', 'revoked'].includes(b.state)),
@@ -201,11 +220,14 @@ export class YouTubeService {
   async prepare(owner, value) {
     const c = this.connection(owner); if (c.busy) throw error('A YouTube operation is already running.', 409);
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(value.requestId || '')) throw error('A setup request ID is required.');
+    const autoStart = value.autoStart === true;
     const details = broadcastDetails(value, c.operation?.createdAt ?? this.now()), fingerprint = hash(JSON.stringify(details));
     if (c.operation && (c.operation.requestId !== value.requestId || c.operation.fingerprint !== fingerprint)) throw error('A setup already exists. Use New setup before changing these details.', 409);
     if (c.operation?.uncertain) throw error('A previous Google write could not be confirmed. Review YouTube Studio before choosing New setup.', 409);
     if (c.ready) return this.status(owner);
-    const op = c.operation ||= { requestId: value.requestId, fingerprint, details, createdAt: this.now(), stage: 'stream' }; c.busy = true; c.error = null;
+    const op = c.operation ||= { requestId: value.requestId, fingerprint, details, autoStart, createdAt: this.now(), stage: 'stream' };
+    if (value.autoStart !== undefined) op.autoStart = autoStart;
+    c.busy = true; c.error = null; c.errorCode = null;
     try {
       if (!op.stream) {
         op.stage = 'stream'; op.uncertain = true; await this.persist(owner);
@@ -233,7 +255,8 @@ export class YouTubeService {
         const b = await this.request(c, 'liveBroadcasts', { part: 'id,snippet,status,contentDetails' }, 'POST', {
           snippet: { title: details.title, description: details.description, scheduledStartTime: details.scheduledStartTime },
           status: { privacyStatus: details.privacy, selfDeclaredMadeForKids: details.madeForKids },
-          contentDetails: { enableAutoStart: false, enableAutoStop: false, enableDvr: true, enableEmbed: false, recordFromStart: true,
+          contentDetails: op.autoStart ? { enableAutoStart: true, enableAutoStop: true, enableDvr: true, enableEmbed: true, recordFromStart: true,
+            monitorStream: { enableMonitorStream: false, broadcastStreamDelayMs: 0 } } : { enableAutoStart: false, enableAutoStop: false, enableDvr: true, enableEmbed: false, recordFromStart: true,
             monitorStream: { enableMonitorStream: true, broadcastStreamDelayMs: 0 } } });
         this.checkCurrent(owner, c); if (!id(b.id)) throw error('YouTube returned an invalid broadcast ID.', 502, true); op.broadcast = b; op.uncertain = false; await this.persist(owner);
       }
@@ -245,7 +268,7 @@ export class YouTubeService {
       await this.persist(owner);
       c.busy = false;
       return this.status(owner);
-    } catch (e) { op.uncertain = Boolean(e.uncertain); c.error = e.message; try { await this.persist(owner); } catch {} throw e; }
+    } catch (e) { op.uncertain = Boolean(e.uncertain); c.error = e.message; c.errorCode = typeof e.code === 'string' ? e.code : null; try { await this.persist(owner); } catch {} throw e; }
     finally { c.busy = false; }
   }
   publicBroadcast(b, stream, fallback) {
@@ -266,7 +289,7 @@ export class YouTubeService {
         if (c.operation !== op) return this.status(owner);
         if (b?.id !== op.broadcast.id || s?.id !== op.stream.id || b.contentDetails?.boundStreamId !== s.id) { c.ready = false; throw error('The YouTube event or its binding changed. Review Studio and create a new setup.', 409); }
         const previous = JSON.stringify(c.broadcast);
-        c.broadcast = this.publicBroadcast(b, s, op.details); c.error = null; c.authError = false; c.needsVerification = false;
+        c.broadcast = this.publicBroadcast(b, s, op.details); c.error = null; c.errorCode = null; c.authError = false; c.needsVerification = false;
         if (JSON.stringify(c.broadcast) !== previous) await this.persist(owner);
       } catch (e) { c.error = e.message; if (e.status === 401) c.authError = true; throw e; }
       finally { c.lastRefresh = this.now(); c.refreshing = null; }
@@ -300,10 +323,40 @@ export class YouTubeService {
       await this.persist(owner); c.busy = false; return this.status(owner);
     } catch (e) { c.error = e.message; throw e; } finally { c.busy = false; }
   }
+  async selectChannel(owner, channelId) {
+    const c = this.connection(owner); if (c.busy || c.refreshing) throw error('Wait for the current YouTube operation to finish.', 409);
+    if (['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast?.state)) throw error('End the current YouTube broadcast before switching channels.', 409);
+    const list = c.channels || (c.channel ? [c.channel] : []);
+    const next = list.find(ch => ch.id === channelId);
+    if (!id(channelId) || !next) throw error('Selected YouTube channel is not available on this connected account.', 404);
+    if (c.channel?.id !== next.id) {
+      c.channel = next; c.operation = null; c.broadcast = null; c.destination = null; c.ready = false; c.error = null; c.errorCode = null;
+      await this.persist(owner);
+    }
+    return this.status(owner);
+  }
+  async maybeAutoGoLive(owner) {
+    const c = this.connections.get(owner);
+    if (!c?.ready || c.busy || c.authError || c.needsVerification || !c.operation?.autoStart) return null;
+    const state = c.broadcast?.state;
+    if (!['ready', 'testing'].includes(state)) return null;
+    if (this.now() - (c.lastAutoCheck || 0) < 6000) return null;
+    c.lastAutoCheck = this.now();
+    try {
+      await this.refresh(owner, true);
+      const refreshed = this.connections.get(owner);
+      if (!refreshed || refreshed !== c || refreshed.busy) return null;
+      const b = refreshed.broadcast;
+      if (b && b.streamStatus === 'active' && ['ready', 'testing'].includes(b.state)) {
+        return await this.transition(owner, 'live');
+      }
+    } catch {}
+    return null;
+  }
   resetSetup(owner) {
     const c = this.connection(owner); if (c.busy || c.refreshing) throw error('Wait for the current YouTube operation to finish.', 409);
     if (['testing', 'live', 'testStarting', 'liveStarting'].includes(c.broadcast?.state)) throw error('End the current YouTube broadcast before starting another setup.', 409);
-    c.operation = null; c.broadcast = null; c.destination = null; c.ready = false; c.error = null; return this.status(owner);
+    c.operation = null; c.broadcast = null; c.destination = null; c.ready = false; c.error = null; c.errorCode = null; return this.status(owner);
   }
   forget(owner) {
     this.connections.delete(owner);
@@ -316,20 +369,22 @@ export class YouTubeService {
   exportPrivate(owner, c = this.connections.get(owner)) {
     if (!c) return null;
     const op = c.operation;
-    const operation = op ? { requestId: op.requestId, fingerprint: op.fingerprint, details: op.details, createdAt: op.createdAt,
+    const operation = op ? { requestId: op.requestId, fingerprint: op.fingerprint, details: op.details, ...(op.autoStart ? { autoStart: true } : {}), createdAt: op.createdAt,
       stage: op.stage, uncertain: Boolean(op.uncertain), ...(op.stream ? { stream: { id: op.stream.id, cdn: { ingestionInfo: {
         rtmpsIngestionAddress: op.stream.cdn?.ingestionInfo?.rtmpsIngestionAddress, streamName: op.stream.cdn?.ingestionInfo?.streamName } }, status: op.stream.status } } : {}),
       ...(op.broadcast ? { broadcast: { id: op.broadcast.id } } : {}), ...(op.destination ? { destination: op.destination } : {}) } : null;
     return structuredClone({ schema: 1, clientId: this.config.clientId, origin: c.origin, accessToken: c.accessToken, refreshToken: c.refreshToken,
-      expires: c.expires, created: c.created, channel: c.channel, operation, broadcast: c.broadcast, ready: Boolean(c.ready) });
+      expires: c.expires, created: c.created, channel: c.channel, ...(Array.isArray(c.channels) ? { channels: c.channels } : {}), operation, broadcast: c.broadcast, ready: Boolean(c.ready) });
   }
   async persist(owner) { await this.saveConnection(owner, this.exportPrivate(owner)); }
   restorePrivate(owner, value) {
     if (!value) return false;
     if (!this.config.configured || value.schema !== 1 || value.clientId !== this.config.clientId || (value.origin !== this.config.origin && value.origin !== 'https://mmk97-97.github.io')) return false;
     if (!id(value.channel?.id) || typeof value.accessToken !== 'string' || value.accessToken.length > 8192 || !Number.isFinite(value.expires)) throw error('Saved YouTube connection is invalid. Connect the account again.', 409);
+    const primary = { id: value.channel.id, title: text(value.channel.title) || 'YouTube Channel', subscriberCount: value.channel.subscriberCount ?? null, isLinked: value.channel.isLinked ?? true };
+    const channels = Array.isArray(value.channels) && value.channels.length ? value.channels.filter(ch => id(ch?.id)).map(ch => ({ id: ch.id, title: text(ch.title) || 'YouTube Channel', subscriberCount: ch.subscriberCount != null && Number.isFinite(Number(ch.subscriberCount)) ? Number(ch.subscriberCount) : null, isLinked: ch.isLinked ?? true })) : [primary];
     const c = { owner, origin: this.config.origin, accessToken: value.accessToken, refreshToken: typeof value.refreshToken === 'string' && value.refreshToken.length < 8192 ? value.refreshToken : null,
-      expires: value.expires, created: value.created, channel: { id: value.channel.id, title: text(value.channel.title) }, lastRefresh: 0, ready: false };
+      expires: value.expires, created: value.created, channel: primary, channels, lastRefresh: 0, ready: false };
     if (value.operation) {
       const op = value.operation;
       if (!/^[A-Za-z0-9_-]{16,80}$/.test(op.requestId || '') || !Number.isFinite(op.createdAt)) throw error('Saved YouTube setup is invalid. Review it in YouTube Studio.', 409);

@@ -26,10 +26,10 @@ export function installHome({ state, ui, loadMatch, notice, onView = () => {} })
     const s = state.score, busy = state.scoreLoading || state.live || state.starting || state.stopping;
     for (const id of ['homeMatchInput', 'homeClubInput', 'homeLeaguePreset', 'homeLoad', 'homeExample']) $(id).disabled = Boolean(busy);
     $('homeLoad').textContent = state.scoreLoading ? 'Fetching source…' : 'Fetch match';
-    $('homeMatchState').textContent = state.scoreLoading ? 'Fetching CricClubs' : s ? s.stale ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Source connected' : state.scoreError ? 'Fetch failed' : 'No match loaded';
+    $('homeMatchState').textContent = state.scoreLoading ? 'Fetching CricClubs' : s ? s.stale ? 'Score delayed' : s.status === 'scheduled' ? 'Match scheduled' : s.status === 'complete' ? 'Match complete' : 'Source connected' : state.scoreError ? 'Fetch failed' : 'No match loaded';
     $('homeMatchState').className = 'home-status' + (s && !s.stale ? ' ready' : '');
-    $('homeMatchTitle').textContent = s ? `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} overs` : 'Bring your match into the picture.';
-    $('homeMatchDetail').textContent = s ? s.teams?.map(t => `${t.name} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ') || `v ${s.bowling}` : state.scoreError || 'Enter your Match ID (or scorecard URL) to scrape live match data.';
+    $('homeMatchTitle').textContent = s ? (s.status === 'scheduled' ? `${s.batting} vs ${s.bowling} · Scheduled` : `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} overs`) : 'Bring your match into the picture.';
+    $('homeMatchDetail').textContent = s ? (s.status === 'scheduled' ? ([s.stats?.date, s.ground, s.series].filter(Boolean).join(' · ') || 'Waiting for CricClubs live scoring to start') : (s.teams?.map(t => `${t.name} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ') || `v ${s.bowling}`)) : state.scoreError || 'Enter your Match ID (or scorecard URL) to scrape live match data.';
     $('homeMatchResult').textContent = s ? [s.result || s.stats?.scoreNeededText || s.stats?.toss || s.series || '', s.stats?.date ? `Date: ${s.stats.date}` : ''].filter(Boolean).join(' · ') : '';
     $('homeSource').textContent = s ? `${s.source} · Club ${s.clubId} / Match ${s.matchId} · ${state.scoreTransport === 'relay' ? 'relay feed' : 'direct feed'} · ${s.stale ? 'last verified' : 'fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()}` : 'Scorecard, commentary and stats from your selected match appear here.';
     $('homeRelayState').textContent = state.session ? state.info?.encoder.ready ? 'Relay connected' : 'Encoder needs attention' : 'Connect your cloud studio';

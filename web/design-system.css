@@ -389,3 +389,25 @@ body.at-auth>.notice,body.at-auth>.dismiss-notice{top:max(12px,env(safe-area-ins
 .design-v19 .overlay-theme-card.selected strong{color:#f8d44c}
 .design-v19 .overlay-theme-card.selected::after{border-color:#f5cb39;background:radial-gradient(circle,#f5cb39 45%,transparent 50%)}
 #cloudSettingsMount{margin-top:16px}
+
+body.eco-streaming *{box-shadow:none!important}
+body.eco-streaming .stadium-edge,body.eco-streaming .field-lines{animation:none!important;transition:none!important;filter:none!important;opacity:.28!important}
+.design-v19 .cool-mode-box{margin-top:12px;padding:12px;border:1px solid #1d647d;border-radius:9px;background:#021c2c}
+.design-v19 .cool-mode-box .check{margin:0 0 10px}
+.design-v19 .schedule-panel{margin-top:14px;padding-top:12px;border-top:1px solid #1c4c63}
+.design-v19 .schedule-actions{flex:0 0 auto;gap:6px}
+.design-v19 .schedule-actions .small-btn,.design-v19 .schedule-panel .small-btn{min-height:34px;min-width:auto;padding:5px 10px;font-size:11px;flex:0 0 auto}
+.design-v19 .schedule-list{display:grid;gap:8px;margin-top:10px}
+.design-v19 .schedule-card{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:11px 12px;border:1px solid #26607e;border-radius:9px;background:#031e30cc;color:#f3faff;text-align:left;cursor:pointer}
+.design-v19 .schedule-card:hover{background:#08324c;border-color:#44b9e3}
+.design-v19 .schedule-card.active{border-color:#00d4ff;background:#073957}
+.design-v19 .schedule-card-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#9fc9df}
+.design-v19 .schedule-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;border:1px solid #356c89;background:#082b40}
+.design-v19 .schedule-badge.live{border-color:#ff5e7b;background:#591426;color:#ffd8df}
+.design-v19 .schedule-badge.scheduled{border-color:#f5c542;background:#3e3009;color:#ffe69b}
+.design-v19 .schedule-badge.complete{border-color:#26a979;background:#093629;color:#9ef5d1}
+.design-v19 .schedule-teams{font-size:13px;font-weight:700;color:#fff}
+.design-v19 .schedule-meta{font-size:11px;color:#9bc0d4}
+.design-v19 #ytEligibilityBadge{display:inline-block;margin:2px 0 8px}
+.design-v19 #ytChannelRow{margin-bottom:10px}
+.design-v19 #ytVerifyLink{margin-top:10px;text-align:center}

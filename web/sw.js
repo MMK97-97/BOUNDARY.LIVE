@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mk97-studio-v25';
+const CACHE_NAME = 'mk97-studio-v26';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const SHELL_ASSETS = [
   './studio-layout.css',
   './design-system.css',
   './app.mjs',
+  './cricclubs-schedule.mjs',
   './assets/mk97.png',
   './assets/icon-192.png',
   './assets/icon-512.png'

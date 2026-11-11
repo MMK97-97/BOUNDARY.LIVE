@@ -1,6 +1,6 @@
 import { knownLeague } from './cricclubs-reference.mjs';
 const $ = id => document.getElementById(id);
-export function installMatchSelection({ state }) {
+export function installMatchSelection({ state, onLeagueSelected = () => {}, onRefreshSchedule = () => {} }) {
   function sync(clubId, league) {
     const known = knownLeague(clubId), label = known?.label || league || 'CricClubs';
     $('clubInput').value = clubId; $('homeClubInput').value = clubId;
@@ -16,10 +16,21 @@ export function installMatchSelection({ state }) {
     if (!knownLeague(club)) return;
     if ($('clubInput').value !== club) { $('matchInput').value = ''; $('homeMatchInput').value = ''; }
     sync(club); $(id === 'homeLeaguePreset' ? 'homeMatchInput' : 'matchInput').focus();
+    onLeagueSelected({ clubId: club, league: knownLeague(club)?.league });
   });
-  for (const id of ['clubInput', 'homeClubInput']) $(id).addEventListener('change', () => { if (!locked()) sync($(id).value.trim()); });
+  for (const id of ['clubInput', 'homeClubInput']) $(id).addEventListener('change', () => {
+    if (locked()) return;
+    const club = $(id).value.trim();
+    sync(club);
+    if (/^[1-9][0-9]{0,11}$/.test(club)) onLeagueSelected({ clubId: club, league: knownLeague(club)?.league || '' });
+  });
+  for (const id of ['homeRefreshSchedule', 'matchRefreshSchedule']) $(id)?.addEventListener('click', () => {
+    if (!locked()) onRefreshSchedule();
+  });
   function update() {
     $('leaguePreset').disabled = locked(); $('homeLeaguePreset').disabled = locked();
+    if ($('homeRefreshSchedule')) $('homeRefreshSchedule').disabled = Boolean(locked() || state.scheduleLoading);
+    if ($('matchRefreshSchedule')) $('matchRefreshSchedule').disabled = Boolean(locked() || state.scheduleLoading);
     $('matchFailure').hidden = !state.scoreError; $('matchFailure').textContent = state.scoreError || '';
     $('matchConnect').hidden = Boolean(state.session);
     $('matchConnectionHelp').textContent = state.session ? state.info?.scoreSource === 'configured-feed' ?

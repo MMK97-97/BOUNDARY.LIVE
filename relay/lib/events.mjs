@@ -27,11 +27,11 @@ export class CricketEvents {
       complete: this.fullCards, battingTeam: score.batting, bowlingTeam: score.bowling };
   }
   update(score) {
-    if (!score || score.stale) return [];
+    if (!score || score.stale || score.status === 'scheduled') return [];
     if (this.key !== inningsKey(score)) this.reset(score);
     const old = this.previous; this.remember(score); this.previous = structuredClone(score);
     // Joining an innings or loading completed match 986 never plays old celebrations.
-    if (!old || old.status === 'complete') {
+    if (!old || old.status === 'complete' || old.status === 'scheduled') {
       for (const n of TEAM_MILESTONES) if (Number(score.runs) >= n) this.seen.add(`team:${n}`);
       for (const p of score.batters || []) for (const n of PLAYER_MILESTONES) if (countKnown(p.runs) && Number(p.runs) >= n) this.seen.add(`player:${identity(p)}:${n}`);
       this.highestOver = Math.floor((legalBalls(score.overs) || 0) / 6);

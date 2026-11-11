@@ -27,10 +27,11 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     if (data?.setup) {
       requestId = data.setup.requestId;
       if (data.setup.details) {
-        submitted = { ...data.setup.details, requestId };
+        submitted = { ...data.setup.details, requestId, ...(data.autoStart ? { autoStart: true } : {}) };
         $('ytTitle').value = submitted.title; $('ytDescription').value = submitted.description;
         $('ytPrivacy').value = submitted.privacy; $('ytAudience').value = String(submitted.madeForKids);
         $('ytSchedule').value = localDate(new Date(submitted.scheduledStartTime));
+        if ($('ytAutoLive') && data.autoStart !== undefined) $('ytAutoLive').checked = Boolean(data.autoStart);
       }
     } else if (!busy) { requestId = null; submitted = null; }
     update();
@@ -86,17 +87,53 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     $('ytCallbackHelp').textContent = mismatch ? 'Callback mismatch. Set YOUTUBE_REDIRECT_URI to ' + recommended + ' in Render and register the identical URL in Google Cloud.' : 'Register this exact URL as an authorized redirect URI for your Google Web application client.';
     $('ytAccountState').textContent = !state.session ? 'Connect cloud studio first' : pending || data?.authorizing ? 'Connecting…' : connected ? 'Account connected' : hasManualKey ? 'Stream key configured' : 'Not connected';
     $('ytChannel').textContent = data?.channel?.title || (hasManualKey ? 'YouTube Live · Stream Key' : 'Your channel. Your broadcast.');
-    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to any YouTube channel you want to stream. Tokens and ingestion keys stay in your private cloud studio.';
+    const channels = Array.isArray(data?.channels) ? data.channels : [];
+    const multiChannel = connected && channels.length > 1;
+    if ($('ytChannelRow')) $('ytChannelRow').hidden = !multiChannel;
+    if ($('ytChannelSelect')) {
+      if (multiChannel && typeof $('ytChannelSelect').replaceChildren === 'function') {
+        const sig = channels.map(ch => `${ch.id}:${ch.title}:${ch.subscriberCount ?? ''}`).join('|');
+        if ($('ytChannelSelect').dataset && $('ytChannelSelect').dataset.sig !== sig) {
+          $('ytChannelSelect').dataset.sig = sig;
+          const opts = channels.map(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch.id;
+            opt.textContent = ch.subscriberCount != null ? `${ch.title} (${ch.subscriberCount.toLocaleString()} subs)` : ch.title;
+            return opt;
+          });
+          $('ytChannelSelect').replaceChildren(...opts);
+        }
+      }
+      $('ytChannelSelect').value = data?.channel?.id || '';
+      $('ytChannelSelect').disabled = Boolean(disabled || data?.authorizing || (b && ['live', 'testing', 'liveStarting', 'testStarting'].includes(b.state)));
+    }
+    if ($('ytEligibilityBadge')) {
+      if (connected) {
+        const subs = data?.channel?.subscriberCount;
+        const subText = subs != null ? `${subs.toLocaleString()} subscribers · ` : '';
+        $('ytEligibilityBadge').textContent = data?.verificationUrl ? `${subText}Enable YouTube Live verification` : `${subText}0+ subscribers supported · PRISM-style 1-tap RTMPS`;
+        $('ytEligibilityBadge').className = 'status-chip' + (data?.verificationUrl ? '' : ' ready');
+      } else {
+        $('ytEligibilityBadge').textContent = 'Sign in with any channel · 0+ subscribers supported';
+        $('ytEligibilityBadge').className = 'status-chip';
+      }
+    }
+    if ($('ytVerifyLink')) {
+      $('ytVerifyLink').hidden = !data?.verificationUrl;
+      if (data?.verificationUrl) $('ytVerifyLink').href = data.verificationUrl;
+    }
+    $('ytSetupHelp').textContent = !state.session ? 'Connect your cloud studio in Stream setup before linking YouTube.' : data?.configurationError || 'Sign in with Google to any YouTube channel (even under 50 subscribers). Tokens and ingestion keys stay in your private cloud studio.';
     $('ytAuthStatus').textContent = pending ? 'Finish Google sign-in in the opened tab, then return here. MK97 checks the secure result automatically.' : '';
     const isBroadcasting = Boolean(b && ['live', 'testing', 'liveStarting', 'testStarting'].includes(b.state));
     for (const name of ['ytTitle', 'ytDescription', 'ytPrivacy', 'ytStartMode', 'ytAudience']) $(name).disabled = Boolean(disabled || !connected || data?.authorizing || isBroadcasting);
+    if ($('ytAutoLive')) $('ytAutoLive').disabled = Boolean(disabled || !connected || data?.authorizing || isBroadcasting);
     $('ytScheduleRow').hidden = $('ytStartMode').value !== 'scheduled';
     $('ytSchedule').required = $('ytStartMode').value === 'scheduled';
     $('ytSchedule').disabled = Boolean(disabled || !connected || data?.authorizing || isBroadcasting || $('ytStartMode').value !== 'scheduled');
     $('ytCreate').disabled = Boolean(disabled || !connected || data?.authorizing || isBroadcasting || data?.setup?.uncertain);
     $('ytCreate').textContent = busy ? 'Working…' : data?.setup?.stage === 'ready' ? 'Update YouTube broadcast' : data?.setup ? 'Retry setup' : 'Create YouTube setup';
     if (!titleTouched && !data?.setup && !submitted && state.score) $('ytTitle').value = `${state.score.batting} vs ${state.score.bowling} · ${state.score.series || 'Live cricket'}`.slice(0, 100);
-    $('ytCapture').textContent = `Capture: ${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · 30 fps program. YouTube detects the incoming format.`;
+    $('ytCapture').textContent = `Capture: ${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · ${state.coolMode ? 24 : 30} fps program. YouTube detects the incoming format.`;
     $('ytEvent').hidden = !b;
     $('ytOperation').textContent = data?.setup && data.setup.stage !== 'ready' ? `Setup stage: ${data.setup.stage}${data.setup.uncertain ? ' · result unconfirmed; review Studio before New setup' : ''}` : '';
     $('ytError').textContent = (hasManualKey && !connected) ? '' : (data?.error || '');
@@ -183,6 +220,12 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     closePanel();
   });
 
+  $('ytChannelSelect')?.addEventListener('change', () => {
+    const channelId = $('ytChannelSelect').value;
+    if (!channelId || !state.session || locked() || busy || channelId === data?.channel?.id) return;
+    requestId = null; submitted = null; autoPrepKey = '';
+    action(() => post('channel', { channelId }), 'Switched YouTube channel. Preparing live setup…').then(() => autoPrepareIfConnected());
+  });
   $('ytStartMode').addEventListener('change', update);
   $('ytCopyCallback').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('ytCallback').value); notice('Callback URL copied. Add it to your Google Web application client.'); }
@@ -208,7 +251,8 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     const autoReqId = [...crypto.getRandomValues(new Uint8Array(24))].map(v => v.toString(16).padStart(2, '0')).join('');
     const title = ($('ytTitle').value || (state.score ? `${state.score.batting} vs ${state.score.bowling} · ${state.score.series || 'Live cricket'}` : `${data.channel?.title || 'MK97'} Live Stream`)).slice(0, 100);
     const audienceVal = $('ytAudience').value;
-    const autoDetails = { requestId: autoReqId, title, description: $('ytDescription').value || 'Live cricket broadcast', privacy: $('ytPrivacy').value || 'public', scheduledStartTime: new Date().toISOString(), madeForKids: audienceVal === 'true' };
+    const autoStart = $('ytAutoLive') ? Boolean($('ytAutoLive').checked) : true;
+    const autoDetails = { requestId: autoReqId, title, description: $('ytDescription').value || 'Live cricket broadcast', privacy: $('ytPrivacy').value || 'public', scheduledStartTime: new Date().toISOString(), madeForKids: audienceVal === 'true', ...(autoStart ? { autoStart: true } : {}) };
     requestId = autoReqId; submitted = autoDetails;
     await action(() => post('setup', autoDetails), `YouTube connected (${data.channel?.title || 'Channel'}) and live setup ready! Open camera and press START.`, true);
   }
@@ -282,8 +326,9 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       const audience = $('ytAudience').value || 'false';
       if (!['true', 'false'].includes(audience)) return notice('Choose the audience declaration.', 'error');
       requestId ||= [...crypto.getRandomValues(new Uint8Array(24))].map(v => v.toString(16).padStart(2, '0')).join('');
+      const autoStart = Boolean($('ytAutoLive')?.checked);
       submitted = { requestId, title: $('ytTitle').value, description: $('ytDescription').value, privacy: $('ytPrivacy').value,
-        scheduledStartTime: at.toISOString(), madeForKids: audience === 'true' };
+        scheduledStartTime: at.toISOString(), madeForKids: audience === 'true', ...(autoStart ? { autoStart: true } : {}) };
     }
     if (isUpdate) {
       await action(async () => {
@@ -323,7 +368,15 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
       accept(next); if (changed) await refreshInfo();
       if (isRealOrigin && state.live && next.broadcast?.streamStatus === 'active') {
         const curState = next.broadcast?.state;
-        if (curState === 'ready') {
+        if (curState === 'ready' && next.autoStart) {
+          try {
+            const liveRes = await post('transition', { state: 'live' });
+            if (session === state.session) {
+              accept(liveRes);
+              if (liveRes?.broadcast?.state === 'live') notice('YouTube broadcast is now LIVE!', 'success');
+            }
+          } catch {}
+        } else if (curState === 'ready') {
           try {
             const testRes = await post('transition', { state: 'testing' });
             if (session === state.session) accept(testRes);
@@ -341,7 +394,11 @@ export function installYouTube({ state, api, notice, refreshInfo, updateControls
     } catch (e) { if (session === state.session && generation === revision) $('ytError').textContent = e.message; }
     finally { polling = false; }
   }
+  function syncFromMatch(score) {
+    if (!score || titleTouched || data?.setup || submitted) return;
+    $('ytTitle').value = `${score.batting} vs ${score.bowling} · ${score.series || 'Live cricket'}`.slice(0, 100);
+  }
   const statusTimer = setInterval(() => { if (state.live) pollStatus(); }, 4000);
   const regularStatusTimer = setInterval(() => { if (!state.live) pollStatus(); }, 15000);
-  return { accept, update, destroy() { clearAuth(); clearInterval(authTimer); clearInterval(statusTimer); clearInterval(regularStatusTimer); } };
+  return { accept, update, syncFromMatch, destroy() { clearAuth(); clearInterval(authTimer); clearInterval(statusTimer); clearInterval(regularStatusTimer); } };
 }

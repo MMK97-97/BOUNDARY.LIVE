@@ -1,9 +1,10 @@
 import { installInterface } from './interface.mjs';
 import { openNativeCamera, captureProfile, programSize } from './capture.mjs';
-import { PROFILES, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, preflight } from './core.mjs';
+import { PROFILES, effectiveBitrate, captureReady, parseMatch, relayOrigin, chooseMime, clampZoom, duration, preflight } from './core.mjs';
 import { installStudio } from './studio.mjs';
 import { installYouTube } from './youtube.mjs';
-import { createFeed } from './feed.mjs';
+import { createFeed, fetchPublicSchedule } from './feed.mjs';
+import { parseLeagueScheduleInput, sortScheduleMatches } from './cricclubs-schedule.mjs';
 import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
@@ -26,7 +27,8 @@ const state = { stream: null, camera: null, zoom: null, recorder: null, socket: 
   relay: '', info: null, score: null, pollTimer: null, polling: false, live: false, starting: false, stopping: false,
   cameraBusy: false, connecting: false, micMuted: false, previewOff: false, startedAt: 0, uploaded: 0, lastBytes: 0,
   lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false,
-  captureResolution: '1080', graphics: { cards: null, current: null }, overlayStyle: 'gold' };
+  captureResolution: '1080', graphics: { cards: null, current: null }, overlayStyle: 'gold',
+  coolMode: false, autoDim: false, scheduleLoading: false, scheduleMatches: [], scheduleClubId: '', scheduleLeague: '', scheduleNote: '' };
 // Remove the obsolete build's browser-stored platform key; new credentials stay in relay memory.
 try { localStorage.removeItem('boundary.ytKey'); } catch {}
 const saved = key => { try { return localStorage.getItem(`mk97.${key}`) || ''; } catch { return ''; } };
@@ -34,6 +36,10 @@ const save = (key, value) => { try { localStorage.setItem(`mk97.${key}`, value);
 $('relayUrl').value = saved('relay'); $('clubInput').value = saved('club') || '300';
 if (saved('match')) $('matchInput').value = saved('match');
 state.overlayStyle = saved('overlayStyle') || 'gold';
+state.coolMode = saved('coolMode') === '1';
+state.autoDim = saved('autoDim') === '1';
+if ($('coolModeToggle')) $('coolModeToggle').checked = state.coolMode;
+if ($('autoDimBattery')) $('autoDimBattery').checked = state.autoDim;
 function notice(message, type = 'info') { $('notice').textContent = message; $('notice').className = `notice ${type}`; $('notice').hidden = !message; $('dismissNotice').hidden = !message; }
 function health(id, text, kind = '') { $(id + 'Health').textContent = text; $(id + 'Dot').className = 'health-dot ' + kind; }
 function currentDestinations() { return DESTS.filter(id => $('dest-' + id).checked && state.info?.destinations.find(d => d.id === id)?.configured); }
@@ -54,6 +60,10 @@ function updateControls() {
   $('connectRelay').disabled = locked || state.connecting || Boolean(state.destinationBusy);
   $('overlayToggle').disabled = locked && (!state.live || !state.programEnabled);
   for (const id of ['autoMilestones', 'autoCards']) $(id).disabled = locked;
+  if ($('coolModeToggle')) $('coolModeToggle').disabled = locked || state.cameraBusy;
+  if ($('coolPresetBtn')) $('coolPresetBtn').disabled = locked || state.cameraBusy;
+  if ($('allowScheduledToggle')) $('allowScheduledToggle').disabled = locked || Boolean(state.scoreLoading);
+  document.body.classList.toggle('eco-streaming', Boolean(state.coolMode && (state.live || state.starting)));
   $('loadMatch').disabled = locked || Boolean(state.scoreLoading);
   $('cameraSelect').disabled = locked || !state.stream || state.cameraBusy;
   $('openCamera').disabled = state.cameraBusy || locked;
@@ -130,6 +140,7 @@ async function connectIdentity(identity, quiet = false) {
   if (!Array.isArray(preferences.destinations)) { const first = info.destinations.find(d=>d.configured); if (first) $('dest-'+first.id).checked = true; }
   renderRelay(); savedUI?.synced();
   if (!quiet) notice(info.encoder.ready ? identity.remembered ? 'Studio connected and remembered on this device.' : 'Studio connected for this session.' : info.encoder.error, info.encoder.ready ? 'success' : 'error');
+  refreshLeagueSchedule({ clubId: $('clubInput').value || '300' });
   if (!feed.ids && preferences.match) {
     try { const ref = preferences.match; if (ref.league) save('league.' + ref.clubId, ref.league); await loadSelectedMatch(ref.matchId, ref.clubId); } catch (e) { if (session === state.session) notice(e.message,'error'); }
   } else await feed.changeSource();
@@ -157,6 +168,7 @@ async function disconnect() {
 }
 $('disconnectRelay').addEventListener('click', disconnect);
 function renderScore(result) {
+  const prevStatus = state.score?.status, prevMatch = state.score ? `${state.score.clubId}:${state.score.matchId}` : '';
   const s = result?.score || null; state.score = s; state.scoreError = result?.error || ''; state.scoreTransport = result?.transport || state.scoreTransport || '';
   $('scoreOverlay').hidden = !s || !$('overlayToggle').checked;
   if (!s) {
@@ -168,13 +180,33 @@ function renderScore(result) {
     health('score', result?.error ? 'Score feed unavailable' : 'Score not connected', result?.error ? 'bad' : '');
     updateControls(); return;
   }
+  const sameMatch = prevMatch === `${s.clubId}:${s.matchId}`;
+  if (sameMatch && prevStatus === 'scheduled' && s.status === 'live') {
+    notice(`Match ${s.matchId} is now LIVE on CricClubs! (${s.batting} ${s.runs}/${s.wickets})`, 'success');
+    if (state.session && !s.cards?.complete && s.scorecard?.state !== 'complete' && s.scorecard?.state !== 'blocked') {
+      api('/api/score/scrape', { method: 'POST', body: '{}' }).then(scraped => {
+        if (scraped?.score && state.score?.matchId === scraped.score.matchId && state.score?.clubId === scraped.score.clubId) {
+          renderScore({ ...result, ...scraped, transport: 'relay' });
+        }
+      }).catch(() => {});
+    }
+  }
+  youtubeUI?.syncFromMatch?.(s);
   const delayed = s.stale || Date.now() - s.fetchedAt > 30000;
   const eq = calculateEquation(s);
-  $('overlayTeam').textContent = s.batting || '—'; $('overlayRuns').textContent = `${s.runs}/${s.wickets}`;
-  $('overlayOvers').textContent = `${s.overs} ov`; $('overlayRate').textContent = eq.crr ? `CRR ${eq.crr}` : '';
+  $('overlayTeam').textContent = s.batting || '—';
+  $('overlayRuns').textContent = eq.isScheduled ? 'VS' : `${s.runs}/${s.wickets}`;
+  $('overlayOvers').textContent = eq.isScheduled ? (s.stats?.date || 'Scheduled') : `${s.overs} ov`;
+  $('overlayRate').textContent = eq.isScheduled ? `Match ${s.matchId}` : eq.crr ? `CRR ${eq.crr}` : '';
   if ($('battingLogo')) $('battingLogo').textContent = (s.batting || 'CC').slice(0, 3).toUpperCase();
   if ($('bowlingLogo')) $('bowlingLogo').textContent = (s.bowling || 'CC').slice(0, 3).toUpperCase();
-  if (eq.isChasing) {
+  if (eq.isScheduled) {
+    $('overlayStatus').textContent = delayed ? 'SCORE DELAYED' : 'MATCH SCHEDULED';
+    $('requiredRate').textContent = 'SCHEDULED';
+    $('requiredRate').hidden = false;
+    $('overlayDetail').textContent = s.detail || s.stats?.date || 'Waiting for CricClubs live scoring';
+    $('oppositionTeam').textContent = s.bowling || 'OPPOSITION';
+  } else if (eq.isChasing) {
     $('overlayStatus').textContent = delayed ? 'SCORE DELAYED' : eq.isComplete ? 'MATCH COMPLETE' : s.superOver ? 'SUPER OVER' : '2ND INNINGS · CHASE';
     $('requiredRate').textContent = eq.rrr ? `RRR ${eq.rrr}` : (eq.target ? `TARGET ${eq.target}` : 'RRR —');
     $('requiredRate').hidden = false;
@@ -193,16 +225,18 @@ function renderScore(result) {
   const b1 = s.batters?.[1];
   if ($('batter2Name')) $('batter2Name').textContent = b1 ? b1.name.slice(0, 18) : '—';
   if ($('batter2Runs')) $('batter2Runs').textContent = b1 ? `${b1.runs || 0} (${b1.balls || 0})` : '—';
-  const bw = s.bowlers?.[0];
+  const bw = s.bowler || s.bowlers?.[0];
   if ($('bowlerName')) $('bowlerName').textContent = bw ? bw.name.slice(0, 18) : '—';
-  if ($('bowlerFigures')) $('bowlerFigures').textContent = bw ? `${bw.wickets || 0}/${bw.runs || 0} (${bw.overs || 0} ov)` : '—';
+  if ($('bowlerFigures')) $('bowlerFigures').textContent = bw ? `${bw.wickets ?? 0}/${bw.runs ?? 0} (${bw.overs ?? 0} ov)` : '—';
   if ($('overBalls')) {
     $('overBalls').replaceChildren();
-    const balls = Array.isArray(s.stats?.recentBalls) && s.stats.recentBalls.length
-      ? s.stats.recentBalls.slice(-6)
-      : Array.isArray(s.recentBalls) && s.recentBalls.length
-        ? s.recentBalls.slice(-6)
-        : [];
+    const balls = Array.isArray(s.balls) && s.balls.length
+      ? s.balls.slice(-6)
+      : Array.isArray(s.stats?.recentBalls) && s.stats.recentBalls.length
+        ? s.stats.recentBalls.slice(-6)
+        : Array.isArray(s.recentBalls) && s.recentBalls.length
+          ? s.recentBalls.slice(-6)
+          : [];
     for (const b of balls) {
       const span = document.createElement('span');
       span.className = 'ball' + (b === 'W' ? ' wicket' : b === '4' || b === '6' ? ' boundary' : '');
@@ -211,14 +245,15 @@ function renderScore(result) {
     }
   }
   $('scoreOverlay').classList.toggle('delayed', delayed);
-  $('matchTitle').textContent = `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} ov`;
+  $('matchTitle').textContent = eq.isScheduled ? `${s.batting} vs ${s.bowling} · Scheduled` : `${s.batting} ${s.runs}/${s.wickets} · ${s.overs} ov`;
   const teams = s.teams?.map(t => `${t.code} ${t.runs}/${t.wickets} (${t.overs})`).join(' · ');
-  $('matchStatus').textContent = result?.error || teams || `${s.source} · Match ${s.matchId} · ${s.status === 'complete' ? 'Completed' : 'Feed connected'}`;
-  $('scoreFreshness').textContent = `${delayed ? 'Last successful fetch' : 'Fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()} · ${result.delivery === 'push' ? 'live relay link · source checks' : 'refresh'} every ${result.pollSeconds || 5}s${s.partialView ? ' · limited CricClubs view' : ''}`;
-  $('dimScore').textContent = `${s.batting} ${s.runs}/${s.wickets} (${s.overs})${delayed ? ' · delayed' : ''}`;
+  $('matchStatus').textContent = result?.error || (eq.isScheduled ? ([s.stats?.date, s.ground, 'Waiting for live scoring (polls every 3s)'].filter(Boolean).join(' · ')) : teams) || `${s.source} · Match ${s.matchId} · ${s.status === 'complete' ? 'Completed' : 'Feed connected'}`;
+  $('scoreFreshness').textContent = `${delayed ? 'Last successful fetch' : 'Fetched'} ${new Date(s.fetchedAt).toLocaleTimeString()} · ${result.delivery === 'push' ? 'live relay link · source checks' : 'refresh'} every ${result.pollSeconds || (eq.isScheduled ? 3 : 5)}s${s.partialView ? ' · limited CricClubs view' : ''}`;
+  $('dimScore').textContent = eq.isScheduled ? `${s.batting} vs ${s.bowling} · Scheduled` : `${s.batting} ${s.runs}/${s.wickets} (${s.overs})${delayed ? ' · delayed' : ''}`;
   ui?.score(s);
-  health('score', delayed ? 'Score delayed' : s.status === 'complete' ? 'Match complete' : 'Score connected', delayed ? 'warning' : 'good');
+  health('score', delayed ? 'Score delayed' : eq.isScheduled ? 'Match scheduled · auto-live' : s.status === 'complete' ? 'Match complete' : 'Score connected', delayed ? 'warning' : 'good');
   updateControls();
+  renderScheduleLists();
 }
 const feed = createFeed({
   onUpdate: result => { renderScore(result); if (result?.status === 401) notice('Relay session expired. Disconnect and reconnect in Settings.', 'error'); },
@@ -227,19 +262,140 @@ const feed = createFeed({
   visible: () => document.visibilityState === 'visible' || state.live
 });
 async function pollScore() { return feed.refresh(); }
-async function loadSelectedMatch(input, club) {
+function renderScheduleLists() {
+  const list = state.scheduleMatches || [];
+  const activeKey = state.score ? `${state.score.clubId}:${state.score.matchId}` : '';
+  const statusText = state.scheduleLoading
+    ? `Scanning Club ${$('clubInput').value || '300'} schedule on CricClubs…`
+    : list.length
+      ? `${list.length} match${list.length === 1 ? '' : 'es'} discovered for Club ${state.scheduleClubId || $('clubInput').value}. Tap any match to load overlay & stream.`
+      : (state.scheduleNote || 'No recent matches discovered automatically. Enter a Match ID above or paste CricClubs schedule text.');
+  for (const statusId of ['homeScheduleStatus', 'matchScheduleStatus']) {
+    if ($(statusId)) $(statusId).textContent = statusText;
+  }
+  for (const rootId of ['homeScheduleList', 'matchScheduleList']) {
+    const root = $(rootId);
+    if (!root) continue;
+    root.replaceChildren();
+    for (const m of list) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'schedule-card' + (activeKey === `${m.clubId}:${m.matchId}` ? ' active' : '');
+      const head = document.createElement('div');
+      head.className = 'schedule-card-head';
+      const badge = document.createElement('span');
+      badge.className = 'schedule-badge ' + (m.status || 'scheduled');
+      badge.textContent = m.status === 'live' ? '🔴 LIVE' : m.status === 'complete' ? '✓ FINAL' : '📅 SCHEDULED';
+      const idSpan = document.createElement('span');
+      idSpan.textContent = `Match #${m.matchId}`;
+      head.append(badge, idSpan);
+      const teams = document.createElement('div');
+      teams.className = 'schedule-teams';
+      teams.textContent = `${m.team1 || 'Team A'} vs ${m.team2 || 'Team B'}`;
+      const meta = document.createElement('div');
+      meta.className = 'schedule-meta';
+      const scoreSummary = [m.t1Score ? `${m.t1Code || 'T1'} ${m.t1Score}` : '', m.t2Score ? `${m.t2Code || 'T2'} ${m.t2Score}` : ''].filter(Boolean).join(' · ');
+      meta.textContent = [scoreSummary, m.date, m.ground, m.result, m.series].filter(Boolean).join(' · ') || `${m.league || 'CricClubs'} · Club ${m.clubId}`;
+      btn.append(head, teams, meta);
+      btn.addEventListener('click', async () => {
+        if (state.live || state.starting || state.stopping || state.scoreLoading) {
+          notice('Stop the current broadcast before switching matches.', 'error');
+          return;
+        }
+        try {
+          if (m.league) save('league.' + m.clubId, m.league);
+          const loaded = await loadSelectedMatch(m.matchId, m.clubId, { allowScheduled: true, fromSchedule: true, scheduleHint: m });
+          notice(`Loaded ${m.team1} vs ${m.team2} (Match ${m.matchId})${loaded?.score?.status === 'scheduled' ? ' · waiting for live start' : ''}.`, 'success');
+        } catch (err) {
+          notice(err.message, 'error');
+        }
+      });
+      root.append(btn);
+    }
+  }
+}
+
+let scheduleEpoch = 0;
+async function refreshLeagueSchedule({ clubId = $('clubInput').value, league = '', force = false } = {}) {
+  const club = String(clubId || '').trim();
+  if (!/^[1-9][0-9]{0,11}$/.test(club)) return;
+  const resolvedLeague = league || saved('league.' + club) || knownLeague(club)?.league || 'FWCWL';
+  const gen = ++scheduleEpoch;
+  state.scheduleLoading = true;
+  state.scheduleNote = '';
+  renderScheduleLists();
+  matchUI?.update();
+  try {
+    const res = state.session
+      ? await api('/api/league/schedule', { method: 'POST', body: JSON.stringify({ clubId: club, league: resolvedLeague, force }), timeoutMs: 20000 })
+      : await fetchPublicSchedule({ clubId: club, league: resolvedLeague, force });
+    if (gen !== scheduleEpoch) return;
+    state.scheduleClubId = res.clubId || club;
+    state.scheduleLeague = res.league || resolvedLeague;
+    state.scheduleMatches = res.matches || [];
+    state.scheduleNote = state.scheduleMatches.length ? '' : 'No active matches returned for this club. Enter a Match ID manually or paste schedule text.';
+  } catch (err) {
+    if (gen !== scheduleEpoch) return;
+    state.scheduleClubId = club;
+    state.scheduleLeague = resolvedLeague;
+    state.scheduleMatches = [];
+    state.scheduleNote = err?.message || 'Could not scan CricClubs schedule directly. Enter a Match ID above or paste your schedule.';
+  } finally {
+    if (gen === scheduleEpoch) {
+      state.scheduleLoading = false;
+      renderScheduleLists();
+      matchUI?.update();
+    }
+  }
+}
+
+$('homePasteSchedule')?.addEventListener('click', () => {
+  if ($('homeSchedulePasteBox')) {
+    const nextHidden = !$('homeSchedulePasteBox').hidden;
+    $('homeSchedulePasteBox').hidden = nextHidden;
+    if (!nextHidden) $('homeSchedulePasteText')?.focus();
+  }
+});
+
+$('homeSchedulePasteApply')?.addEventListener('click', () => {
+  try {
+    const club = $('clubInput').value.trim() || '300';
+    const league = saved('league.' + club) || knownLeague(club)?.league || 'FWCWL';
+    const parsed = parseLeagueScheduleInput($('homeSchedulePasteText')?.value || '', { clubId: club, league });
+    const existing = new Map((state.scheduleMatches || []).map(m => [`${m.clubId}:${m.matchId}`, m]));
+    for (const item of parsed) {
+      const k = `${item.clubId}:${item.matchId}`;
+      const prev = existing.get(k);
+      existing.set(k, prev ? { ...prev, ...item, status: prev.status !== 'scheduled' ? prev.status : item.status } : item);
+    }
+    state.scheduleClubId = club;
+    state.scheduleLeague = league;
+    state.scheduleMatches = sortScheduleMatches([...existing.values()]);
+    state.scheduleNote = '';
+    if ($('homeSchedulePasteBox')) $('homeSchedulePasteBox').hidden = true;
+    renderScheduleLists();
+    notice(`Added ${parsed.length} match${parsed.length === 1 ? '' : 'es'} from pasted schedule.`, 'success');
+  } catch (err) {
+    notice(err.message, 'error');
+  }
+});
+
+async function loadSelectedMatch(input, club, opts = {}) {
   if (state.live || state.starting || state.stopping || state.scoreLoading) throw new Error('Stop the current upload before changing matches.');
   const rawInput = String(input || '').trim();
   const isUrl = /^https?:/i.test(rawInput);
   let ids = parseMatch(rawInput, club, saved('league.' + club) || knownLeague(club)?.league);
   state.scoreLoading = true; state.graphics.cards = null;
-  const league = ids.league || knownLeague(ids.clubId)?.league;
+  const league = opts.scheduleHint?.league || ids.league || knownLeague(ids.clubId)?.league;
   if (league) { ids = { ...ids, league }; save('league.' + ids.clubId, league); }
+  const allowScheduled = opts.allowScheduled ?? Boolean($('allowScheduledToggle')?.checked ?? true);
+  const hint = opts.scheduleHint || state.scheduleMatches?.find(m => m.clubId === ids.clubId && m.matchId === ids.matchId) || null;
   matchUI?.accept(ids);
   save('club', ids.clubId); save('match', ids.matchId); updateControls();
   try {
-    let result = await feed.select(ids);
-    if (!result?.score && !isUrl) {
+    const useScheduledDirect = Boolean(opts.fromSchedule || isUrl || hint);
+    let result = await feed.select(ids, useScheduledDirect && (allowScheduled || hint) ? { allowScheduled, ...(hint ? { scheduleHint: hint } : {}) } : null);
+    if (!result?.score && !isUrl && !opts.fromSchedule) {
       for (const candidate of CRICCLUBS_LEAGUES) {
         if (candidate.clubId === ids.clubId) continue;
         const altIds = { clubId: candidate.clubId, matchId: ids.matchId, league: candidate.league };
@@ -253,10 +409,16 @@ async function loadSelectedMatch(input, club) {
           break;
         }
       }
-      if (!result?.score) await feed.select(ids);
+      if (!result?.score) {
+        if (allowScheduled) {
+          result = await feed.select(ids, { allowScheduled: true, ...(hint ? { scheduleHint: hint } : {}) });
+        } else {
+          await feed.select(ids);
+        }
+      }
     }
     if (!result?.score) throw new Error(result?.error || 'No score data was returned.');
-    if (state.session && !result.score.cards?.complete && result.score.scorecard?.state !== 'complete' && result.score.scorecard?.state !== 'blocked') {
+    if (result.score.status !== 'scheduled' && state.session && !result.score.cards?.complete && result.score.scorecard?.state !== 'complete' && result.score.scorecard?.state !== 'blocked') {
       api('/api/score/scrape', { method: 'POST', body: '{}' }).then(scraped => {
         if (scraped?.score && state.score?.matchId === scraped.score.matchId && state.score?.clubId === scraped.score.clubId) {
           renderScore({ ...result, ...scraped, transport: 'relay' });
@@ -280,7 +442,7 @@ async function openCamera(deviceId = '') {
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs HTTPS. Open your hosted MK97 app in a current browser.');
     chooseMime(window.MediaRecorder);
-    state.stream = await openNativeCamera(navigator.mediaDevices, state.captureResolution, deviceId, matchMedia('(orientation: portrait)').matches);
+    state.stream = await openNativeCamera(navigator.mediaDevices, state.captureResolution, deviceId, matchMedia('(orientation: portrait)').matches, { frameRate: state.coolMode ? 24 : 30 });
     state.camera = state.stream.getVideoTracks()[0].getSettings();
     const track = state.stream.getVideoTracks()[0];
     track.addEventListener('ended', () => { if (state.live || state.starting) abortStream('Camera was disconnected. Reopen it and start a new stream.'); closeCamera(); });
@@ -288,7 +450,7 @@ async function openCamera(deviceId = '') {
     state.previewOff = false; $('previewHidden').hidden = true; $('previewToggle').setAttribute('aria-pressed', 'false');
     $('previewToggle').textContent = '◐ Hide preview'; $('cameraPlaceholder').hidden = true;
     for (const audio of state.stream.getAudioTracks()) audio.enabled = !state.micMuted;
-    $('cameraSpec').textContent = `${state.camera.width} × ${state.camera.height} · ${Math.round(state.camera.frameRate || 30)} fps`;
+    $('cameraSpec').textContent = `${state.camera.width} × ${state.camera.height} · ${Math.round(state.camera.frameRate || (state.coolMode ? 24 : 30))} fps${state.coolMode ? ' · Cool' : ''}`;
     health('video', `${captureProfile(state.camera)}p camera ready`, 'good'); setupZoom(track);
     await listCameras().catch(() => {});
     notice('Camera ready. Use a tripod behind the bowler’s arm and keep the full pitch in frame.', 'success');
@@ -306,7 +468,7 @@ function closeCamera(update = true) {
   state.stream = null; state.camera = null; state.zoom = null;
   ui?.resetMonitor();
   $('cameraVideo').srcObject = null; $('cameraVideo').hidden = true; $('cameraPlaceholder').hidden = false; $('previewHidden').hidden = true;
-  $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · 30 fps`; health('video', 'Camera off');
+  $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · ${state.coolMode ? '24 fps (Cool)' : '30 fps'}`; health('video', 'Camera off');
   setupZoom(null); if (update) updateControls();
 }
 async function listCameras() {
@@ -374,7 +536,11 @@ $('gridToggle').addEventListener('click', () => { $('framingGuide').hidden = !$(
 function togglePreview(off) {
   state.previewOff = off; $('previewHidden').hidden = !off; $('previewToggle').setAttribute('aria-pressed', String(off));
   $('previewToggle').textContent = off ? '◉ Show preview' : '◐ Hide preview';
-  if (off) $('cameraVideo').pause(); else if (state.stream) $('cameraVideo').play().catch(() => notice('Tap Show preview again to resume the preview.'));
+  if (off) { $('cameraVideo').pause(); $('cameraVideo').hidden = true; }
+  else {
+    if (state.stream) { $('cameraVideo').hidden = false; $('cameraVideo').play().catch(() => notice('Tap Show preview again to resume the preview.')); }
+    if (state.coolMode && state.score) ui?.score(state.score);
+  }
   ui?.update();
 }
 $('previewToggle').addEventListener('click', () => togglePreview(!state.previewOff)); $('showPreview').addEventListener('click', () => togglePreview(false));
@@ -387,7 +553,7 @@ async function wakeLock() {
 }
 function cleanupStream() {
   ui?.graphic(null); state.graphics = { cards: null, current: null }; ui?.graphics(state.graphics);
-  clearInterval(state.heartbeat); state.heartbeat = null;
+  clearInterval(state.heartbeat); state.heartbeat = null; clearTimeout(autoDimTimer); autoDimTimer = null;
   if (state.recorder && state.recorder.state !== 'inactive') { state.recorder.ondataavailable = null; try { state.recorder.stop(); } catch {} }
   state.recorder = null; state.live = false; state.starting = false; state.stopping = false;
   if (state.socket) { const ws = state.socket; state.socket = null; if (ws.readyState < WebSocket.CLOSING) ws.close(1000, 'Camera upload ended'); }
@@ -405,10 +571,10 @@ async function startStream() {
   let ws;
   try {
     const mimeType = chooseMime(window.MediaRecorder);
-    const profile = PROFILES[$('qualitySelect').value];
     // Construct before claiming a relay session; unsupported codec options fail early.
-    const nativeProfile = captureProfile(capture), qualityScale = nativeProfile === '1080' ? 1 : nativeProfile === '720' ? .56 : .25;
-    const recorder = new MediaRecorder(state.stream, { mimeType, videoBitsPerSecond: Math.round(profile.bitrate * qualityScale), audioBitsPerSecond: 128_000 });
+    const nativeProfile = captureProfile(capture);
+    const bitrate = effectiveBitrate($('qualitySelect').value, nativeProfile, Boolean(state.coolMode));
+    const recorder = new MediaRecorder(state.stream, { mimeType, videoBitsPerSecond: bitrate, audioBitsPerSecond: state.coolMode ? 64_000 : 128_000 });
     state.recorder = recorder;
     const { ticket } = await api('/api/ticket', { method: 'POST', body: '{}' });
     if (!state.starting) return;
@@ -419,7 +585,7 @@ async function startStream() {
     ws.onopen = () => {
       if (state.socket !== ws) return;
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
-        width: capture.width, height: capture.height, resolution: state.captureResolution, framing: state.framing || 'fit', overlay: $('overlayToggle').checked, overlayStyle: state.overlayStyle || 'gold',
+        width: capture.width, height: capture.height, resolution: state.captureResolution, coolMode: Boolean(state.coolMode), framing: state.framing || 'fit', overlay: $('overlayToggle').checked, overlayStyle: state.overlayStyle || 'gold',
         match: state.score ? { clubId: state.score.clubId, matchId: state.score.matchId } : null,
         automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked } }));
     };
@@ -441,9 +607,9 @@ async function startStream() {
       if (message.type === 'ready') {
         state.programEnabled = message.program;
         if (ready) return; ready = true; clearTimeout(readyTimer);
-        try { recorder.start(1000); } catch { return abortStream('This browser could not start live encoding. Try another camera or browser.'); }
+        try { recorder.start(state.coolMode ? 2000 : 1000); } catch { return abortStream('This browser could not start live encoding. Try another camera or browser.'); }
         state.startedAt = Date.now(); state.uploaded = 0; state.lastBytes = 0; state.lastStat = Date.now(); state.live = true; state.starting = false;
-        wakeLock(); updateControls(); ui?.closeDrawer(); notice('Camera upload started. Confirm Go Live in your platform’s preview.', 'success');
+        wakeLock(); updateControls(); resetAutoDimTimer(); ui?.closeDrawer(); notice('Camera upload started. Confirm Go Live in your platform’s preview.', 'success');
         state.heartbeat = setInterval(() => {
           if (state.socket !== ws || ws.readyState !== WebSocket.OPEN) return;
           if (Date.now() - state.lastServerMessage > 16000) return abortStream('Relay stopped responding. Check your network and start a new session.');
@@ -489,15 +655,50 @@ function stopStream() {
 $('goLive').addEventListener('click', startStream);
 $('stopLive').addEventListener('click', () => { $('stopConfirm').hidden = false; $('confirmStop').focus(); });
 $('confirmStop').addEventListener('click', stopStream); $('cancelStop').addEventListener('click', () => { $('stopConfirm').hidden = true; $('stopLive').focus(); });
-function exitBattery() {
-  const wasOpen = !$('batteryScreen').hidden; $('batteryScreen').hidden = true; document.querySelector('main').inert = false; document.querySelector('header').inert = false;
-  if (wasOpen && state.stream) { togglePreview(false); $('dimScreen').focus(); }
-}
-$('dimScreen').addEventListener('click', () => {
+let autoDimTimer = null;
+function openBatteryScreen() {
   if (!state.live) return;
+  clearTimeout(autoDimTimer); autoDimTimer = null;
   ui?.closeDrawer();
   togglePreview(true); $('batteryScreen').hidden = false; document.querySelector('main').inert = true; document.querySelector('header').inert = true;
   $('exitBattery').focus(); wakeLock();
+}
+function resetAutoDimTimer() {
+  clearTimeout(autoDimTimer); autoDimTimer = null;
+  if (!state.live || !state.autoDim || !$('batteryScreen').hidden) return;
+  autoDimTimer = setTimeout(() => {
+    if (state.live && state.autoDim && $('batteryScreen').hidden) openBatteryScreen();
+  }, 45000);
+}
+function exitBattery() {
+  const wasOpen = !$('batteryScreen').hidden; $('batteryScreen').hidden = true; document.querySelector('main').inert = false; document.querySelector('header').inert = false;
+  if (wasOpen && state.stream) { togglePreview(false); $('dimScreen').focus(); }
+  resetAutoDimTimer();
+}
+$('dimScreen').addEventListener('click', openBatteryScreen);
+for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, () => { if (state.live && state.autoDim && $('batteryScreen').hidden) resetAutoDimTimer(); }, { passive: true });
+async function setCoolMode(enabled) {
+  state.coolMode = Boolean(enabled);
+  save('coolMode', state.coolMode ? '1' : '0');
+  if ($('coolModeToggle')) $('coolModeToggle').checked = state.coolMode;
+  updateControls();
+  if (state.stream && !state.live && !state.starting && !state.stopping) await openCamera(state.camera?.deviceId || '');
+  else notice(state.coolMode ? 'Cool & Battery Saver enabled (24 fps, hardware codec & lower heat).' : 'Standard 30 fps capture restored.', 'info');
+}
+$('coolModeToggle')?.addEventListener('change', () => setCoolMode($('coolModeToggle').checked));
+$('coolPresetBtn')?.addEventListener('click', async () => {
+  if (state.live || state.starting || state.stopping || state.cameraBusy) return;
+  state.captureResolution = '720';
+  $('qualitySelect').value = 'balanced';
+  state.autoDim = true; save('autoDim', '1');
+  if ($('autoDimBattery')) $('autoDimBattery').checked = true;
+  await setCoolMode(true);
+  notice('720p Cool Stream Preset applied (24 fps · 2.0 Mbps · auto OLED dim).', 'success');
+});
+$('autoDimBattery')?.addEventListener('change', () => {
+  state.autoDim = Boolean($('autoDimBattery').checked);
+  save('autoDim', state.autoDim ? '1' : '0');
+  resetAutoDimTimer();
 });
 $('exitBattery').addEventListener('click', exitBattery);
 $('batteryScreen').addEventListener('click', e => { if (e.target.id === 'batteryScreen') exitBattery(); });
@@ -526,13 +727,15 @@ async function refreshInfo() {
 youtubeUI = installYouTube({ state, api, notice, refreshInfo, updateControls, closePanel: () => homeUI.openStudio() });
 homeUI = installHome({ state, ui, loadMatch: loadSelectedMatch, notice, openCamera, onView: view => interfaceUI?.viewChanged(view) });
 setupUI = installStreamSetup({ state, api, ui, updateControls, openCamera: () => { homeUI.openStudio(); return openCamera(); }, returnToStudio: () => homeUI.openStudio(), refreshInfo });
-matchUI = installMatchSelection({ state });
+matchUI = installMatchSelection({ state, onLeagueSelected: ({ clubId, league }) => refreshLeagueSchedule({ clubId, league }), onRefreshSchedule: () => refreshLeagueSchedule({ force: true }) });
 accountUI=installStudioAccount({state,api,notice,updateControls,connectIdentity});
 savedUI = installSavedStudio({state,api,notice,updateControls,connectIdentity,clearConnection,refreshInfo,onConfig:(config,eligible)=>accountUI.configure(config,eligible)});
 interfaceUI = installInterface({ state, ui, home: homeUI, notice });
 renderRelay(); updateControls();
+renderScheduleLists();
 document.documentElement.dataset.ready = 'true';
 savedUI.discover();
+refreshLeagueSchedule({ clubId: $('clubInput').value || '300' });
 
 if (typeof navigator !== 'undefined' && navigator.getBattery) {
   navigator.getBattery().then(b => {
@@ -595,6 +798,7 @@ async function triggerAppUpdate() {
 
 let currentCommit = '';
 async function checkBuildVersion() {
+  if (typeof document !== 'undefined' && document.hidden) return;
   try {
     const res = await fetch('./build.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;

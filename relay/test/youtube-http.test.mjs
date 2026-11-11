@@ -47,6 +47,31 @@ test('real cloud callback authenticates only its pending owner, strips the URL a
   const replay = await fetch(base + '/youtube-callback.html?state=' + flow.state + '&code=synthetic-once-code', { redirect: 'manual' });
   assert.equal(replay.headers.get('location'), '/youtube-callback.html?result=failed');
 });
+test('POST /api/youtube/channel switches or validates channel and setup supports PRISM-style autoStart', async () => {
+  const selected = await call('/api/youtube/channel', { channelId: 'channel_test' });
+  assert.equal(selected.channel.id, 'channel_test');
+
+  const missing = await fetch(base + '/api/youtube/channel', {
+    method: 'POST',
+    headers: headers(owner),
+    body: JSON.stringify({ channelId: 'not_a_real_channel' })
+  });
+  assert.equal(missing.status, 404);
+
+  const setup = await call('/api/youtube/setup', {
+    requestId: 'http-youtube-autostart-1',
+    title: 'Auto Live Cricket',
+    description: '',
+    privacy: 'unlisted',
+    madeForKids: false,
+    scheduledStartTime: new Date().toISOString(),
+    autoStart: true
+  });
+  assert.equal(setup.autoStart, true);
+  assert.equal(setup.broadcast.keyReady, true);
+
+  await call('/api/youtube/reset', {});
+});
 test('the authenticated cloud setup provisions its account destination without returning a stream key', async () => {
   const setup = await call('/api/youtube/setup', { requestId: 'http-youtube-setup-fixture', title: 'Fixture cricket', description: '', privacy: 'unlisted', madeForKids: false, scheduledStartTime: new Date().toISOString() });
   assert.equal(setup.broadcast.keyReady, true); assert.equal(setup.setup.stage, 'ready');

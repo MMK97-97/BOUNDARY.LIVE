@@ -1,11 +1,12 @@
-import { normalizeScore, validateIds } from './score-data.mjs';
+import { normalizeScore, scheduledScore, validateIds } from './score-data.mjs';
 import { selectedReference } from './cricclubs-reference.mjs';
+export { discoverLeagueSchedule as fetchPublicSchedule } from './cricclubs-schedule.mjs';
 
 export const overlayUrl = ids => {
   const valid = validateIds(ids.clubId, ids.matchId);
   return `https://cricclubs.com/liveScoreOverlayData.do?clubId=${valid.clubId}&matchId=${valid.matchId}`;
 };
-export async function fetchPublicScore(ids, { fetchFn = fetch, signal } = {}) {
+export async function fetchPublicScore(ids, { fetchFn = fetch, signal, allowScheduled = false, scheduleHint = null } = {}) {
   const response = await fetchFn(overlayUrl(ids), { cache: 'no-store', credentials: 'omit', mode: 'cors', redirect: 'error', referrerPolicy: 'no-referrer', signal });
   if (!response.ok) throw new Error(`CricClubs returned HTTP ${response.status}. Connect the relay or ask your league for feed access.`);
   const reader = response.body?.getReader();
@@ -22,17 +23,21 @@ export async function fetchPublicScore(ids, { fetchFn = fetch, signal } = {}) {
   let raw;
   try { raw = JSON.parse(new TextDecoder().decode(bytes).replace(/^\uFEFF/, '')); }
   catch { throw new Error('CricClubs returned a page instead of score JSON. Feed access may be restricted; no verification screen is bypassed.'); }
+  if (allowScheduled && raw && typeof raw === 'object' && !Array.isArray(raw) && !raw.values && !raw.schema && Object.keys(raw).length === 0) {
+    return { score: scheduledScore(ids, scheduleHint), ids, error: null, pollSeconds: 3, transport: 'direct' };
+  }
   return { score: normalizeScore(raw, ids), ids, error: null, pollSeconds: 5, transport: 'direct' };
 }
 
 // One read stream per studio. After relay connection the phone reads the same
 // normalized snapshot used by the encoder; it stops polling CricClubs directly.
 export function createFeed({ onUpdate, getRelay = () => null, visible = () => true, fetchFn = fetch, auto = true }) {
-  let ids = null, generation = 0, pending = null, timer = null, binding = '', last = null;
+  let ids = null, matchOpts = null, generation = 0, pending = null, timer = null, binding = '', last = null;
   let stream = null, streamReady = false, streamRetryAt = 0;
   function schedule() {
     clearTimeout(timer);
-    if (auto && ids && visible() && !streamReady) timer = setTimeout(() => { poll().catch(() => {}); }, 5000);
+    const delay = last?.score?.status === 'scheduled' ? 3000 : 5000;
+    if (auto && ids && visible() && !streamReady) timer = setTimeout(() => { poll().catch(() => {}); }, delay);
   }
   function closeStream() { const old = stream; stream = null; streamReady = false; old?.close(); }
   function cancel() { generation++; pending?.controller.abort(); pending = null; clearTimeout(timer); closeStream(); streamRetryAt = 0; }
@@ -82,12 +87,13 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
       try {
         let result;
         if (relay?.session) {
-          const key = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}`;
+          const key = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}:${matchOpts?.allowScheduled ? '1' : '0'}`;
+          const payload = matchOpts ? { ...selected, ...matchOpts } : selected;
           result = binding === key ? await relay.request('/api/score')
-            : await relay.request('/api/match', { method: 'POST', body: JSON.stringify(selected) });
+            : await relay.request('/api/match', { method: 'POST', body: JSON.stringify(payload) });
           if (gen === generation) binding = key;
           result = { ...result, transport: 'relay', delivery: 'poll' };
-        } else result = await fetchPublicScore(selected, { fetchFn, signal: controller.signal });
+        } else result = await fetchPublicScore(selected, { fetchFn, signal: controller.signal, allowScheduled: Boolean(matchOpts?.allowScheduled), scheduleHint: matchOpts?.scheduleHint || null });
         if (gen !== generation || getRelay()?.session !== relay?.session) return null;
         accept(result, selected);
         if (relay?.session) connectStream(relay, selected, gen);
@@ -101,7 +107,7 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
         // shared cloud reader can recover without another form submission.
         const payload = error.payload;
         if (relay?.session && payload?.ids && String(payload.ids.clubId) === selected.clubId && String(payload.ids.matchId) === selected.matchId) {
-          binding = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}`;
+          binding = `${relay.session}:${selected.clubId}:${selected.matchId}:${selected.league || ''}:${matchOpts?.allowScheduled ? '1' : '0'}`;
           last = { ...last, ...payload, ids: selected, score: last?.score ? { ...last.score, stale: true, error: message } : null,
             error: message, status: error.status, transport: 'relay', delivery: 'poll' };
           onUpdate?.(last); connectStream(relay, selected, gen); return last;
@@ -114,11 +120,21 @@ export function createFeed({ onUpdate, getRelay = () => null, visible = () => tr
   }
   return {
     get ids() { return ids; }, get snapshot() { return last; },
-    select(value) { const next = selectedReference(value); cancel(); ids = next; binding = ''; last = null; onUpdate?.({ ids, score: null, error: null }); return poll(true); },
+    select(value, opts = null) {
+      const next = selectedReference(value);
+      cancel();
+      ids = next;
+      matchOpts = opts && (opts.allowScheduled || opts.scheduleHint)
+        ? { allowScheduled: Boolean(opts.allowScheduled), ...(opts.scheduleHint ? { scheduleHint: opts.scheduleHint } : {}) }
+        : null;
+      binding = ''; last = null;
+      onUpdate?.({ ids, score: null, error: null });
+      return poll(true);
+    },
     changeSource() { cancel(); binding = ''; if (last?.score) last = { ...last, revision: undefined, score: { ...last.score, stale: true } }; return poll(true); },
     refresh() { return poll(true); },
     visibilityChanged() { if (!visible()) { cancel(); return Promise.resolve(last); } return poll(true); },
     pause() { cancel(); },
-    stop() { cancel(); ids = null; last = null; binding = ''; }
+    stop() { cancel(); ids = null; matchOpts = null; last = null; binding = ''; }
   };
 }

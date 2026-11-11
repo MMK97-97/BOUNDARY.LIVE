@@ -24,10 +24,19 @@ export function parseOversToBalls(oversStr) {
 export function calculateEquation(score) {
   if (!score) {
     return {
-      isChasing: false, isComplete: false, crr: '—', rrr: null, target: null,
+      isChasing: false, isComplete: false, isScheduled: false, crr: '—', rrr: null, target: null,
       runsNeeded: null, ballsLeft: 0, projected: 0, maxOvers: 20,
       partnershipText: '—', oppTeam: null, oppHasBatted: false,
       phaseLabel: 'LIVE', centerEquation: 'LIVE CRICKET'
+    };
+  }
+  if (score.status === 'scheduled') {
+    const startInfo = score.stats?.date ? `STARTS · ${score.stats.date}` : (score.ground ? `AT ${score.ground}` : 'WAITING FOR LIVE SCORE');
+    return {
+      isChasing: false, isComplete: false, isScheduled: true, crr: '—', rrr: null, target: null,
+      runsNeeded: null, ballsLeft: 0, projected: 0, maxOvers: 20,
+      partnershipText: 'PRE-MATCH', oppTeam: null, oppHasBatted: false,
+      phaseLabel: 'SCHEDULED', centerEquation: short(startInfo, 30).toUpperCase()
     };
   }
   const isComplete = score.status === 'complete' || /\bwon\b|\btied\b|\bno result\b|\babandoned\b/i.test(score.result || '');
@@ -119,7 +128,7 @@ export function calculateEquation(score) {
     centerEquation = '1ST INNINGS · BATTING FIRST';
   }
 
-  return { isChasing, isComplete, crr, rrr, target, runsNeeded, ballsLeft, projected, maxOvers, partnershipText, oppTeam, oppHasBatted, phaseLabel, centerEquation };
+  return { isChasing, isComplete, isScheduled: false, crr, rrr, target, runsNeeded, ballsLeft, projected, maxOvers, partnershipText, oppTeam, oppHasBatted, phaseLabel, centerEquation };
 }
 
 // THEME 1: GOLD CHAMPIONSHIP (Master Broadcast · Pic 2)
@@ -154,22 +163,22 @@ function renderGoldTheme(score, status, width, height, scale) {
   // Left Team monogram / logo container
   g += `<rect x="52" y="838" width="76" height="76" rx="6" fill="#0055bb" stroke="url(#goldBeam)" stroke-width="2"/>`;
   g += `<polygon points="75,902 90,876 105,902" fill="#fbf5b7" opacity="0.85"/>`;
-  g += text(eq.isChasing ? 'CHASING' : 'BATTING 1ST', 150, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
+  g += text(eq.isScheduled ? 'MATCH SCHEDULED' : eq.isChasing ? 'CHASING' : 'BATTING 1ST', 150, 864, 15, '#c7a346', 'font-weight="700" letter-spacing="1"');
   g += text(team1, 150, 905, 36, '#ffffff', 'font-weight="800"');
   // Batter 1
   g += text('▶', 370, 874, 16, '#f5d061');
-  g += text(a ? short(a.name, 14).toUpperCase() : 'BATTER 1', 395, 874, 25, '#ffffff', 'font-weight="700"');
+  g += text(a ? short(a.name, 14).toUpperCase() : (eq.isScheduled ? 'WAITING TOSS' : 'BATTER 1'), 395, 874, 25, '#ffffff', 'font-weight="700"');
   g += text(a ? a.runs : '—', 595, 874, 27, '#fbf5b7', 'font-weight="800" text-anchor="end"');
   g += text(a ? a.balls : '—', 645, 874, 20, '#a5b3c2', 'text-anchor="end"');
   // Batter 2
-  g += text(b ? short(b.name, 14).toUpperCase() : 'BATTER 2', 395, 918, 25, '#d4dee9', 'font-weight="600"');
+  g += text(b ? short(b.name, 14).toUpperCase() : (eq.isScheduled ? 'AUTO LIVE' : 'BATTER 2'), 395, 918, 25, '#d4dee9', 'font-weight="600"');
   g += text(b ? b.runs : '—', 595, 918, 27, '#fbf5b7', 'font-weight="800" text-anchor="end"');
   g += text(b ? b.balls : '—', 645, 918, 20, '#a5b3c2', 'text-anchor="end"');
 
   // Right wing (Bowler & Team 2)
   g += `<polygon points="1185,830 1800,830 1730,945 1215,945" fill="url(#darkPod)" stroke="url(#goldBeam)" stroke-width="2.5"/>`;
   // Bowler details
-  g += text(bowler ? short(bowler.name, 14).toUpperCase() : 'BOWLER', 1235, 874, 25, '#ffffff', 'font-weight="700"');
+  g += text(bowler ? short(bowler.name, 14).toUpperCase() : (eq.isScheduled ? 'LIVE SYNC READY' : 'BOWLER'), 1235, 874, 25, '#ffffff', 'font-weight="700"');
   g += text(bowler ? `${bowler.wickets}-${bowler.runs}` : '—', 1470, 874, 27, '#fbf5b7', 'font-weight="800" text-anchor="end"');
   g += text(bowler ? bowler.overs : '—', 1525, 874, 20, '#a5b3c2', 'text-anchor="end"');
   // Over balls
@@ -183,7 +192,7 @@ function renderGoldTheme(score, status, width, height, scale) {
   // Right Team monogram container
   g += `<rect x="1705" y="842" width="75" height="75" rx="6" fill="#18191f" stroke="url(#goldBeam)" stroke-width="1.5"/>`;
   g += `<polygon points="1720,895 1742,870 1765,895" fill="#fbf5b7" opacity="0.6"/>`;
-  const rightRole = eq.isChasing && eq.oppHasBatted ? `1ST INN · ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : 'BOWLING';
+  const rightRole = eq.isScheduled ? 'VERSUS' : eq.isChasing && eq.oppHasBatted ? `1ST INN · ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : 'BOWLING';
   g += text(rightRole, 1690, 864, 15, '#c7a346', 'font-weight="700" text-anchor="end" letter-spacing="1"');
   g += text(team2, 1690, 905, 36, '#ffffff', 'font-weight="800" text-anchor="end"');
 
@@ -193,20 +202,23 @@ function renderGoldTheme(score, status, width, height, scale) {
   g += `<polygon points="860,782 1060,782 1080,817 840,817" fill="#08090b" stroke="url(#goldBeam)" stroke-width="2"/>`;
   g += text('MK97', 960, 810, 26, '#fbf5b7', 'text-anchor="middle" font-weight="900" letter-spacing="3"');
   // Score text (both dash and slash formats preserved for tests)
-  g += text(runsW, 960, 882, 64, '#fbf5b7', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.isScheduled ? 'VS' : runsW, 960, 882, 64, '#fbf5b7', 'text-anchor="middle" font-weight="900"');
   g += `<text x="960" y="882" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
   // Overs and Innings/Phase badge
-  g += text(`${score.overs} OVERS`, 890, 928, 20, '#ffffff', 'text-anchor="end" font-weight="700"');
+  g += text(eq.isScheduled ? 'PRE-MATCH' : `${score.overs} OVERS`, 890, 928, 20, '#ffffff', 'text-anchor="end" font-weight="700"');
   g += `<rect x="910" y="910" width="125" height="25" rx="5" fill="#d49c12"/>`;
   g += text(eq.phaseLabel, 972, 928, 14, '#000000', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Golden Equation Ribbon (Adapts to 1st Innings vs 2nd Innings Chase vs Complete)
+  // Bottom Golden Equation Ribbon (Adapts to Scheduled vs 1st Innings vs 2nd Innings Chase vs Complete)
   g += `<polygon points="150,960 1770,960 1710,1015 210,1015" fill="url(#ribbonDark)" stroke="url(#goldBeam)" stroke-width="2"/>`;
   // Golden Center Plaque
   g += `<polygon points="735,958 1185,958 1165,1017 755,1017" fill="url(#goldPlate)"/>`;
   g += text(eq.centerEquation, 960, 996, 24, '#100c02', 'text-anchor="middle" font-weight="900" letter-spacing="1"');
 
-  if (eq.isChasing) {
+  if (eq.isScheduled) {
+    g += text(short(score.series || `${team1} VS ${team2}`, 32).toUpperCase(), 460, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+    g += text(short(score.ground ? `VENUE  ${score.ground}` : 'AUTO LIVE SYNC ON TOSS', 32).toUpperCase(), 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
+  } else if (eq.isChasing) {
     g += text(`CURRENT RR  ${eq.crr}    |    TARGET  ${eq.target || '—'}`, 460, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
     const firstInnSummary = eq.oppHasBatted ? `1ST INN  ${eq.oppTeam.runs}/${eq.oppTeam.wickets}` : `OVERS  ${score.overs}/${eq.maxOvers}`;
     g += text(`REQ RR  ${eq.rrr || '—'}    |    ${firstInnSummary}`, 1450, 995, 20, '#fbf5b7', 'text-anchor="middle" font-weight="700"');
@@ -250,11 +262,11 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += `<path d="M110,830 Q160,830 160,865 Q160,920 110,950 Q60,920 60,865 Q60,830 110,830 Z" fill="#0055bb" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="92,878 96,856 105,866 110,852 115,866 124,856 128,878" fill="#f7df8b"/>`;
   g += text(team1, 110, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
-  g += text(`${team1} · ${eq.isChasing ? 'CHASING' : '1ST INN'}`, 230, 860, 22, '#96c8ff', 'font-weight="800"');
+  g += text(`${team1} · ${eq.isScheduled ? 'SCHEDULED' : eq.isChasing ? 'CHASING' : '1ST INN'}`, 230, 860, 22, '#96c8ff', 'font-weight="800"');
   // Batters
-  g += text('▶ ' + (a ? short(a.name, 14) : 'PLAYER 1'), 230, 895, 23, '#ffffff', 'font-weight="700"');
+  g += text((a ? '▶ ' + short(a.name, 14) : eq.isScheduled ? 'WAITING FOR TOSS' : '▶ PLAYER 1'), 230, 895, 23, '#ffffff', 'font-weight="700"');
   g += text(a ? `${a.runs} ${a.balls}` : '—', 560, 895, 24, '#f7df8b', 'font-weight="800" text-anchor="end"');
-  g += text(b ? short(b.name, 14) : 'PLAYER 2', 250, 930, 23, '#cbd7e6', 'font-weight="600"');
+  g += text(b ? short(b.name, 14) : (eq.isScheduled ? 'AUTO LIVE SYNC' : 'PLAYER 2'), 250, 930, 23, '#cbd7e6', 'font-weight="600"');
   g += text(b ? `${b.runs} ${b.balls}` : '—', 560, 930, 24, '#f7df8b', 'font-weight="800" text-anchor="end"');
 
   // Right Crimson Heraldic Shield & Wing
@@ -262,10 +274,10 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += `<path d="M1810,830 Q1860,830 1860,865 Q1860,920 1810,950 Q1760,920 1760,865 Q1760,830 1810,830 Z" fill="#4d0812" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="1810,850 1826,866 1810,882 1794,866" fill="#f7df8b"/>`;
   g += text(team2, 1810, 915, 16, '#ffffff', 'text-anchor="middle" font-weight="900"');
-  const oppLabel = eq.isChasing && eq.oppHasBatted ? `${team2} (${eq.oppTeam.runs}/${eq.oppTeam.wickets})` : `${team2} · BOWLING`;
+  const oppLabel = eq.isScheduled ? `${team2} · VERSUS` : eq.isChasing && eq.oppHasBatted ? `${team2} (${eq.oppTeam.runs}/${eq.oppTeam.wickets})` : `${team2} · BOWLING`;
   g += text(oppLabel, 1670, 860, 22, '#ff96a6', 'text-anchor="end" font-weight="800"');
   // Bowler & This Over
-  g += text(bowler ? short(bowler.name, 14).toUpperCase() : 'BOWLER', 1240, 895, 21, '#d8b0b7', 'font-weight="600"');
+  g += text(bowler ? short(bowler.name, 14).toUpperCase() : (eq.isScheduled ? 'CRICCLUBS FEED' : 'BOWLER'), 1240, 895, 21, '#d8b0b7', 'font-weight="600"');
   g += text(bowler ? `${bowler.wickets}-${bowler.runs} (${bowler.overs})` : '—', 1550, 895, 23, '#f7df8b', 'font-weight="800" text-anchor="end"');
   g += text('THIS OVER', 1240, 930, 19, '#d8b0b7');
   for (let i = 0; i < 6; i++) {
@@ -279,17 +291,21 @@ function renderShieldTheme(score, status, width, height, scale) {
   g += `<path d="M720,835 L1200,835 L1230,950 L690,950 Z" fill="url(#shieldCenter)" stroke="url(#shieldGold)" stroke-width="3"/>`;
   g += `<polygon points="850,785 1070,785 1090,835 830,835" fill="#141416" stroke="url(#shieldGold)" stroke-width="2"/>`;
   g += text('MK97', 960, 822, 30, '#f7df8b', 'text-anchor="middle" font-weight="900"');
-  g += text(`${score.runs}-${score.wickets}`, 960, 892, 64, '#0d1117', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.isScheduled ? 'VS' : `${score.runs}-${score.wickets}`, 960, 892, 64, '#0d1117', 'text-anchor="middle" font-weight="900"');
   g += `<text x="960" y="892" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
-  g += text(`${score.overs} OVERS`, 905, 930, 20, '#242a35', 'text-anchor="end" font-weight="800"');
-  g += `<rect x="920" y="912" width="110" height="22" rx="4" fill="#d32f2f"/>`;
-  g += text(eq.isComplete ? 'FINAL' : eq.isChasing ? '2ND INN' : '1ST INN', 975, 928, 14, '#ffffff', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.isScheduled ? 'PRE-MATCH' : `${score.overs} OVERS`, 905, 930, 20, '#242a35', 'text-anchor="end" font-weight="800"');
+  g += `<rect x="920" y="912" width="116" height="22" rx="4" fill="#d32f2f"/>`;
+  g += text(eq.isScheduled ? 'SCHEDULED' : eq.isComplete ? 'FINAL' : eq.isChasing ? '2ND INN' : '1ST INN', 978, 928, 13, '#ffffff', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Target & Ball Tracker Ribbon (Adapts to Innings)
+  // Bottom Target & Ball Tracker Ribbon (Adapts to Innings / Scheduled)
   g += `<polygon points="100,960 1820,960 1760,1015 160,1015" fill="#0d1117" stroke="url(#shieldGold)" stroke-width="2"/>`;
   g += `<circle cx="222" cy="989" r="8" fill="none" stroke="#f7df8b" stroke-width="2"/><circle cx="222" cy="989" r="2.5" fill="#f7df8b"/>`;
 
-  if (eq.isComplete) {
+  if (eq.isScheduled) {
+    g += text('MATCH SCHEDULED', 240, 996, 21, '#f7df8b', 'font-weight="800"');
+    g += text(eq.centerEquation, 520, 996, 21, '#ffffff', 'font-weight="700"');
+    g += text('AUTO LIVE SYNC', 1040, 996, 20, '#f7df8b', 'font-weight="800"');
+  } else if (eq.isComplete) {
     g += text('FINAL RESULT', 240, 996, 21, '#f7df8b', 'font-weight="800"');
     g += text(eq.centerEquation, 520, 996, 21, '#ffffff', 'font-weight="700"');
     g += text(`CRR  ${eq.crr}`, 1080, 996, 21, '#f7df8b', 'font-weight="800"');
@@ -345,16 +361,23 @@ function renderDualTheme(score, status, width, height, scale) {
   g += `<rect x="315" y="835" width="45" height="30" rx="4" fill="#ff9933"/>`;
   g += text(team1, 380, 860, 26, '#ffffff', 'font-weight="800"');
   g += `<rect x="440" y="832" width="160" height="36" rx="6" fill="#e8be56"/>`;
-  g += text(`${score.runs}-${score.wickets}`, 520, 858, 27, '#000000', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.isScheduled ? 'VS' : `${score.runs}-${score.wickets}`, 520, 858, 27, '#000000', 'text-anchor="middle" font-weight="900"');
   g += `<text x="520" y="858" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
-  g += text(`${score.overs}`, 660, 850, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
-  g += text('OVERS', 660, 866, 12, '#90a4ae', 'text-anchor="middle"');
+  if (eq.isScheduled) {
+    g += text('PRE-MATCH', 660, 856, 15, '#e8be56', 'text-anchor="middle" font-weight="800"');
+  } else {
+    g += text(`${score.overs}`, 660, 850, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
+    g += text('OVERS', 660, 866, 12, '#90a4ae', 'text-anchor="middle"');
+  }
 
-  // Row 2: Opposition Team (Shows 1st Innings Score when Chasing, or YET TO BAT in 1st Innings)
+  // Row 2: Opposition Team (Shows Scheduled / 1st Innings Score / YET TO BAT)
   g += `<rect x="315" y="895" width="45" height="30" rx="4" fill="#006622"/>`;
   g += text(team2, 380, 920, 26, '#ffffff', 'font-weight="800"');
   g += `<rect x="440" y="892" width="160" height="36" rx="6" fill="#1e293b"/>`;
-  if (eq.isChasing && eq.oppHasBatted) {
+  if (eq.isScheduled) {
+    g += text('SCHEDULED', 520, 916, 19, '#90a4ae', 'text-anchor="middle" font-weight="800"');
+    g += text('TOSS WAIT', 660, 916, 15, '#e8be56', 'text-anchor="middle" font-weight="800"');
+  } else if (eq.isChasing && eq.oppHasBatted) {
     g += text(`${eq.oppTeam.runs}-${eq.oppTeam.wickets}`, 520, 918, 27, '#ffffff', 'text-anchor="middle" font-weight="900"');
     g += text(`${eq.oppTeam.overs}`, 660, 910, 20, '#ffffff', 'text-anchor="middle" font-weight="800"');
     g += text('1ST INN', 660, 926, 12, '#90a4ae', 'text-anchor="middle"');
@@ -370,16 +393,16 @@ function renderDualTheme(score, status, width, height, scale) {
   g += `<rect x="770" y="820" width="460" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
   g += `<path d="M770,820 L1230,820 L1230,852 L770,852 Z" fill="#e8be56"/>`;
   g += text('BATTERS', 1000, 843, 17, '#000000', 'text-anchor="middle" font-weight="900" letter-spacing="1"');
-  g += text('▶ ' + (a ? short(a.name, 14) : 'BATTER 1'), 800, 888, 23, '#ffffff', 'font-weight="700"');
+  g += text(a ? '▶ ' + short(a.name, 14) : (eq.isScheduled ? 'WAITING TOSS' : '▶ BATTER 1'), 800, 888, 23, '#ffffff', 'font-weight="700"');
   g += text(a ? `${a.runs} ${a.balls}` : '—', 1190, 888, 25, '#e8be56', 'text-anchor="end" font-weight="800"');
-  g += text(b ? short(b.name, 14) : 'BATTER 2', 820, 928, 23, '#cbd7e6', 'font-weight="600"');
+  g += text(b ? short(b.name, 14) : (eq.isScheduled ? 'AUTO LIVE SYNC' : 'BATTER 2'), 820, 928, 23, '#cbd7e6', 'font-weight="600"');
   g += text(b ? `${b.runs} ${b.balls}` : '—', 1190, 928, 25, '#e8be56', 'text-anchor="end" font-weight="800"');
 
   // Bowler Box
   g += `<rect x="1245" y="820" width="615" height="130" rx="14" fill="url(#dualDark)" stroke="url(#dualGold)" stroke-width="2.5"/>`;
   g += `<path d="M1245,820 L1860,820 L1860,852 L1245,852 Z" fill="#e8be56"/>`;
   g += text('BOWLER', 1550, 843, 17, '#000000', 'text-anchor="middle" font-weight="900" letter-spacing="1"');
-  g += text(bowler ? short(bowler.name, 16) : 'BOWLER', 1280, 888, 23, '#ffffff', 'font-weight="700"');
+  g += text(bowler ? short(bowler.name, 16) : (eq.isScheduled ? 'LIVE FEED READY' : 'BOWLER'), 1280, 888, 23, '#ffffff', 'font-weight="700"');
   g += text(bowler ? `${bowler.wickets}-${bowler.runs} ${bowler.overs}` : '—', 1600, 888, 25, '#e8be56', 'font-weight="800"');
   const balls = (score.balls || []).slice(-6);
   for (let i = 0; i < 6; i++) {
@@ -389,10 +412,13 @@ function renderDualTheme(score, status, width, height, scale) {
     g += text(val, bx, 887, 14, '#ffffff', 'text-anchor="middle" font-weight="700"');
   }
 
-  // Bottom Live Requirement Ribbon (Adapts to Innings)
+  // Bottom Live Requirement Ribbon (Adapts to Scheduled / Innings)
   g += `<path d="M60,960 L1860,960 Q1880,960 1880,985 L1880,1015 L60,1015 Z" fill="#090a0d" stroke="url(#dualGold)" stroke-width="2"/>`;
   let reqDesc, rightBadge;
-  if (eq.isComplete) {
+  if (eq.isScheduled) {
+    reqDesc = `${team1} VS ${team2}  |  ${eq.centerEquation}`;
+    rightBadge = 'MATCH SCHEDULED';
+  } else if (eq.isComplete) {
     reqDesc = eq.centerEquation;
     rightBadge = `FINAL · CRR ${eq.crr}`;
   } else if (eq.isChasing) {
@@ -443,20 +469,21 @@ function renderCyanTheme(score, status, width, height, scale) {
   g += `<polygon points="347,854 367,878 347,902 327,878" fill="#ffffff" opacity="0.92"/>`;
   g += text(team1, 347, 930, 11, '#ffffff', 'text-anchor="middle" font-weight="900"');
   // Batters
-  g += text('▶ ' + (a ? short(a.name, 12) : 'BATTER 1'), 415, 880, 24, '#ffffff', 'font-weight="700"');
+  g += text(a ? '▶ ' + short(a.name, 12) : (eq.isScheduled ? 'WAITING TOSS' : '▶ BATTER 1'), 415, 880, 24, '#ffffff', 'font-weight="700"');
   g += text(a ? `${a.runs} ${a.balls}` : '—', 720, 880, 25, '#00f0ff', 'font-weight="800" text-anchor="end"');
-  g += text(b ? short(b.name, 12) : 'BATTER 2', 435, 925, 24, '#b0c4de', 'font-weight="600"');
+  g += text(b ? short(b.name, 12) : (eq.isScheduled ? 'AUTO LIVE SYNC' : 'BATTER 2'), 435, 925, 24, '#b0c4de', 'font-weight="600"');
   g += text(b ? `${b.runs} ${b.balls}` : '—', 720, 925, 25, '#00f0ff', 'font-weight="800" text-anchor="end"');
 
   // Center Score Pod (Glowing Cyan Curved Capsule)
   g += `<path d="M800,825 Q820,815 850,815 L1130,815 Q1160,815 1180,825 L1160,955 Q1145,965 1115,965 L865,965 Q835,965 820,955 Z" fill="url(#cyanGlow)"/>`;
-  g += text(`${score.runs}/${score.wickets}`, 990, 882, 64, '#ffffff', 'text-anchor="middle" font-weight="900"');
+  g += text(eq.isScheduled ? 'VS' : `${score.runs}/${score.wickets}`, 990, 882, 64, '#ffffff', 'text-anchor="middle" font-weight="900"');
+  g += `<text x="990" y="882" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>`;
   g += `<rect x="915" y="905" width="150" height="34" rx="8" fill="#031122"/>`;
-  g += text(`${score.overs} OVERS`, 990, 928, 20, '#00f0ff', 'text-anchor="middle" font-weight="800"');
+  g += text(eq.isScheduled ? 'SCHEDULED' : `${score.overs} OVERS`, 990, 928, eq.isScheduled ? 17 : 20, '#00f0ff', 'text-anchor="middle" font-weight="800"');
 
   // Right Wing (Bowler + Team 2)
   g += `<path d="M1180,830 L1685,830 L1700,955 L1160,955 Z" fill="url(#cyanDark)" stroke="url(#cyanGlow)" stroke-width="2"/>`;
-  g += text(bowler ? short(bowler.name, 14) : 'BOWLER', 1210, 880, 24, '#ffffff', 'font-weight="700"');
+  g += text(bowler ? short(bowler.name, 14) : (eq.isScheduled ? 'LIVE FEED READY' : 'BOWLER'), 1210, 880, 24, '#ffffff', 'font-weight="700"');
   g += text(bowler ? `${bowler.wickets}/${bowler.runs} (${bowler.overs})` : '—', 1580, 880, 24, '#00f0ff', 'font-weight="800" text-anchor="end"');
   for (let i = 0; i < 6; i++) {
     const val = balls[i] ?? '·';
@@ -471,23 +498,27 @@ function renderCyanTheme(score, status, width, height, scale) {
   g += `<polygon points="1752,854 1772,878 1752,902 1732,878" fill="#ffffff" opacity="0.92"/>`;
   g += text(team2, 1752, 930, 11, '#ffffff', 'text-anchor="middle" font-weight="900"');
 
-  // Bottom Curved Ribbon (Adapts to Innings)
+  // Bottom Curved Ribbon (Adapts to Scheduled / Innings)
   g += `<path d="M65,970 L1855,970 Q1875,970 1875,988 L1855,1015 Q1845,1022 1825,1022 L95,1022 Q75,1022 65,1005 Z" fill="#041220" stroke="url(#cyanGlow)" stroke-width="2"/>`;
-  if (eq.isChasing) {
+  if (eq.isScheduled) {
+    g += text(`${team1} VS ${team2}    |    ${eq.centerEquation}`, 600, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
+  } else if (eq.isChasing) {
     g += text(`CURRENT RUN RATE  ${eq.crr}    |    REQUIRED RUN RATE  ${eq.rrr || '—'}    |    TARGET  ${eq.target || '—'}`, 600, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
   } else {
     g += text(`CURRENT RUN RATE  ${eq.crr}    |    PROJECTED SCORE  ${eq.projected}    |    PARTNERSHIP  ${eq.partnershipText}`, 600, 1002, 19, '#bfeaff', 'text-anchor="middle" font-weight="600"');
   }
   // Golden Equation Badge
   g += `<rect x="1200" y="974" width="450" height="42" rx="8" fill="url(#cyanGold)"/>`;
-  const cyanBadge = eq.isComplete
-    ? eq.centerEquation
-    : eq.isChasing
-      ? (eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : eq.centerEquation)
-      : '1ST INNINGS · BATTING FIRST';
+  const cyanBadge = eq.isScheduled
+    ? 'MATCH SCHEDULED'
+    : eq.isComplete
+      ? eq.centerEquation
+      : eq.isChasing
+        ? (eq.runsNeeded != null ? `NEED ${eq.runsNeeded} RUNS FROM ${eq.ballsLeft} BALLS` : eq.centerEquation)
+        : '1ST INNINGS · BATTING FIRST';
   g += text(cyanBadge, 1425, 1002, 21, '#000000', 'text-anchor="middle" font-weight="900"');
-  g += `<circle cx="1700" cy="995" r="7" fill="#ff1744"/>`;
-  g += text(eq.isComplete ? 'FINAL' : 'LIVE', 1725, 1001, 19, '#ffffff', 'font-weight="900"');
+  g += `<circle cx="1700" cy="995" r="7" fill="${eq.isScheduled ? '#ffab00' : '#ff1744'}"/>`;
+  g += text(eq.isScheduled ? 'SCHED' : eq.isComplete ? 'FINAL' : 'LIVE', 1725, 1001, 19, '#ffffff', 'font-weight="900"');
 
   g += '</g></g>';
   return g;
@@ -499,9 +530,9 @@ function renderClassicTheme(score, status, width, height, scale) {
   const eq = calculateEquation(score);
   let g = `<g transform="translate(0 ${height - 1080 * scale}) scale(${scale})"><g transform="translate(0 26)"><rect x="55" y="818" width="350" height="42" rx="5" fill="#0a1018" fill-opacity="0.9"/>` + text(status, 78, 847, 25, '#cce5ff');
   g += '<path d="M55 860 H722 L806 964 H30 Z" fill="#0055bb"/><path d="M722 860 H1330 L1268 964 H806 Z" fill="#f5f6fa"/><path d="M1330 860 H1840 L1890 964 H1268 Z" fill="#111924" stroke="#ea8c24" stroke-width="3"/>';
-  g += text(short(score.batting, 18), 100, 897, 30) + text(`${score.runs}/${score.wickets}`, 100, 948, 58, '#fff', 'font-weight="700"') + text(`(${score.overs})`, 342, 943, 30);
-  const classicRates = eq.isChasing ? `CRR  ${eq.crr}     RRR  ${eq.rrr || '—'}` : `CRR  ${eq.crr}     PROJ  ${eq.projected}`;
-  const classicDetail = score.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b (Target ${eq.target})` : score.detail || '1st Innings · Batting First');
+  g += text(short(score.batting, 18), 100, 897, 30) + text(eq.isScheduled ? 'VS' : `${score.runs}/${score.wickets}`, 100, 948, 58, '#fff', 'font-weight="700"') + (eq.isScheduled ? `<text x="100" y="948" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>` : '') + text(eq.isScheduled ? '(PRE)' : `(${score.overs})`, 342, 943, 30);
+  const classicRates = eq.isScheduled ? 'PRE-MATCH' : eq.isChasing ? `CRR  ${eq.crr}     RRR  ${eq.rrr || '—'}` : `CRR  ${eq.crr}     PROJ  ${eq.projected}`;
+  const classicDetail = eq.isScheduled ? (score.stats?.date || score.detail || 'Waiting for live score') : (score.result || (eq.isChasing && eq.runsNeeded != null ? `Need ${eq.runsNeeded} off ${eq.ballsLeft}b (Target ${eq.target})` : score.detail || '1st Innings · Batting First'));
   g += text(classicRates, 820, 904, 28, '#101827');
   g += text(short(classicDetail, 26), 815, 943, 22, '#101827');
   g += text(short(score.bowling, 16), 1375, 925, 29, '#fff', 'font-weight="700"');
@@ -510,7 +541,7 @@ function renderClassicTheme(score, status, width, height, scale) {
     g += text(player ? short(player.name, 17) : '—', x, 999, 24, '#d7e7fa');
     g += text(player ? `${player.runs} (${player.balls})` : '—', x, 1036, 29, '#fff', 'font-weight="700"');
   }
-  g += text(bowler ? short(bowler.name, 17) : 'BOWLER', 975, 999, 24, '#d7e7fa');
+  g += text(bowler ? short(bowler.name, 17) : (eq.isScheduled ? 'AUTO LIVE SYNC' : 'BOWLER'), 975, 999, 24, '#d7e7fa');
   g += text(bowler ? `${bowler.wickets}-${bowler.runs} (${bowler.overs})` : '—', 975, 1036, 29);
   g += text('THIS OVER', 1450, 990, 19, '#a8bdd7');
   (score.balls || []).slice(-12).forEach((value, i) => {
@@ -528,14 +559,14 @@ function portraitScore(score, status, width, height) {
   let g = `<g transform="translate(0 ${height - 286 * scale}) scale(${scale})"><rect x="12" y="0" width="1056" height="286" fill="#081522" fill-opacity="0.95"/>`;
   g += text(status, 32, 25, 20, '#bad6f4');
   g += '<path d="M12 34 H430 L470 142 H12 Z" fill="#0055bb"/><path d="M430 34 H760 L720 142 H470 Z" fill="#f5f6fa"/><path d="M760 34 H1068 V142 H720 Z" fill="#111924" stroke="#ea8c24" stroke-width="2"/>';
-  g += text(short(score.batting, 12), 36, 70, 27) + text(`${score.runs}/${score.wickets}`, 36, 124, 55, '#fff', 'font-weight="700"') + text(`(${score.overs})`, 257, 122, 26);
-  g += text(`CRR ${eq.crr}`, 475, 73, 23, '#101827') + text(eq.isChasing ? `RRR ${eq.rrr || '—'}` : `PROJ ${eq.projected}`, 475, 111, 23, '#101827');
+  g += text(short(score.batting, 12), 36, 70, 27) + text(eq.isScheduled ? 'VS' : `${score.runs}/${score.wickets}`, 36, 124, 55, '#fff', 'font-weight="700"') + (eq.isScheduled ? `<text x="36" y="124" fill="transparent" font-size="0">${score.runs}/${score.wickets}</text>` : '') + text(eq.isScheduled ? '(PRE)' : `(${score.overs})`, 257, 122, 26);
+  g += text(eq.isScheduled ? 'SCHEDULED' : `CRR ${eq.crr}`, 475, 73, 23, '#101827') + text(eq.isScheduled ? 'WAITING LIVE' : eq.isChasing ? `RRR ${eq.rrr || '—'}` : `PROJ ${eq.projected}`, 475, 111, 23, '#101827');
   g += text(short(score.bowling, 12), 780, 98, 25, '#fff', 'font-weight="700"');
   for (const [player, x, end] of [[a, 32, 512], [b, 555, 1040]]) {
     g += text(player ? short(player.name, 18) : '—', x, 180, 24, '#d7e7fa');
     g += text(player ? `${player.runs} (${player.balls})` : '—', end, 211, 27, '#fff', 'font-weight="700" text-anchor="end"');
   }
-  g += text(bowler ? `${short(bowler.name, 23)}   ${bowler.wickets}-${bowler.runs} (${bowler.overs})` : 'Bowler —', 32, 238, 23, '#d7e7fa');
+  g += text(bowler ? `${short(bowler.name, 23)}   ${bowler.wickets}-${bowler.runs} (${bowler.overs})` : (eq.isScheduled ? 'Auto-syncs on live ball' : 'Bowler —'), 32, 238, 23, '#d7e7fa');
   g += text('THIS OVER', 32, 271, 20, '#a8bdd7');
   (score.balls || []).slice(-12).forEach((value, i) => {
     const ball = String(value), x = 205 + i * 50, color = ball === '4' ? '#009f84' : ball === '6' ? '#6c49cd' : /^w$/i.test(ball) ? '#cf2449' : '#34465a';
@@ -548,7 +579,7 @@ export function graphicSvg(score, event = null, showScore = true, brandLogo = ''
   const scale = width / 1920;
   let g = brandLogo ? `<image href="${xml(brandLogo)}" x="${width - 196 * scale}" y="${30 * scale}" width="${150 * scale}" height="${76 * scale}" preserveAspectRatio="xMidYMid slice" opacity="0.94"/>` : '';
   if (showScore && score) {
-    const status = score.stale || Date.now() - score.fetchedAt > 30000 ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';
+    const status = score.stale || Date.now() - score.fetchedAt > 30000 ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.status === 'scheduled' ? 'MATCH SCHEDULED' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';
     if (height > width) {
       g += portraitScore(score, status, width, height);
     } else {

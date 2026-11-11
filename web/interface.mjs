@@ -1,5 +1,5 @@
 import { captureProfile, programSize } from './capture.mjs';
-import { PROFILES } from './core.mjs';
+import { PROFILES, effectiveBitrate } from './core.mjs';
 import { graphicSvg } from './score-graphic.mjs';
 
 export const SCREEN_ROUTES = Object.freeze({
@@ -101,6 +101,7 @@ export function installInterface({ state, ui, home, notice }) {
     $('drawerSteps').hidden = !['match', 'graphics', 'settings', 'quality', 'youtube', 'youtubecreate', 'events'].includes(name);
     if (['youtube', 'youtubecreate', 'events'].includes(name)) document.querySelector(`[data-drawer="${name}"]`).append($('youtubeFeedback'));
     updateSteps();
+    if (name === 'graphics') update();
   }
   function closed() {
     currentPanel = null; history.length = 0; $('home').inert = false; $('authScreen').inert = false;
@@ -175,11 +176,12 @@ export function installInterface({ state, ui, home, notice }) {
       button.disabled = locked() || Boolean(state.cameraBusy);
     }
     const profile = captureProfile(state.camera) || (state.captureResolution === 'auto' ? '1080' : state.captureResolution);
-    const bitrate = (PROFILES[$('qualitySelect').value] || PROFILES.balanced).bitrate * (profile === '1080' ? 1 : profile === '720' ? .56 : .25);
-    $('qualityActual').textContent = `Phone upload target: ${(bitrate / 1_000_000).toFixed(1)} Mbps · 30 FPS. ${state.captureResolution === 'auto' && !state.camera ? 'Auto checks the camera when it opens.' : 'Actual capture is checked before streaming.'}`;
+    const bitrate = effectiveBitrate($('qualitySelect').value, profile, Boolean(state.coolMode));
+    const fps = state.coolMode ? 24 : 30;
+    $('qualityActual').textContent = `Phone upload target: ${(bitrate / 1_000_000).toFixed(1)} Mbps · ${fps} FPS${state.coolMode ? ' (Cool Mode)' : ''}. ${state.captureResolution === 'auto' && !state.camera ? 'Auto checks the camera when it opens.' : 'Actual capture is checked before streaming.'}`;
     $('homeWelcome').textContent = state.session ? 'Welcome back.' : 'Your match day starts here.';
     const score = state.score;
-    $('homeMatchQuick').textContent = score ? `${score.batting} ${score.runs}/${score.wickets} · Match ${score.matchId}` : 'Select league, fetch CricClubs match';
+    $('homeMatchQuick').textContent = score ? (score.status === 'scheduled' ? `${score.batting} v ${score.bowling} · Scheduled` : `${score.batting} ${score.runs}/${score.wickets} · Match ${score.matchId}`) : 'Select league, fetch CricClubs match';
     $('matchTeamPreview').hidden = !score;
     for (const [side, name] of [['A', score?.batting], ['B', score?.bowling]]) {
       $('matchTeam' + side + 'Name').textContent = name || '—';
@@ -187,14 +189,15 @@ export function installInterface({ state, ui, home, notice }) {
     }
     const venueAndDate = [score?.ground, score?.stats?.date].filter(Boolean).join(' · ');
     for (const [id, value] of [['matchSeriesValue', score?.series], ['matchClubValue', score?.clubId], ['matchIdValue', score?.matchId], ['matchVenueValue', venueAndDate]]) $(id).textContent = value || '—';
-    $('graphicsSourceState').textContent = !score ? 'No match loaded' : score.stale ? 'Score delayed' : score.status === 'complete' ? 'Match complete' : 'Source connected';
+    $('graphicsSourceState').textContent = !score ? 'No match loaded' : score.stale ? 'Score delayed' : score.status === 'scheduled' ? 'Scheduled · Waiting for live' : score.status === 'complete' ? 'Match complete' : 'Source connected';
     $('graphicsScorePreview').hidden = !score; $('graphicsPreviewEmpty').hidden = Boolean(score);
     const theme = state.overlayStyle || 'gold';
     for (const card of document.querySelectorAll('[data-overlay-card]')) {
       card.classList.toggle('selected', card.dataset.overlayCard === theme);
     }
+    const shouldRenderPreview = !score || !state.coolMode || !state.live || currentPanel === 'graphics';
     const key = JSON.stringify([score, programSize(state.camera), theme]);
-    if (key !== scoreDrawingKey) {
+    if (shouldRenderPreview && key !== scoreDrawingKey) {
       scoreDrawingKey = key;
       if (score) {
         const canvas = programSize(state.camera), barHeight = canvas.height > canvas.width ? 286 * canvas.width / 1080 : 236 * canvas.width / 1920;

@@ -9,16 +9,17 @@ export function captureReady(settings, resolution = '1080') {
   const profile = captureProfile(settings);
   return Boolean(profile && (resolution === 'auto' || SIZES[resolution] && Number(profile) >= Number(resolution)));
 }
-export async function openNativeCamera(media, resolution = '1080', deviceId = '', portrait = false) {
+export async function openNativeCamera(media, resolution = '1080', deviceId = '', portrait = false, { frameRate = 30 } = {}) {
   const sizes = resolution === 'auto' ? ['1080', '720', '480'] : SIZES[resolution] ? [resolution] : [];
   const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  const fps = Math.max(15, Math.min(60, Number(frameRate) || 30));
   let lastError;
   for (const size of sizes) {
     const target = SIZES[size];
     const orientations = portrait ? [[target.height, target.width], [target.width, target.height]] : [[target.width, target.height], [target.height, target.width]];
     // Some cameras expose a larger sensor mode rather than an exact 16:9 mode.
     for (const [w, h, exact] of [...orientations.map(pair => [...pair, true]), [...orientations[0], false]]) {
-      const video = { width: { [exact ? 'exact' : 'ideal']: w }, height: { [exact ? 'exact' : 'ideal']: h }, frameRate: { ideal: 30, max: 30 },
+      const video = { width: { [exact ? 'exact' : 'ideal']: w }, height: { [exact ? 'exact' : 'ideal']: h }, frameRate: exact ? { ideal: fps, max: fps } : { ideal: fps },
         ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }) };
       if (media.getSupportedConstraints?.().resizeMode) video.resizeMode = 'none';
       let stream;
