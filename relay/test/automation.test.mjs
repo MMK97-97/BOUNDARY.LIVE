@@ -71,3 +71,52 @@ test('graphics escape score/player markup and cache across consecutive event fra
   assert.ok(graphicSvg(firstInnings, null, true, { width: 1920, height: 1080 }, 'dual').includes('YET TO BAT'));
   assert.ok(graphicSvg(chasing, null, true, { width: 1920, height: 1080 }, 'dual').includes('163-6'));
 });
+
+test('CricketEvents detects live four, six, and wicket stingers without repeating corrections', () => {
+  const e = new CricketEvents();
+  assert.deepEqual(e.update(score()), []);
+  assert.deepEqual(e.lastMoments, []);
+
+  // Boundary Four (batter fours + 1, ball appended '4')
+  const fourScore = score({ runs: '102', overs: '8.0', balls: ['.', '4'], batters: [{ id: 'a', name: 'Batter A', runs: '53', balls: '41', fours: '4', sixes: '0' }] });
+  e.update(fourScore);
+  assert.deepEqual(e.lastMoments.map(m => m.type), ['four']);
+  assert.equal(e.lastMoments[0].title, 'Batter A');
+
+  // Identical repeat poll emits nothing
+  e.update(fourScore);
+  assert.deepEqual(e.lastMoments, []);
+
+  // Maximum Six
+  const sixScore = score({ runs: '108', overs: '8.1', balls: ['.', '4', '6'], batters: [{ id: 'a', name: 'Batter A', runs: '59', balls: '42', fours: '4', sixes: '1' }] });
+  e.update(sixScore);
+  assert.deepEqual(e.lastMoments.map(m => m.type), ['six']);
+
+  // Wicket Dismissal
+  const wktScore = score({ runs: '108', wickets: '2', overs: '8.2', balls: ['.', '4', '6', 'W'], lastOut: { name: 'Batter A', runs: '59', balls: '43', status: 'b Bowler B' } });
+  e.update(wktScore);
+  assert.deepEqual(e.lastMoments.map(m => m.type), ['wicket']);
+  assert.match(e.lastMoments[0].subtitle, /Batter A 59\(43\)/);
+});
+
+test('graphicSvg renders bounded stingers, match summary card, and XML-escaped custom broadcast ticker', () => {
+  const s = score({ series: 'FWCWL Finals', ground: 'Rodney Park', teams: [{ code: 'ICAT', name: 'ICAT', runs: '98', wickets: '1', overs: '7.5', runRate: '12.5' }, { code: 'RBCC', name: 'RBCC', runs: '0', wickets: '0', overs: '0.0' }] });
+  const fourSvg = graphicSvg(s, { type: 'four', title: 'Batter A', subtitle: '49 (40)', milestone: 4 }, true, { width: 1920, height: 1080 }, 'gold', '<script>FWCWL FINALS</script>');
+  assert.ok(fourSvg.includes('BOUNDARY FOUR!'));
+  assert.equal(fourSvg.includes('<script>FWCWL FINALS</script>'), false);
+  assert.ok(fourSvg.includes('&lt;SCRIPT&gt;FWCWL FINALS&lt;/SCRIPT&gt;') || fourSvg.includes('&lt;script&gt;'));
+
+  const sixSvg = graphicSvg(s, { type: 'six', title: 'Batter A', subtitle: '55 (41)', milestone: 6 });
+  assert.ok(sixSvg.includes('MAXIMUM SIX!'));
+
+  const wktSvg = graphicSvg(s, { type: 'wicket', title: 'Batter A', subtitle: 'b Bowler B', milestone: 2 });
+  assert.ok(wktSvg.includes('WICKET #2') && wktSvg.includes('OUT'));
+
+  const sumSvg = graphicSvg(s, { type: 'summary', cards: { batting: s.batters, bowling: [s.bowler] } });
+  assert.ok(sumSvg.includes('MATCH SUMMARY') && sumSvg.includes('KEY PERFORMERS'));
+
+  const render = new GraphicRenderer(findFont());
+  const p1 = render.frame(score({ fetchedAt: 0 }), null, true, 'gold', 'SPONSOR A');
+  const p2 = render.frame(score({ fetchedAt: 0 }), null, true, 'gold', 'SPONSOR B');
+  assert.notEqual(Buffer.compare(p1, p2), 0);
+});

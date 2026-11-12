@@ -411,3 +411,23 @@ body.eco-streaming .stadium-edge,body.eco-streaming .field-lines{animation:none!
 .design-v19 #ytEligibilityBadge{display:inline-block;margin:2px 0 8px}
 .design-v19 #ytChannelRow{margin-bottom:10px}
 .design-v19 #ytVerifyLink{margin-top:10px;text-align:center}
+.design-v19 .telemetry-hud{padding:4px 8px;border-radius:6px;border:1px solid #2b657e;background:#031b2ad9;color:#a8e5ff;font-size:10px;font-weight:700;letter-spacing:.2px;white-space:nowrap}
+.design-v19 .telemetry-hud.good{border-color:#1ca977;color:#9ef5d1}
+.design-v19 .telemetry-hud.warning{border-color:#d89c28;color:#ffe69b}
+.design-v19 .schedule-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}
+.design-v19 .schedule-filters{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.design-v19 .schedule-filters button{min-height:30px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid #295c78;background:#042032;color:#b8d7e8}
+.design-v19 .schedule-filters button[aria-pressed="true"]{border-color:#00d4ff;background:#0a4e73;color:#fff}
+.design-v19 .schedule-search{flex:1;min-width:160px;min-height:34px;font-size:12px;margin:0}
+.design-v19 .audio-meter-box{margin:10px 0 12px;padding:10px 12px;border:1px solid #21516a;border-radius:9px;background:#031a29}
+.design-v19 .audio-meter-box .panel-title{margin-bottom:6px}
+.design-v19 .audio-meter-track{height:10px;border-radius:999px;background:#09273a;overflow:hidden;border:1px solid #1e4b64}
+.design-v19 .audio-meter-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#18c97a 0%,#f5cb39 75%,#ff4764 100%);transition:width .08s linear}
+.design-v19 .ticker-control-box{margin:12px 0 8px;padding-top:10px;border-top:1px solid #1c4c63}
+.design-v19 .director-stinger-row{margin-top:8px;gap:8px}
+.design-v19 .stinger-btn{font-weight:800}
+.design-v19 .stinger-four{border-color:#18b878;color:#9ef5d1}
+.design-v19 .stinger-six{border-color:#b26cff;color:#ead4ff}
+.design-v19 .stinger-wicket{border-color:#ff5470;color:#ffd0d8}
+.design-v19 .dim-telemetry{margin-top:8px;font-size:12px;color:#8cc8e6;letter-spacing:.3px}
+.design-v19 #copyScoreSummary{margin-top:8px}

@@ -4,7 +4,7 @@ import { PROFILES, effectiveBitrate, captureReady, parseMatch, relayOrigin, choo
 import { installStudio } from './studio.mjs';
 import { installYouTube } from './youtube.mjs';
 import { createFeed, fetchPublicSchedule } from './feed.mjs';
-import { parseLeagueScheduleInput, sortScheduleMatches } from './cricclubs-schedule.mjs';
+import { parseLeagueScheduleInput, sortScheduleMatches, filterScheduleMatches } from './cricclubs-schedule.mjs';
 import { subscribeRelayScores } from './score-live.mjs';
 import { installHome } from './home.mjs';
 import { installStreamSetup } from './stream-setup.mjs';
@@ -21,14 +21,16 @@ let matchUI = null;
 let savedUI = null;
 let accountUI = null;
 let interfaceUI = null;
+let audioCtx = null, audioAnalyser = null, audioSource = null, audioTimer = null, audioBuf = null;
 const $ = id => document.getElementById(id);
 const DESTS = ['youtube', 'facebook', 'instagram'];
 const state = { stream: null, camera: null, zoom: null, recorder: null, socket: null, session: null,
   relay: '', info: null, score: null, pollTimer: null, polling: false, live: false, starting: false, stopping: false,
   cameraBusy: false, connecting: false, micMuted: false, previewOff: false, startedAt: 0, uploaded: 0, lastBytes: 0,
   lastStat: 0, lastServerMessage: 0, heartbeat: null, wake: null, sessionExpiry: 0, closedByUser: false,
-  captureResolution: '1080', graphics: { cards: null, current: null }, overlayStyle: 'gold',
-  coolMode: false, autoDim: false, scheduleLoading: false, scheduleMatches: [], scheduleClubId: '', scheduleLeague: '', scheduleNote: '' };
+  captureResolution: '1080', graphics: { cards: null, current: null }, overlayStyle: 'gold', overlayTicker: '',
+  rttMs: null, uploadMbps: 0, batteryLevel: null, batteryCharging: false, torchSupported: false, torchOn: false,
+  coolMode: false, autoDim: false, scheduleLoading: false, scheduleMatches: [], scheduleClubId: '', scheduleLeague: '', scheduleNote: '', scheduleFilter: 'all', scheduleQuery: '' };
 // Remove the obsolete build's browser-stored platform key; new credentials stay in relay memory.
 try { localStorage.removeItem('boundary.ytKey'); } catch {}
 const saved = key => { try { return localStorage.getItem(`mk97.${key}`) || ''; } catch { return ''; } };
@@ -36,11 +38,25 @@ const save = (key, value) => { try { localStorage.setItem(`mk97.${key}`, value);
 $('relayUrl').value = saved('relay'); $('clubInput').value = saved('club') || '300';
 if (saved('match')) $('matchInput').value = saved('match');
 state.overlayStyle = saved('overlayStyle') || 'gold';
+state.overlayTicker = saved('ticker') || '';
 state.coolMode = saved('coolMode') === '1';
 state.autoDim = saved('autoDim') === '1';
 if ($('coolModeToggle')) $('coolModeToggle').checked = state.coolMode;
 if ($('autoDimBattery')) $('autoDimBattery').checked = state.autoDim;
 function notice(message, type = 'info') { $('notice').textContent = message; $('notice').className = `notice ${type}`; $('notice').hidden = !message; $('dismissNotice').hidden = !message; }
+function updateTelemetryHud() {
+  const parts = [];
+  if (state.live) parts.push(`${state.uploadMbps.toFixed(1)} Mbps`);
+  if (state.live && state.rttMs != null) parts.push(`${state.rttMs} ms`);
+  if (state.coolMode) parts.push('Cool 24fps');
+  if (state.batteryLevel != null) parts.push(`🔋 ${Math.round(state.batteryLevel * 100)}%${state.batteryCharging ? '⚡' : ''}`);
+  if ($('telemetryHud')) {
+    $('telemetryHud').textContent = parts.join(' · ');
+    $('telemetryHud').hidden = parts.length === 0;
+    $('telemetryHud').className = 'telemetry-hud' + (state.live ? (state.rttMs > 450 ? ' warning' : ' good') : '');
+  }
+  if ($('dimTelemetry')) $('dimTelemetry').textContent = parts.length ? parts.join('  ·  ') : 'Upload active';
+}
 function health(id, text, kind = '') { $(id + 'Health').textContent = text; $(id + 'Dot').className = 'health-dot ' + kind; }
 function currentDestinations() { return DESTS.filter(id => $('dest-' + id).checked && state.info?.destinations.find(d => d.id === id)?.configured); }
 function issue() {
@@ -59,7 +75,13 @@ function updateControls() {
   for (const id of ['qualitySelect', 'overlayToggle', 'relayUrl', 'relayToken', 'connectRelay', 'disconnectRelay', 'matchInput', 'clubInput', 'loadMatch']) $(id).disabled = locked || Boolean(state.destinationBusy);
   $('connectRelay').disabled = locked || state.connecting || Boolean(state.destinationBusy);
   $('overlayToggle').disabled = locked && (!state.live || !state.programEnabled);
-  for (const id of ['autoMilestones', 'autoCards']) $(id).disabled = locked;
+  for (const id of ['autoMilestones', 'autoCards', 'autoStingers']) if ($(id)) $(id).disabled = locked;
+  if ($('torchToggle')) {
+    $('torchToggle').disabled = !state.stream || !state.torchSupported;
+    $('torchToggle').setAttribute('aria-pressed', String(state.torchOn));
+    $('torchToggle').textContent = state.torchSupported ? (state.torchOn ? '🔦 Torch on' : '🔦 Torch off') : '🔦 Torch unavailable';
+  }
+  updateTelemetryHud();
   if ($('coolModeToggle')) $('coolModeToggle').disabled = locked || state.cameraBusy;
   if ($('coolPresetBtn')) $('coolPresetBtn').disabled = locked || state.cameraBusy;
   if ($('allowScheduledToggle')) $('allowScheduledToggle').disabled = locked || Boolean(state.scoreLoading);
@@ -78,6 +100,7 @@ function updateControls() {
   const dot = document.createElement('i'); $('streamState').append(dot, document.createTextNode(state.live ? ' SENDING' : state.starting ? ' CONNECTING' : state.stopping ? ' STOPPING' : ' STANDBY'));
   $('streamState').classList.toggle('sending', state.live);
   $('broadcastLabel').textContent = state.live ? 'CAMERA UPLOAD ACTIVE' : 'READY WHEN YOU ARE';
+  syncAudioMeterState();
   ui?.update();
   youtubeUI?.update();
   homeUI?.update();
@@ -263,20 +286,35 @@ const feed = createFeed({
 });
 async function pollScore() { return feed.refresh(); }
 function renderScheduleLists() {
-  const list = state.scheduleMatches || [];
+  const all = state.scheduleMatches || [];
+  const list = filterScheduleMatches(all, { filter: state.scheduleFilter, query: state.scheduleQuery });
   const activeKey = state.score ? `${state.score.clubId}:${state.score.matchId}` : '';
   const statusText = state.scheduleLoading
     ? `Scanning Club ${$('clubInput').value || '300'} schedule on CricClubs…`
-    : list.length
-      ? `${list.length} match${list.length === 1 ? '' : 'es'} discovered for Club ${state.scheduleClubId || $('clubInput').value}. Tap any match to load overlay & stream.`
+    : all.length
+      ? `${list.length} of ${all.length} match${all.length === 1 ? '' : 'es'} shown for Club ${state.scheduleClubId || $('clubInput').value}. Tap any match to load.`
       : (state.scheduleNote || 'No recent matches discovered automatically. Enter a Match ID above or paste CricClubs schedule text.');
   for (const statusId of ['homeScheduleStatus', 'matchScheduleStatus']) {
     if ($(statusId)) $(statusId).textContent = statusText;
+  }
+  for (const filterBoxId of ['homeScheduleFilters', 'matchScheduleFilters']) {
+    const box = $(filterBoxId);
+    if (!box) continue;
+    for (const pill of box.querySelectorAll('[data-schedule-filter]')) {
+      pill.setAttribute('aria-pressed', String(pill.dataset.scheduleFilter === (state.scheduleFilter || 'all')));
+    }
   }
   for (const rootId of ['homeScheduleList', 'matchScheduleList']) {
     const root = $(rootId);
     if (!root) continue;
     root.replaceChildren();
+    if (all.length && !list.length) {
+      const empty = document.createElement('p');
+      empty.className = 'helper';
+      empty.textContent = 'No matches match this filter. Try "All" or clear search.';
+      root.append(empty);
+      continue;
+    }
     for (const m of list) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -355,6 +393,18 @@ $('homePasteSchedule')?.addEventListener('click', () => {
     $('homeSchedulePasteBox').hidden = nextHidden;
     if (!nextHidden) $('homeSchedulePasteText')?.focus();
   }
+});
+for (const filterBoxId of ['homeScheduleFilters', 'matchScheduleFilters']) {
+  $(filterBoxId)?.addEventListener('click', event => {
+    const btn = event.target.closest('button[data-schedule-filter]');
+    if (!btn) return;
+    state.scheduleFilter = btn.dataset.scheduleFilter || 'all';
+    renderScheduleLists();
+  });
+}
+$('homeScheduleSearch')?.addEventListener('input', event => {
+  state.scheduleQuery = event.target.value || '';
+  renderScheduleLists();
 });
 
 $('homeSchedulePasteApply')?.addEventListener('click', () => {
@@ -450,6 +500,9 @@ async function openCamera(deviceId = '') {
     state.previewOff = false; $('previewHidden').hidden = true; $('previewToggle').setAttribute('aria-pressed', 'false');
     $('previewToggle').textContent = '◐ Hide preview'; $('cameraPlaceholder').hidden = true;
     for (const audio of state.stream.getAudioTracks()) audio.enabled = !state.micMuted;
+    const caps = track.getCapabilities?.() || {};
+    state.torchSupported = Boolean(caps.torch); state.torchOn = false;
+    startAudioMeter(state.stream);
     $('cameraSpec').textContent = `${state.camera.width} × ${state.camera.height} · ${Math.round(state.camera.frameRate || (state.coolMode ? 24 : 30))} fps${state.coolMode ? ' · Cool' : ''}`;
     health('video', `${captureProfile(state.camera)}p camera ready`, 'good'); setupZoom(track);
     await listCameras().catch(() => {});
@@ -465,7 +518,8 @@ async function openCamera(deviceId = '') {
 function closeCamera(update = true) {
   if (state.live || state.starting) return;
   if (state.stream) for (const track of state.stream.getTracks()) track.stop();
-  state.stream = null; state.camera = null; state.zoom = null;
+  stopAudioMeter();
+  state.stream = null; state.camera = null; state.zoom = null; state.torchSupported = false; state.torchOn = false;
   ui?.resetMonitor();
   $('cameraVideo').srcObject = null; $('cameraVideo').hidden = true; $('cameraPlaceholder').hidden = false; $('previewHidden').hidden = true;
   $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · ${state.coolMode ? '24 fps (Cool)' : '30 fps'}`; health('video', 'Camera off');
@@ -531,7 +585,68 @@ for (const event of ['pointerup', 'pointercancel', 'pointerleave']) $('viewfinde
 $('micToggle').addEventListener('click', () => {
   state.micMuted = !state.micMuted; for (const track of state.stream?.getAudioTracks() || []) track.enabled = !state.micMuted;
   $('micToggle').setAttribute('aria-pressed', String(state.micMuted)); $('micToggle').textContent = state.micMuted ? '◖× Mic muted' : '◖)) Mic on';
+  syncAudioMeterState();
 });
+$('torchToggle')?.addEventListener('click', async () => {
+  const track = state.stream?.getVideoTracks?.()[0];
+  if (!track || !state.torchSupported) return;
+  const next = !state.torchOn;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: next }] });
+    state.torchOn = next;
+    updateControls();
+  } catch (e) { notice('Torch unavailable on this camera: ' + e.message, 'error'); }
+});
+function stopAudioMeter() {
+  clearInterval(audioTimer); audioTimer = null;
+  try { audioSource?.disconnect(); } catch {}
+  try { audioCtx?.close(); } catch {}
+  audioCtx = null; audioAnalyser = null; audioSource = null; audioBuf = null;
+  if ($('audioMeterFill')) $('audioMeterFill').style.width = '0%';
+  if ($('audioPeakLabel')) $('audioPeakLabel').textContent = state.micMuted ? 'Mic muted' : 'Mic idle';
+}
+function syncAudioMeterState() {
+  if (!audioCtx || !audioAnalyser) {
+    if ($('audioMeterFill')) $('audioMeterFill').style.width = '0%';
+    if ($('audioPeakLabel')) $('audioPeakLabel').textContent = state.micMuted ? 'Mic muted' : 'Mic idle';
+    return;
+  }
+  const shouldPause = state.micMuted || document.hidden || (state.coolMode && state.previewOff);
+  if (shouldPause) {
+    if (audioCtx.state === 'running') audioCtx.suspend().catch(() => {});
+    if ($('audioMeterFill')) $('audioMeterFill').style.width = '0%';
+    if ($('audioPeakLabel')) $('audioPeakLabel').textContent = state.micMuted ? 'Mic muted' : 'Paused (Cool saver)';
+  } else if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+}
+function startAudioMeter(stream) {
+  stopAudioMeter();
+  if (!stream?.getAudioTracks?.().length) return;
+  const Ctx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (!Ctx) return;
+  try {
+    audioCtx = new Ctx();
+    audioAnalyser = audioCtx.createAnalyser();
+    audioAnalyser.fftSize = 256;
+    audioSource = audioCtx.createMediaStreamSource(stream);
+    audioSource.connect(audioAnalyser);
+    audioBuf = new Uint8Array(audioAnalyser.frequencyBinCount);
+    audioTimer = setInterval(() => {
+      if (!audioAnalyser || state.micMuted || document.hidden || (state.coolMode && state.previewOff)) return;
+      audioAnalyser.getByteTimeDomainData(audioBuf);
+      let peak = 0;
+      for (let i = 0; i < audioBuf.length; i++) {
+        const amp = Math.abs(audioBuf[i] - 128) / 128;
+        if (amp > peak) peak = amp;
+      }
+      const pct = Math.min(100, Math.round(peak * 140));
+      if ($('audioMeterFill')) $('audioMeterFill').style.width = `${pct}%`;
+      if ($('audioPeakLabel')) $('audioPeakLabel').textContent = pct >= 92 ? 'CLIPPING' : pct > 55 ? 'Strong signal' : pct > 8 ? 'Active' : 'Quiet';
+    }, 120);
+    syncAudioMeterState();
+  } catch { stopAudioMeter(); }
+}
 $('gridToggle').addEventListener('click', () => { $('framingGuide').hidden = !$('framingGuide').hidden; $('gridToggle').setAttribute('aria-pressed', String(!$('framingGuide').hidden)); });
 function togglePreview(off) {
   state.previewOff = off; $('previewHidden').hidden = !off; $('previewToggle').setAttribute('aria-pressed', String(off));
@@ -541,6 +656,7 @@ function togglePreview(off) {
     if (state.stream) { $('cameraVideo').hidden = false; $('cameraVideo').play().catch(() => notice('Tap Show preview again to resume the preview.')); }
     if (state.coolMode && state.score) ui?.score(state.score);
   }
+  syncAudioMeterState();
   ui?.update();
 }
 $('previewToggle').addEventListener('click', () => togglePreview(!state.previewOff)); $('showPreview').addEventListener('click', () => togglePreview(false));
@@ -558,6 +674,7 @@ function cleanupStream() {
   state.recorder = null; state.live = false; state.starting = false; state.stopping = false;
   if (state.socket) { const ws = state.socket; state.socket = null; if (ws.readyState < WebSocket.CLOSING) ws.close(1000, 'Camera upload ended'); }
   if (state.wake) { state.wake.release().catch(() => {}); state.wake = null; }
+  state.rttMs = null; state.uploadMbps = 0;
   exitBattery(); $('stopConfirm').hidden = true; health('upload', 'Upload idle'); updateControls();
 }
 function abortStream(message) { cleanupStream(); notice(message, 'error'); }
@@ -585,9 +702,9 @@ async function startStream() {
     ws.onopen = () => {
       if (state.socket !== ws) return;
       ws.send(JSON.stringify({ type: 'start', ticket, destinations: currentDestinations(), mimeType: recorder.mimeType,
-        width: capture.width, height: capture.height, resolution: state.captureResolution, coolMode: Boolean(state.coolMode), framing: state.framing || 'fit', overlay: $('overlayToggle').checked, overlayStyle: state.overlayStyle || 'gold',
+        width: capture.width, height: capture.height, resolution: state.captureResolution, coolMode: Boolean(state.coolMode), framing: state.framing || 'fit', overlay: $('overlayToggle').checked, overlayStyle: state.overlayStyle || 'gold', ticker: state.overlayTicker || '',
         match: state.score ? { clubId: state.score.clubId, matchId: state.score.matchId } : null,
-        automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked } }));
+        automation: { milestones: $('autoMilestones').checked, cards: $('autoCards').checked, stingers: Boolean($('autoStingers')?.checked ?? true) } }));
     };
     recorder.ondataavailable = event => {
       if (!event.data.size || state.socket !== ws) return;
@@ -624,12 +741,16 @@ async function startStream() {
         $(message.id + 'Status').textContent = message.message;
         $(message.id + 'Status').className = `destination-status ${message.state === 'failed' ? 'bad' : message.state === 'sending' ? 'good' : ''}`;
         if (message.state === 'failed') notice(`${message.id}: ${message.message}`, 'error');
+      } else if (message.type === 'pong') {
+        if (typeof message.at === 'number') state.rttMs = Math.max(0, Date.now() - message.at);
+        updateTelemetryHud();
       } else if (message.type === 'stats') {
         if (message.graphics) { state.graphics = message.graphics; ui?.graphics(state.graphics); }
         const now = Date.now(), elapsed = (now - state.lastStat) / 1000;
         const mbps = elapsed > 0 ? Math.max(0, (message.bytes - state.lastBytes) * 8 / elapsed / 1e6) : 0;
-        state.lastBytes = message.bytes; state.lastStat = now;
+        state.lastBytes = message.bytes; state.lastStat = now; state.uploadMbps = mbps;
         health('upload', `${mbps.toFixed(1)} Mbps${message.frames > 0 ? ' · encoding' : ' · buffering'}`, message.frames > 0 ? 'good' : 'warning');
+        updateTelemetryHud();
       }
     };
     ws.onerror = () => { if (state.socket === ws) abortStream('Secure upload connection failed. Check the relay address and allowed origin.'); };
@@ -710,6 +831,7 @@ setInterval(() => {
 }, 1000);
 document.addEventListener('visibilitychange', () => {
   feed.visibilityChanged();
+  syncAudioMeterState();
   if (document.visibilityState === 'visible') { if (state.live) wakeLock(); }
   else if (state.live) notice('Keep this page visible. Mobile browsers can pause the camera when you switch apps or lock the phone.');
 });
@@ -739,7 +861,12 @@ refreshLeagueSchedule({ clubId: $('clubInput').value || '300' });
 
 if (typeof navigator !== 'undefined' && navigator.getBattery) {
   navigator.getBattery().then(b => {
-    const chk = () => { if (b.level <= 0.20 && !b.charging && state.live) notice(`Battery low (${Math.round(b.level * 100)}%). Tap 'Battery screen' to save power.`, 'warning'); };
+    const chk = () => {
+      state.batteryLevel = b.level; state.batteryCharging = b.charging;
+      updateTelemetryHud();
+      if (b.level <= 0.20 && !b.charging && state.live) notice(`Battery low (${Math.round(b.level * 100)}%). Tap 'Battery screen' to save power.`, 'warning');
+    };
+    chk();
     b.addEventListener('levelchange', chk); b.addEventListener('chargingchange', chk);
   }).catch(() => {});
 }

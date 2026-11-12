@@ -381,3 +381,15 @@ export function parseLeagueScheduleInput(rawText, { clubId, league } = {}) {
   }
   return parsed;
 }
+
+export function filterScheduleMatches(matches = [], { filter = 'all', query = '' } = {}) {
+  const list = Array.isArray(matches) ? matches : [];
+  const f = ['live', 'scheduled', 'complete'].includes(filter) ? filter : 'all';
+  const q = String(query || '').trim().toLowerCase();
+  return list.filter(m => {
+    if (f !== 'all' && (m?.status || 'scheduled') !== f) return false;
+    if (!q) return true;
+    const hay = [m.matchId, m.clubId, m.team1, m.team2, m.ground, m.series, m.date, m.result, m.league].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}

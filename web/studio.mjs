@@ -131,7 +131,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   function drawScore(s = state.score) {
     if (!s) { $('scoreGraphic').removeAttribute('src'); return; }
     if (state.coolMode && state.previewOff) return;
-    $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold'));
+    $('scoreGraphic').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(graphicSvg(s, null, true, '', monitorCanvas, state.overlayStyle || 'gold', state.overlayTicker || ''));
   }
   function frameMonitor() {
     const canvas = (state.live || state.starting || state.stopping) && state.programCanvas || programSize(state.camera), changed = canvas.width !== monitorCanvas.width || canvas.height !== monitorCanvas.height;
@@ -170,6 +170,26 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
       updateControls();
     });
   }
+  const applyTicker = raw => {
+    const cleanText = String(raw || '').replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 72);
+    state.overlayTicker = cleanText;
+    if ($('overlayTickerInput')) $('overlayTickerInput').value = cleanText;
+    try { localStorage.setItem('mk97.ticker', cleanText); } catch {}
+    lastScoreSig = '';
+    drawScore();
+    if (state.live) sendControl({ type: 'ticker', text: cleanText });
+    updateControls();
+    notice(cleanText ? `Broadcast bug updated: ${cleanText}` : 'Broadcast bug cleared.', 'info');
+  };
+  if ($('overlayTickerInput')) {
+    $('overlayTickerInput').value = state.overlayTicker || '';
+    $('applyTickerBtn')?.addEventListener('click', () => applyTicker($('overlayTickerInput').value));
+    $('clearTickerBtn')?.addEventListener('click', () => applyTicker(''));
+    $('overlayTickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyTicker($('overlayTickerInput').value); } });
+  }
+  $('autoStingers')?.addEventListener('change', () => {
+    if (state.live) sendControl({ type: 'stingers', enabled: $('autoStingers').checked });
+  });
   document.body.append($('notice'), $('dismissNotice'));
   try { $('watchUrl').value = localStorage.getItem('boundary.watch') || ''; } catch {}
   function closeMenu() { $('studioMenu').hidden = true; $('moreButton').setAttribute('aria-expanded', 'false'); }
@@ -237,10 +257,28 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   $('jumpLive').addEventListener('click', () => { if (state.stream) togglePreview(false); else openCamera(); });
   $('showBatting').addEventListener('click', () => sendControl({ type: 'card', kind: 'batting' }));
   $('showBowling').addEventListener('click', () => sendControl({ type: 'card', kind: 'bowling' }));
+  $('showSummary')?.addEventListener('click', () => sendControl({ type: 'card', kind: 'summary' }));
+  $('triggerFour')?.addEventListener('click', () => sendControl({ type: 'card', kind: 'four' }));
+  $('triggerSix')?.addEventListener('click', () => sendControl({ type: 'card', kind: 'six' }));
+  $('triggerWicket')?.addEventListener('click', () => sendControl({ type: 'card', kind: 'wicket' }));
   $('volumeButton').addEventListener('click', () => { if (!$('micToggle').disabled) $('micToggle').click(); });
   async function watch() { const url = safeWatch($('watchUrl').value.trim()); try { localStorage.setItem('boundary.watch', url); } catch {} return url; }
   $('copyWatch').addEventListener('click', async () => { try { const url = await watch(); await navigator.clipboard.writeText(url); notice('Public broadcast link copied.', 'success'); } catch (e) { $('watchUrl').focus(); $('watchUrl').select(); notice(e.message || 'Copy the selected public link manually.', 'error'); } });
   $('shareWatch').addEventListener('click', async () => { try { const url = await watch(); if (navigator.share) await navigator.share({ title: state.score?.series || 'Live cricket', url }); else { await navigator.clipboard.writeText(url); notice('Public broadcast link copied.', 'success'); } } catch (e) { if (e.name !== 'AbortError') notice(e.message, 'error'); } });
+  $('copyScoreSummary')?.addEventListener('click', async () => {
+    const s = state.score;
+    if (!s) return notice('Load a match first to copy its live score summary.', 'error');
+    const eq = calculateEquation(s);
+    const headline = eq.isScheduled ? `${s.batting} vs ${s.bowling} · Scheduled` : `${s.batting} ${s.runs}/${s.wickets} (${s.overs} ov) vs ${s.bowling}`;
+    const tail = s.result || eq.centerEquation || '';
+    let watchUrl = '';
+    try { watchUrl = safeWatch($('watchUrl').value.trim()); } catch {}
+    const text = [headline, tail, s.series || '', watchUrl ? `Watch Live: ${watchUrl}` : ''].filter(Boolean).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      notice('Live score summary copied to clipboard.', 'success');
+    } catch { notice('Could not access clipboard.', 'error'); }
+  });
   $('castButton').addEventListener('click', async () => {
     try { const v = $('cameraVideo'); if (v.webkitShowPlaybackTargetPicker) { v.webkitShowPlaybackTargetPicker(); return; } if (v.remote?.prompt) { await v.remote.prompt(); return; } throw new Error(); }
     catch { panel('share'); notice('This browser cannot cast the local camera source. Open your public broadcast in its platform player and use that player’s Cast or AirPlay control.'); }
@@ -442,7 +480,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
   }
   function graphics(a) {
     const stats = $('sessionStats'); stats.replaceChildren();
-    for (const [k, v] of [['Capture', state.camera ? `${state.camera.width} × ${state.camera.height}` : 'Camera off'], ['Camera frame rate', state.camera?.frameRate ? `${Math.round(state.camera.frameRate)} fps` : '—'], ['On-air graphic', a?.current?.type || 'Live camera'], ['Cloud studio', state.session ? 'Connected' : 'Disconnected'], ['Viewer count', 'Check platform analytics']]) stats.append(el('dt', k), el('dd', v));
+    for (const [k, v] of [['Capture', state.camera ? `${state.camera.width} × ${state.camera.height}` : 'Camera off'], ['Camera frame rate', state.camera?.frameRate ? `${Math.round(state.camera.frameRate)} fps` : '—'], ['Relay latency (RTT)', state.rttMs != null ? `${state.rttMs} ms` : '—'], ['Power profile', state.coolMode ? 'Cool Mode · 24 fps' : 'Standard · 30 fps'], ['Device battery', state.batteryLevel != null ? `${Math.round(state.batteryLevel * 100)}%${state.batteryCharging ? ' (charging)' : ''}` : '—'], ['On-air graphic', a?.current?.type || 'Live camera'], ['Cloud studio', state.session ? 'Connected' : 'Disconnected'], ['Viewer count', 'Check platform analytics']]) stats.append(el('dt', k), el('dd', v));
   }
   function score(s) {
     if (!s) { $('scoreGraphic').removeAttribute('src'); tables(); return; }
@@ -473,7 +511,7 @@ export function installStudio({ state, api, notice, sendControl, openCamera, upd
     if (!state.camera) $('cameraSpec').textContent = `${state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} target · ${state.coolMode ? '24 fps (Cool)' : '30 fps'}`;
     for (const id of ['youtube', 'facebook']) $(id + 'Resolution').textContent = `${state.camera?.height ? captureProfile(state.camera) + 'p' : state.captureResolution === 'auto' ? 'Auto' : state.captureResolution + 'p'} · ${state.camera?.height > state.camera?.width ? 'portrait' : 'landscape'}`;
     for (const b of $('resolutionOptions').querySelectorAll('button')) { b.disabled = locked || state.cameraBusy; b.classList.toggle('selected', b.dataset.resolution === state.captureResolution); b.setAttribute('aria-pressed', String(b.dataset.resolution === state.captureResolution)); }
-    for (const id of ['showBatting', 'showBowling']) $(id).disabled = !state.live || !state.programEnabled;
+    for (const id of ['showBatting', 'showBowling', 'showSummary', 'triggerFour', 'triggerSix', 'triggerWicket']) if ($(id)) $(id).disabled = !state.live || !state.programEnabled;
     $('previewToggle').replaceChildren(icon(state.previewOff ? 'play' : 'pause'), el('span', state.previewOff ? 'Resume local monitor' : 'Pause local monitor'));
     $('studio').classList.toggle('camera-open', Boolean(state.stream));
     $('studio').classList.toggle('is-streaming', Boolean(state.live)); $('previewToggle').setAttribute('aria-label', state.previewOff ? 'Resume local monitor' : 'Pause local monitor · broadcast continues');

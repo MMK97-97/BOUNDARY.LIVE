@@ -443,7 +443,7 @@ function run(ws, message, identity) {
   session.program = new LiveProgram({ binary, font, dir, mimeType: message.mimeType, options,
     bitrateKbps: outputHeight === 1080 ? bitrate : outputHeight === 720 ? 4500 : 2000,
     width: canvas.width, height: canvas.height,
-    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, overlayStyle: ['gold', 'shield', 'dual', 'cyan', 'classic'].includes(message.overlayStyle) ? message.overlayStyle : 'gold', preset, framing: message.framing || 'fit' });
+    score: selected ? scores.snapshot().score : null, overlay: message.overlay !== false, overlayStyle: ['gold', 'shield', 'dual', 'cyan', 'classic'].includes(message.overlayStyle) ? message.overlayStyle : 'gold', ticker: String(message.ticker ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 72), stingers: message.automation?.stingers !== false, preset, framing: message.framing || 'fit' });
   main = session.program.encoder; session.main = main;
   session.program.on('failure', message => { send(ws, { type: 'error', message }); finish(session, false); });
   session.program.on('graphic', graphic => send(ws, { type: 'graphic', graphic }));
@@ -560,6 +560,8 @@ wss.on('connection', (ws, req) => {
             if (message.type === 'card') session.program.cards(message.kind);
             else if (message.type === 'overlay' && typeof message.enabled === 'boolean') session.program.showOverlay = message.enabled;
             else if (message.type === 'overlayStyle' && ['gold', 'shield', 'dual', 'cyan', 'classic'].includes(message.style)) session.program.renderer.style = message.style;
+            else if (message.type === 'ticker' && typeof message.text === 'string') session.program.renderer.ticker = message.text.replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 72);
+            else if (message.type === 'stingers' && typeof message.enabled === 'boolean') session.program.stingers = message.enabled;
             else throw new Error('Unknown broadcast control.');
           } catch (e) { send(ws, { type: 'warning', message: e.message.slice(0, 180) }); }
         }

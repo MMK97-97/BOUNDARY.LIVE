@@ -23,8 +23,8 @@ export function liveProgramArgs({ mimeType = 'video/mp4', bitrateKbps = 6000, wi
     '-shortest', '-flvflags', 'no_duration_filesize', '-flush_packets', '1', '-f', 'flv', 'pipe:1'];
 }
 export class LiveProgram extends EventEmitter {
-  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, overlayStyle = 'gold', width = 1920, height = 1080, realtime = true, preset, framing }) {
-    super(); this.options = options; this.renderer = new GraphicRenderer(font, { width, height }, overlayStyle); this.detector = new CricketEvents();
+  constructor({ binary, font, dir, mimeType, options, bitrateKbps, score, overlay = true, overlayStyle = 'gold', ticker = '', stingers = true, width = 1920, height = 1080, realtime = true, preset, framing }) {
+    super(); this.options = options; this.stingers = stingers !== false; this.renderer = new GraphicRenderer(font, { width, height }, overlayStyle, ticker); this.detector = new CricketEvents();
     this.score = score; this.showOverlay = overlay; this.queue = []; this.current = null; this.outputFrames = 0;
     this.startedAt = null; this.realtime = realtime; this.blocked = false; this.closing = false; this.dead = false;
     if (score) this.detector.update(score);
@@ -45,14 +45,24 @@ export class LiveProgram extends EventEmitter {
       if (['team', 'player'].includes(event.type) && this.options.milestones) this.enqueue({ ...event, frames: 60 });
       if (event.type === 'over' && this.options.cards) { this.enqueue({ ...event, type: 'batting', frames: 60 }); this.enqueue({ ...event, type: 'bowling', frames: 60 }); }
     }
+    if (this.stingers && Array.isArray(this.detector.lastMoments)) {
+      for (const moment of this.detector.lastMoments) this.enqueue({ ...moment, frames: 60 });
+    }
   }
   enqueue(event) {
-    if (!['team', 'player', 'batting', 'bowling'].includes(event.type) || this.queue.length >= 12 || this.closing) return false;
+    if (!['team', 'player', 'batting', 'bowling', 'summary', 'four', 'six', 'wicket'].includes(event.type) || this.queue.length >= 12 || this.closing) return false;
     this.queue.push({ ...event, frames: 60, queuedAt: Date.now() }); return true;
   }
   cards(kind) {
-    if (!['batting', 'bowling'].includes(kind) || !this.score) throw new Error('Load a scorecard first.');
-    return this.enqueue({ type: kind, id: `manual:${randomBytes(6).toString('hex')}`, over: Math.floor(Number(this.score.overs)), cards: this.detector.cards(this.score) });
+    if (!['batting', 'bowling', 'summary', 'four', 'six', 'wicket'].includes(kind) || !this.score) throw new Error('Load a scorecard first.');
+    const cards = this.detector.cards(this.score);
+    if (['four', 'six', 'wicket'].includes(kind)) {
+      const target = kind === 'wicket' ? (this.score.lastOut || this.score.batters?.[0]) : this.score.batters?.[0];
+      const title = target?.name || this.score.batting || kind.toUpperCase();
+      const subtitle = target ? `${target.name}${target.runs != null ? ` ${target.runs}(${target.balls ?? '—'})` : ''}` : `${this.score.batting || ''} ${this.score.runs ?? '—'}/${this.score.wickets ?? '—'}`;
+      return this.enqueue({ type: kind, id: `manual:${randomBytes(6).toString('hex')}`, title, subtitle, milestone: kind === 'wicket' ? Number(this.score.wickets) || '' : kind === 'six' ? 6 : 4 });
+    }
+    return this.enqueue({ type: kind, id: `manual:${randomBytes(6).toString('hex')}`, over: Math.floor(Number(this.score.overs)), cards });
   }
   snapshot() { return { cards: this.score ? this.detector.cards(this.score) : null, current: this.current ? { type: this.current.type, remaining: Math.max(0, (60 - this.current.position) / FPS) } : null }; }
   pump() {

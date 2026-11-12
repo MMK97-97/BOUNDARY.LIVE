@@ -575,9 +575,100 @@ function portraitScore(score, status, width, height) {
   return g + '</g>';
 }
 
-export function graphicSvg(score, event = null, showScore = true, brandLogo = '', { width = 1920, height = 1080 } = {}, style = 'gold') {
+function renderBroadcastTicker(ticker, width, scale) {
+  const cleanTicker = String(ticker || '').trim();
+  if (!cleanTicker) return '';
+  const txt = short(cleanTicker, 42).toUpperCase();
+  const s = Math.max(0.55, scale);
+  const w = Math.min(width - 260 * scale, Math.max(260, txt.length * 14 + 78) * s);
+  const h = 42 * s, x = 28 * s, y = 28 * s;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${8 * s}" fill="#071320" fill-opacity="0.88" stroke="#f5cb39" stroke-opacity="0.72" stroke-width="${1.5 * s}"/>` +
+    `<circle cx="${x + 20 * s}" cy="${y + h / 2}" r="${5 * s}" fill="#ff1744"/>` +
+    text(txt, x + 36 * s, y + h * 0.65, 19 * s, '#f7fafc', 'font-weight="800" letter-spacing="1.2"');
+}
+
+function renderMomentStinger(event, score) {
+  if (!event) return '';
+  if (event.type === 'four' || event.type === 'six') {
+    const isSix = event.type === 'six';
+    const bg1 = isSix ? '#3c096c' : '#004d33';
+    const bg2 = isSix ? '#7b2cbf' : '#00875a';
+    const border = isSix ? '#f5cb39' : '#57f287';
+    const badge = isSix ? '6' : '4';
+    const label = isSix ? 'MAXIMUM SIX!' : 'BOUNDARY FOUR!';
+    const title = short(event.title || score?.batters?.[0]?.name || score?.batting || label, 28).toUpperCase();
+    const sub = short(event.subtitle || (score ? `${score.batting || ''}  ${score.runs}/${score.wickets} (${score.overs} ov)` : ''), 44);
+    let g = `<defs><linearGradient id="stingerBg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs>`;
+    g += `<rect x="440" y="645" width="1040" height="128" rx="18" fill="url(#stingerBg)" fill-opacity="0.96" stroke="${border}" stroke-width="4"/>`;
+    g += `<rect x="458" y="661" width="96" height="96" rx="14" fill="#071320" stroke="${border}" stroke-width="2.5"/>`;
+    g += text(badge, 506, 732, 68, '#f5cb39', 'text-anchor="middle" font-weight="900"');
+    g += text(label, 582, 697, 30, '#f5cb39', 'font-weight="900" letter-spacing="3"');
+    g += text(title, 582, 742, 34, '#ffffff', 'font-weight="800"');
+    if (sub) g += text(sub, 1450, 725, 22, '#e2f1ff', 'text-anchor="end" font-weight="600"');
+    return g;
+  }
+  if (event.type === 'wicket') {
+    const num = event.milestone ? ` #${event.milestone}` : '';
+    const title = short(event.title || score?.lastOut?.name || 'WICKET', 30).toUpperCase();
+    const sub = short(event.subtitle || (score ? `${score.batting || ''} ${score.runs}/${score.wickets} (${score.overs} ov)` : 'DISMISSED'), 52);
+    let g = '<defs><linearGradient id="wicketBg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#4a0610"/><stop offset="100%" stop-color="#9e0b22"/></linearGradient></defs>';
+    g += '<rect x="410" y="635" width="1100" height="140" rx="18" fill="url(#wicketBg)" fill-opacity="0.96" stroke="#ff5c7a" stroke-width="4"/>';
+    g += '<rect x="430" y="655" width="180" height="100" rx="12" fill="#0d0609" stroke="#f5cb39" stroke-width="2.5"/>';
+    g += text('OUT', 520, 718, 48, '#ff4d6d', 'text-anchor="middle" font-weight="900" letter-spacing="2"');
+    g += text(`WICKET${num}`, 636, 688, 28, '#f5cb39', 'font-weight="900" letter-spacing="3"');
+    g += text(title, 636, 732, 35, '#ffffff', 'font-weight="800"');
+    g += text(sub, 636, 761, 21, '#ffd6de', 'font-weight="600"');
+    return g;
+  }
+  return '';
+}
+
+function renderSummaryCard(score, event) {
+  const s = score || {};
+  const eq = calculateEquation(s);
+  const t1 = s.teams?.[0] || { name: s.batting || 'Team 1', runs: s.runs ?? '—', wickets: s.wickets ?? '—', overs: s.overs ?? '—', runRate: eq.crr };
+  const t2 = s.teams?.[1] || { name: s.bowling || 'Team 2', runs: eq.oppTeam?.runs ?? '—', wickets: eq.oppTeam?.wickets ?? '—', overs: eq.oppTeam?.overs ?? '—', runRate: eq.oppTeam?.runRate ?? '—' };
+  const batRows = event?.cards?.batting?.length ? event.cards.batting : (s.batters || []);
+  const bowlRows = event?.cards?.bowling?.length ? event.cards.bowling : (s.bowler ? [s.bowler] : []);
+  let g = '<rect x="270" y="125" width="1380" height="680" rx="24" fill="#07192e" stroke="#f5cb39" stroke-width="3"/>';
+  g += '<path d="M270 149 Q270 125 294 125 H1626 Q1650 125 1650 149 V235 H270 Z" fill="#0a3b73"/>';
+  g += text('MATCH SUMMARY', 320, 188, 40, '#f5cb39', 'font-weight="900" letter-spacing="2"');
+  g += text(short(s.series || `Club ${s.clubId || '—'} · Match ${s.matchId || '—'}`, 46), 1595, 186, 25, '#e2efff', 'text-anchor="end" font-weight="700"');
+  // Innings boxes
+  for (const [idx, tm, x] of [[0, t1, 315], [1, t2, 980]]) {
+    const scoreTxt = tm.runs === '—' || (idx === 1 && !eq.oppHasBatted && tm.runs === '0') ? 'YET TO BAT' : `${tm.runs}/${tm.wickets}`;
+    const metaTxt = scoreTxt === 'YET TO BAT' ? (eq.isScheduled ? 'SCHEDULED' : '2ND INNINGS') : `${tm.overs ?? '—'} OV${tm.runRate && tm.runRate !== '—' ? ` · RR ${tm.runRate}` : ''}`;
+    g += `<rect x="${x}" y="265" width="625" height="128" rx="14" fill="#0d2644" stroke="#2c6db5" stroke-width="2"/>`;
+    g += text(short(tm.name || `Team ${idx + 1}`, 24).toUpperCase(), x + 28, 308, 26, '#9fd0ff', 'font-weight="800"');
+    g += text(scoreTxt, x + 28, 366, 46, '#ffffff', 'font-weight="900"');
+    g += text(metaTxt, x + 595, 362, 23, '#f5cb39', 'text-anchor="end" font-weight="700"');
+  }
+  // Center equation/result bar
+  g += '<rect x="315" y="418" width="1290" height="58" rx="10" fill="#102f52" stroke="#367bc2" stroke-width="1.5"/>';
+  g += text(short(s.result || eq.centerEquation || 'LIVE CRICKET BROADCAST', 72).toUpperCase(), 960, 456, 25, '#f5cb39', 'text-anchor="middle" font-weight="800" letter-spacing="1"');
+  // Batters / Bowlers snapshot
+  g += text('KEY PERFORMERS', 320, 520, 22, '#9ec9f5', 'font-weight="800" letter-spacing="1"');
+  batRows.slice(0, 3).forEach((p, i) => {
+    const y = 566 + i * 44;
+    g += `<rect x="315" y="${y - 30}" width="625" height="38" rx="6" fill="#0b213a"/>`;
+    g += text(short(p.name || 'Batter', 22), 335, y - 3, 23, '#ffffff', 'font-weight="700"');
+    g += text(`${p.runs ?? '—'} (${p.balls ?? '—'})`, 920, y - 3, 24, '#f5cb39', 'text-anchor="end" font-weight="800"');
+  });
+  bowlRows.slice(0, 3).forEach((p, i) => {
+    const y = 566 + i * 44;
+    g += `<rect x="980" y="${y - 30}" width="625" height="38" rx="6" fill="#0b213a"/>`;
+    g += text(short(p.name || 'Bowler', 22), 1000, y - 3, 23, '#ffffff', 'font-weight="700"');
+    g += text(`${p.wickets ?? '—'}-${p.runs ?? '—'} (${p.overs ?? '—'})`, 1585, y - 3, 24, '#6ad1ff', 'text-anchor="end" font-weight="800"');
+  });
+  const footerMeta = [s.ground ? `Venue: ${s.ground}` : '', s.stats?.toss ? `Toss: ${s.stats.toss}` : '', `Partnership: ${eq.partnershipText}`].filter(Boolean).join('  ·  ');
+  g += text(short(footerMeta || 'CricClubs live match snapshot', 88), 320, 770, 21, '#a3bad2');
+  return g;
+}
+
+export function graphicSvg(score, event = null, showScore = true, brandLogo = '', { width = 1920, height = 1080 } = {}, style = 'gold', ticker = '') {
   const scale = width / 1920;
   let g = brandLogo ? `<image href="${xml(brandLogo)}" x="${width - 196 * scale}" y="${30 * scale}" width="${150 * scale}" height="${76 * scale}" preserveAspectRatio="xMidYMid slice" opacity="0.94"/>` : '';
+  if (showScore && ticker) g += renderBroadcastTicker(ticker, width, scale);
   if (showScore && score) {
     const status = score.stale || Date.now() - score.fetchedAt > 30000 ? 'SCORE DELAYED' : score.status === 'complete' ? 'MATCH COMPLETE' : score.status === 'scheduled' ? 'MATCH SCHEDULED' : score.superOver ? 'SUPER OVER' : 'LIVE SCORE';
     if (height > width) {
@@ -612,6 +703,10 @@ export function graphicSvg(score, event = null, showScore = true, brandLogo = ''
     g += text(event.milestone, 960, 515, 190, '#fff', 'text-anchor="middle" font-weight="700"');
     g += text('RUNS', 960, 580, 36, '#b6d3ef', 'text-anchor="middle" letter-spacing="8"');
     g += text(short(event.title, 35), 960, 681, 43, '#fff', 'text-anchor="middle" font-weight="700"');
+  } else if (event && ['four', 'six', 'wicket'].includes(event.type)) {
+    g += renderMomentStinger(event, score);
+  } else if (event && event.type === 'summary') {
+    g += renderSummaryCard(score, event);
   } else if (event && ['batting', 'bowling'].includes(event.type)) {
     const batting = event.type === 'batting', rows = event.cards?.[batting ? 'batting' : 'bowling'] || [];
     g += '<rect x="270" y="125" width="1380" height="680" rx="24" fill="#07192e" stroke="#246fe1" stroke-width="3"/><path d="M270 149 Q270 125 294 125 H1626 Q1650 125 1650 149 V235 H270 Z" fill="#085cc2"/>';

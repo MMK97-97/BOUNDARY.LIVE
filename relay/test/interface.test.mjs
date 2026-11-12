@@ -125,4 +125,7 @@ test('Cool Mode caps bitrate & frame rate, and scheduled matches display schedul
   h.controller.update();
   assert.equal(h.e('graphicsSourceState').textContent,'Scheduled · Waiting for live');
   assert.ok(decodeURIComponent(h.e('graphicsScorePreview').src).includes('MATCH SCHEDULED'));
+  h.state.overlayTicker='FWCWL <FINALS>';h.controller.update();
+  const decoded=decodeURIComponent(h.e('graphicsScorePreview').src);
+  assert.ok(decoded.includes('FWCWL')&&!decoded.includes('<FINALS>'));
 });

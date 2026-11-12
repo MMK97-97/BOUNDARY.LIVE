@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { discoverLeagueSchedule, parseLeagueScheduleInput, sortScheduleMatches, clearScheduleCache } from '../../web/cricclubs-schedule.mjs';
+import { discoverLeagueSchedule, parseLeagueScheduleInput, sortScheduleMatches, filterScheduleMatches, clearScheduleCache } from '../../web/cricclubs-schedule.mjs';
 import { normalizeScore, scheduledScore, scoreLines } from '../../web/score-data.mjs';
 import { graphicSvg } from '../../web/score-graphic.mjs';
 import { ScoreService } from '../lib/score.mjs';
@@ -141,4 +141,16 @@ test('sortScheduleMatches ranks live before scheduled before complete', () => {
     { matchId: '14', status: 'scheduled' }
   ]);
   assert.deepEqual(sorted.map(m => m.matchId), ['11', '14', '12', '10']);
+});
+
+test('filterScheduleMatches filters by status and case-insensitive search query', () => {
+  const sample = [
+    { matchId: '991', status: 'live', team1: 'Sarasota CC', team2: 'ICAT', ground: 'Rodney Park' },
+    { matchId: '992', status: 'scheduled', team1: 'Tampa Tigers', team2: 'Royal Bulls', ground: 'Evans Field' },
+    { matchId: '990', status: 'complete', team1: 'Strikers', team2: 'ICAT', ground: 'Rodney Park' }
+  ];
+  assert.deepEqual(filterScheduleMatches(sample, { filter: 'live' }).map(m => m.matchId), ['991']);
+  assert.deepEqual(filterScheduleMatches(sample, { filter: 'scheduled' }).map(m => m.matchId), ['992']);
+  assert.deepEqual(filterScheduleMatches(sample, { filter: 'all', query: 'rodney' }).map(m => m.matchId), ['991', '990']);
+  assert.deepEqual(filterScheduleMatches(sample, { filter: 'complete', query: '990' }).map(m => m.matchId), ['990']);
 });

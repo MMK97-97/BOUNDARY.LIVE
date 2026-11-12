@@ -196,12 +196,12 @@ export function installInterface({ state, ui, home, notice }) {
       card.classList.toggle('selected', card.dataset.overlayCard === theme);
     }
     const shouldRenderPreview = !score || !state.coolMode || !state.live || currentPanel === 'graphics';
-    const key = JSON.stringify([score, programSize(state.camera), theme]);
+    const key = JSON.stringify([score, programSize(state.camera), theme, state.overlayTicker || '']);
     if (shouldRenderPreview && key !== scoreDrawingKey) {
       scoreDrawingKey = key;
       if (score) {
         const canvas = programSize(state.camera), barHeight = canvas.height > canvas.width ? 286 * canvas.width / 1080 : 236 * canvas.width / 1920;
-        const drawing = graphicSvg(score, null, true, '', canvas, theme).replace(`height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"`, `height="${barHeight}" viewBox="0 ${canvas.height - barHeight} ${canvas.width} ${barHeight}"`);
+        const drawing = graphicSvg(score, null, true, '', canvas, theme, state.overlayTicker || '').replace(`height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"`, `height="${barHeight}" viewBox="0 ${canvas.height - barHeight} ${canvas.width} ${barHeight}"`);
         $('graphicsScorePreview').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(drawing);
       }
       else $('graphicsScorePreview').removeAttribute('src');

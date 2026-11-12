@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mk97-studio-v26';
+const CACHE_NAME = 'mk97-studio-v27';
 const SHELL_ASSETS = [
   './',
   './index.html',
